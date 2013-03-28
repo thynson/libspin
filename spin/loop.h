@@ -18,7 +18,7 @@
 #define __SPIN_LOOP_H__
 
 typedef struct __spin_loop *spin_loop_t;
-typedef struct __spin_timer *spin_timer_t;
+typedef struct __spin_task *spin_task_t;
 
 spin_loop_t spin_loop_create();
 
@@ -26,14 +26,14 @@ void spin_loop_destroy (spin_loop_t loop);
 
 int spin_loop_run (spin_loop_t loop);
 
-spin_timer_t spin_timer_create (spin_loop_t loop, unsigned msecs,
-                                int (*callback)(void*), void *args);
+spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
+                              int (*callback)(void*), void *args);
 
-int spin_timer_destroy (spin_timer_t timer);
+void spin_task_destroy (spin_task_t task);
 
-int spin_timer_pause (spin_timer_t timer);
+int spin_task_pause (spin_task_t task);
 
-int spin_timer_resume (spin_timer_t timer);
+int spin_task_resume (spin_task_t task);
 
 
 #endif
