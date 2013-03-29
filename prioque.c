@@ -154,6 +154,7 @@ int prioque_insert (prioque_t q, prioque_node_t *n, prioque_weight_t weight)
 
     q->queue[q->count].node = n;
     q->queue[q->count].weight = weight;
+    n->__offset = q->count;
     push_heap(q->queue, q->queue + q->count);
     q->count++;
     return 0;
