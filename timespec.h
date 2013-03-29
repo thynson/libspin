@@ -31,8 +31,8 @@ static inline void timespec_add_milliseconds (struct timespec *ts, int64_t ms)
     ms -= sec * 1000;
 
     ts->tv_nsec += ms * 1000000;
-    ts->tv_sec += t->tv_nsec / 1000000000 + sec;
-    ts->tv_nsec = t->tv_nsec % 1000000000;
+    ts->tv_sec += ts->tv_nsec / 1000000000 + sec;
+    ts->tv_nsec = ts->tv_nsec % 1000000000;
 }
 
 static inline int64_t timespec_diff_millisecons (struct timespec *lhs,
@@ -42,11 +42,7 @@ static inline int64_t timespec_diff_millisecons (struct timespec *lhs,
     assert (lhs != NULL);
     assert (rhs != NULL);
     ms = 0;
-    if (lhs->tv_nsec < rhs->tv_nsec) {
-        ms += (1000000000 + lhs->tv_nsec - rhs->tv_nsec) / 1000000;
-    } else {
-        ms += (lhs->tv_nsec - rhs->tv_nsec) / 1000000;
-    }
+    ms += (lhs->tv_nsec - rhs->tv_nsec) / 1000000;
     ms += (lhs->tv_sec - rhs->tv_sec) * 1000;
     return ms;
 }

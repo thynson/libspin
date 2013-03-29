@@ -25,6 +25,7 @@
 #include <time.h>
 #include <errno.h>
 #include <stdint.h>
+#include <unistd.h>
 
 enum {
     SPIN_LOOP_PREPARE = 0,
@@ -67,7 +68,7 @@ static spin_task_t spin_task_alloc (int (*callback)(void *), void *args);
 static void spin_task_free (spin_task_t task);
 
 static void *spin_poll_thread (void *param);
-static int wait_for_tasktimeout (spin_loop_t xp, spin_task_t *task);
+static void wait_for_task (spin_loop_t xp);
 
 static struct timespec startup_timespec;
 static pthread_once_t startup_timespec_once = PTHREAD_ONCE_INIT;
@@ -93,6 +94,7 @@ static inline spin_task_t spin_task_alloc (int (*callback)(void *), void *args)
 
     ret->callback = callback;
     ret->args = args;
+    return ret;
 }
 
 static inline void spin_task_free (spin_task_t task)
@@ -133,13 +135,17 @@ spin_loop_t spin_loop_create (void)
     if (ret->prioque == NULL)
         goto clean_and_exit;
 
-    pthread_create (&ret->poll_thread, NULL, spin_poll_thread, ret);
+    tmp = pthread_create (&ret->poll_thread, NULL, spin_poll_thread, ret);
 
     if (tmp != 0) {
         close (ret->epollfd);
         free (ret);
         return NULL;
     }
+
+    link_list_init (&ret->currtask);
+    link_list_init (&ret->nexttask);
+    link_list_init (&ret->bgtask);
 
     /* since SPIN_LOOP_PREPARE is exactly 0, we don't need to set it */
 
@@ -185,14 +191,9 @@ void spin_loop_destroy (spin_loop_t xp)
     free (xp);
 }
 
-/**
- * Wait for task event, return 0 indicate a task expired. otherwise
- * interrupted by I/O event
- */
-int wait_for_tasktimeout (spin_loop_t xp, spin_task_t *task)
+void wait_for_task (spin_loop_t xp)
 {
-    int timedout = 0;
-    int event_queue_not_empty = 0;
+    int ret;
 
     prioque_node_t *task_node;
     prioque_front (xp->prioque, &task_node);
@@ -200,26 +201,26 @@ int wait_for_tasktimeout (spin_loop_t xp, spin_task_t *task)
     if (task_node == NULL) {
         pthread_mutex_lock (&xp->lock);
         pthread_cond_wait (&xp->guard, &xp->lock);
+        link_list_cat (&xp->currtask, &xp->bgtask);
         pthread_mutex_unlock (&xp->lock);
-        return -1;
     } else {
         struct timespec ts = startup_timespec;
-        int ret;
-        prioque_weight_t msecs, secs;
+        prioque_weight_t msecs;
         prioque_get_node_weight (xp->prioque, task_node, &msecs);
 
-        timespec_add_milliseconds (&ts, &msecs);
+        timespec_add_milliseconds (&ts, msecs);
 
         pthread_mutex_lock (&xp->lock);
         ret = pthread_cond_timedwait (&xp->guard, &xp->lock, &ts);
+        if (ret == 0)
+            link_list_cat (&xp->currtask, &xp->bgtask);
         pthread_mutex_unlock (&xp->lock);
 
         if (ret == ETIMEDOUT) {
-            *task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
+            spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
             prioque_remove (xp->prioque, task_node);
-            return 0;
+            link_list_attach_to_tail (&xp->currtask, &task->node.l);
         }
-        return -1;
     }
 }
 
@@ -234,37 +235,17 @@ int spin_loop_run (spin_loop_t xp)
     pthread_mutex_unlock (&xp->lock);
 
     do {
+        wait_for_task (xp);
 
-        /* TODO:
-         *
-         * bool timedout = false;
-         * if have task event
-         *     timedout = pthread_cond_timedwait until latest task event
-         * else
-         *     pthread_cond_wait
-         *
-         * if timedout
-         *     add task event to event list
-         * else
-         *     peek targets from io event list
-         *
-         * while true
-         *     fire event for items in event list respectively
-         *     flip immediate event
-         *     fire current imediate event
-         *     check timedout task
-         *     fire task event
-         *     if event list empty
-         *         break loop
-         * */
-
-        spin_task_t task;
-        if (wait_for_tasktimeout(xp, &task) == 0) {
+        while (!link_list_is_empty(&xp->currtask)) {
+            link_node_t *node = xp->currtask.head;
+            link_list_dettach (&xp->currtask, node);
+            spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
             task->callback(task->args);
-            spin_task_destroy(task);
-        } else {
-
+            spin_task_free (task);
         }
+
+        link_list_cat (&xp->currtask, &xp->nexttask);
 
     } while (1); /* test if there are event to be fired */
 
@@ -283,6 +264,7 @@ void *spin_poll_thread (void *param)
      *
      * :sh
      */
+    return NULL;
 }
 
 spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
@@ -316,4 +298,5 @@ int spin_task_destroy (spin_task_t task)
     }
 
     spin_task_free (task);
+    return 0;
 }

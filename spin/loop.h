@@ -29,7 +29,7 @@ int spin_loop_run (spin_loop_t loop);
 spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
                               int (*callback)(void*), void *args);
 
-void spin_task_destroy (spin_task_t task);
+int spin_task_destroy (spin_task_t task);
 
 int spin_task_pause (spin_task_t task);
 

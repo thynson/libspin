@@ -40,9 +40,10 @@ static inline void link_list_init (link_list_t *l)
     l->tail = NULL;
 }
 
-static inline void link_node_init (link_node_t *n)
+static inline int link_list_is_empty (link_list_t *l)
 {
-    n->next = n->prev = n;
+    assert (l != NULL);
+    return l->head == NULL && l->tail == NULL;
 }
 
 static inline void link_list_swap (link_list_t *lhs, link_list_t *rhs)
@@ -82,17 +83,16 @@ static inline void link_list_cat (link_list_t *dst, link_list_t *src)
 static inline void link_list_attach_to_tail (link_list_t *l, link_node_t *n)
 {
     assert (l != NULL && n != NULL);
-    assert (n->next == n && n->prev == n);
 
     if (l->head != NULL) {
         assert (l->tail != NULL);
-        n->next = NULL;
+        n->next = n;
         n->prev = l->tail;
         l->tail->next = n;
         l->tail = n;
     } else {
         assert (l->tail == NULL);
-        n->next = n->prev = NULL;
+        n->next = n->prev = n;
         l->head = l->tail = n;
     }
 }
@@ -100,17 +100,16 @@ static inline void link_list_attach_to_tail (link_list_t *l, link_node_t *n)
 static inline void link_list_attach_to_head (link_list_t *l, link_node_t *n)
 {
     assert (l != NULL && n != NULL);
-    assert (n->next == n && n->prev == n);
 
     if (l->head != NULL) {
         assert (l->tail != NULL);
-        n->prev = NULL;
+        n->prev = n;
         n->next = l->head;
         l->head->prev = n;
         l->head = n;
     } else {
         assert (l->tail == NULL);
-        n->next = n->prev = NULL;
+        n->next = n->prev = n;
         l->head = l->tail = n;
     }
 }
@@ -118,27 +117,26 @@ static inline void link_list_attach_to_head (link_list_t *l, link_node_t *n)
 static inline void link_list_dettach (link_list_t *l, link_node_t *n)
 {
     assert (l != NULL && n != NULL);
-    assert (n->next != NULL || n->prev != NULL);
 
-    if (l->head == n)
-        l->head = n->next;
-
-    if (l->tail == n)
-        l->tail = n->prev;
-
-    if (n->prev != NULL)
-        n->prev->next = n->next;
-
-    if (n->next != NULL)
-        n->next->prev = n->prev;
-
-    n->next = n->prev = n;
-}
-
-static inline int link_node_is_dettached (link_node_t *n)
-{
-    assert (n != NULL);
-    return n->next == n && n->prev == n;
+    if (n->next == n) {
+        if (n->prev == n) {
+            n->next = n->prev = l->head = l->tail = NULL;
+        } else {
+            l->tail = n->prev;
+            n->prev->next = n->prev;
+            n->next = n->prev = NULL;
+        }
+    } else {
+        if (n->prev == n) {
+            l->head = n->next;
+            n->next->prev = n->next;
+            n->prev = n->next = NULL;
+        } else {
+            n->next->prev = n->prev;
+            n->prev->next = n->next;
+            n->next = n->prev = NULL;
+        }
+    }
 }
 
 #endif
