@@ -193,33 +193,42 @@ void spin_loop_destroy (spin_loop_t xp)
 
 void wait_for_task (spin_loop_t xp)
 {
-    int ret;
+    int ret = 0;
 
     prioque_node_t *task_node;
     prioque_front (xp->prioque, &task_node);
 
     if (task_node == NULL) {
         pthread_mutex_lock (&xp->lock);
-        pthread_cond_wait (&xp->guard, &xp->lock);
+        if (link_list_is_empty (&xp->currtask))
+            pthread_cond_wait (&xp->guard, &xp->lock);
         link_list_cat (&xp->currtask, &xp->bgtask);
         pthread_mutex_unlock (&xp->lock);
     } else {
         struct timespec ts = startup_timespec;
+        struct timespec now;
         prioque_weight_t msecs;
         prioque_get_node_weight (xp->prioque, task_node, &msecs);
 
+        timespec_now (&now);
         timespec_add_milliseconds (&ts, msecs);
 
-        pthread_mutex_lock (&xp->lock);
-        ret = pthread_cond_timedwait (&xp->guard, &xp->lock, &ts);
-        if (ret == 0)
-            link_list_cat (&xp->currtask, &xp->bgtask);
-        pthread_mutex_unlock (&xp->lock);
+        if (link_list_is_empty (&xp->currtask)) {
+            pthread_mutex_lock (&xp->lock);
+            ret = pthread_cond_timedwait (&xp->guard, &xp->lock, &ts);
+            if (ret == 0)
+                link_list_cat (&xp->currtask, &xp->bgtask);
+            pthread_mutex_unlock (&xp->lock);
 
-        if (ret == ETIMEDOUT) {
-            spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
-            prioque_remove (xp->prioque, task_node);
-            link_list_attach_to_tail (&xp->currtask, &task->node.l);
+            if (ret == ETIMEDOUT) {
+                spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
+                prioque_remove (xp->prioque, task_node);
+                link_list_attach_to_tail (&xp->currtask, &task->node.l);
+            }
+        } else {
+            pthread_mutex_lock (&xp->lock);
+            link_list_cat (&xp->currtask, &xp->bgtask);
+            pthread_mutex_unlock (&xp->lock);
         }
     }
 }
@@ -235,6 +244,7 @@ int spin_loop_run (spin_loop_t xp)
     pthread_mutex_unlock (&xp->lock);
 
     do {
+        link_list_cat (&xp->currtask, &xp->nexttask);
         wait_for_task (xp);
 
         while (!link_list_is_empty(&xp->currtask)) {
@@ -244,9 +254,6 @@ int spin_loop_run (spin_loop_t xp)
             task->callback(task->args);
             spin_task_free (task);
         }
-
-        link_list_cat (&xp->currtask, &xp->nexttask);
-
     } while (1); /* test if there are event to be fired */
 
     pthread_mutex_unlock (&xp->lock);
@@ -277,13 +284,18 @@ spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
         return NULL;
 
     prioque_weight_t x = msecs;
-    timespec_now (&ts);
 
-    x += timespec_diff_millisecons (&ts, &startup_timespec);
+    if (x == 0) {
+        link_list_attach_to_tail(&loop->nexttask, &task->node.l);
+    } else {
+        timespec_now (&ts);
 
-    if (prioque_insert(loop->prioque, &task->node.q, x) != 0) {
-        spin_task_free (task);
-        return NULL;
+        x += timespec_diff_millisecons (&ts, &startup_timespec);
+
+        if (prioque_insert(loop->prioque, &task->node.q, x) != 0) {
+            spin_task_free (task);
+            return NULL;
+        }
     }
 
     return task;
