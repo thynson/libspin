@@ -17,23 +17,31 @@
 #ifndef __SPIN_LOOP_H__
 #define __SPIN_LOOP_H__
 
+#include "config.h"
+
 typedef struct __spin_loop *spin_loop_t;
 typedef struct __spin_task *spin_task_t;
 
-spin_loop_t spin_loop_create();
+spin_loop_t __SPIN_EXPORT__
+spin_loop_create();
 
-void spin_loop_destroy (spin_loop_t loop);
+void __SPIN_EXPORT__
+spin_loop_destroy (spin_loop_t loop);
 
-int spin_loop_run (spin_loop_t loop);
+int __SPIN_EXPORT__
+spin_loop_run (spin_loop_t loop);
 
-spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
-                              int (*callback)(void*), void *args);
+spin_task_t __SPIN_EXPORT__
+spin_task_create (spin_loop_t loop, unsigned msecs,
+                  int (*callback)(void*), void *args);
 
-int spin_task_destroy (spin_task_t task);
+int __SPIN_EXPORT__
+spin_task_destroy (spin_task_t task);
 
-int spin_task_pause (spin_task_t task);
+int __SPIN_EXPORT__
+spin_task_pause (spin_task_t task);
 
-int spin_task_resume (spin_task_t task);
-
+int __SPIN_EXPORT__
+spin_task_resume (spin_task_t task);
 
 #endif

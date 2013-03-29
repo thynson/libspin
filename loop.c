@@ -14,10 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "spin/loop.h"
-#include "linklist.h"
-#include "prioque.h"
-#include "timespec.h"
 #include <sys/epoll.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -26,6 +22,10 @@
 #include <errno.h>
 #include <stdint.h>
 #include <unistd.h>
+#include "spin/loop.h"
+#include "linklist.h"
+#include "prioque.h"
+#include "timespec.h"
 
 enum {
     SPIN_LOOP_PREPARE = 0,
