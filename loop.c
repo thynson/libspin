@@ -39,7 +39,6 @@ struct __spin_loop {
     pthread_cond_t guard;
 
     /* task and bgtask may used across thread */
-    int state;
     int epollfd;
     link_list_t bgtask;
 
@@ -47,6 +46,10 @@ struct __spin_loop {
     link_list_t currtask;
     link_list_t nexttask;
     prioque_t prioque;
+    unsigned refcount;
+
+    /* Misc */
+    int dummy_pipe[2];
 };
 
 struct __spin_task {
@@ -102,7 +105,6 @@ static inline void spin_task_free (spin_task_t task)
     free (task);
 }
 
-
 /**
  * Create an spin object
  * return NULL if exited, and then you may want to see errno
@@ -110,6 +112,7 @@ static inline void spin_task_free (spin_task_t task)
 spin_loop_t spin_loop_create (void)
 {
     spin_loop_t ret;
+    struct epoll_event event;
     int tmp;
 
     pthread_once (&startup_timespec_once, startup_timespec_init);
@@ -130,6 +133,19 @@ spin_loop_t spin_loop_create (void)
         free (ret);
         return NULL;
     }
+
+    tmp = pipe2 (ret->dummy_pipe, O_CLOEXEC | O_NONBLOCK);
+
+    if (tmp == -1)
+        goto clean_and_exit;
+
+    event.events = EPOLLIN | EPOLLET;
+    event.data.ptr = NULL;
+
+    tmp = epoll_ctl (ret->epollfd, EPOLL_CTL_ADD, ret->dummy_pipe[0],
+                     &event);
+    if (tmp == -1)
+        goto clean_and_exit;
 
     ret->prioque = prioque_create();
     if (ret->prioque == NULL)
@@ -159,6 +175,11 @@ clean_and_exit:
         if (ret->prioque != NULL)
             prioque_destroy (ret->prioque);
 
+        if (ret->dummy_pipe[0] > 0)
+            close (ret->dummy_pipe[0]);
+
+        if (ret->dummy_pipe[1] > 0)
+            close (ret->dummy_pipe[1]);
         pthread_cond_destroy (&ret->guard);
         pthread_mutex_destroy (&ret->lock);
         free (ret);
@@ -174,108 +195,133 @@ clean_and_exit:
  * event to be fired. you should only close an spin object before or after
  * calling spin_loop_run
  */
-void spin_loop_destroy (spin_loop_t xp)
+void spin_loop_destroy (spin_loop_t loop)
 {
-    assert (xp != NULL);
-    pthread_mutex_lock (&xp->lock);
-    xp->state = SPIN_LOOP_EXIT;
-    pthread_cond_signal (&xp->guard);
-    pthread_mutex_unlock (&xp->lock);
-    pthread_join (xp->poll_thread, NULL);
+    assert (loop != NULL);
 
-    pthread_mutex_destroy (&xp->lock);
-    pthread_cond_destroy (&xp->guard);
+    /* Close the dummy_pipe[1] and the poller thread will an EPOLLIN evnet
+     * for the dummy_pipe[0], so the poller thread know when to exit */
 
-    close (xp->epollfd);
-    prioque_destroy (xp->prioque);
-    free (xp);
+    close (loop->dummy_pipe[1]);
+    pthread_join (loop->poll_thread, NULL);
+
+    pthread_mutex_destroy (&loop->lock);
+    pthread_cond_destroy (&loop->guard);
+
+    close (loop->epollfd);
+    close (loop->dummy_pipe[0]);
+    close (loop->dummy_pipe[1]);
+    prioque_destroy (loop->prioque);
+    free (loop);
 }
 
-void wait_for_task (spin_loop_t xp)
+void wait_for_task (spin_loop_t loop)
 {
     int ret = 0;
 
     prioque_node_t *task_node;
-    prioque_front (xp->prioque, &task_node);
+    prioque_front (loop->prioque, &task_node);
 
     if (task_node == NULL) {
-        pthread_mutex_lock (&xp->lock);
-        if (link_list_is_empty (&xp->currtask))
-            pthread_cond_wait (&xp->guard, &xp->lock);
-        link_list_cat (&xp->currtask, &xp->bgtask);
-        pthread_mutex_unlock (&xp->lock);
+        pthread_mutex_lock (&loop->lock);
+        if (link_list_is_empty (&loop->currtask))
+            pthread_cond_wait (&loop->guard, &loop->lock);
+        link_list_cat (&loop->currtask, &loop->bgtask);
+        pthread_mutex_unlock (&loop->lock);
     } else {
         struct timespec ts = startup_timespec;
         struct timespec now;
         prioque_weight_t msecs;
-        prioque_get_node_weight (xp->prioque, task_node, &msecs);
+        prioque_get_node_weight (loop->prioque, task_node, &msecs);
 
         timespec_now (&now);
         timespec_add_milliseconds (&ts, msecs);
 
-        if (link_list_is_empty (&xp->currtask)) {
-            pthread_mutex_lock (&xp->lock);
-            ret = pthread_cond_timedwait (&xp->guard, &xp->lock, &ts);
+        if (link_list_is_empty (&loop->currtask)) {
+            pthread_mutex_lock (&loop->lock);
+            ret = pthread_cond_timedwait (&loop->guard, &loop->lock, &ts);
             if (ret == 0)
-                link_list_cat (&xp->currtask, &xp->bgtask);
-            pthread_mutex_unlock (&xp->lock);
+                link_list_cat (&loop->currtask, &loop->bgtask);
+            pthread_mutex_unlock (&loop->lock);
 
             if (ret == ETIMEDOUT) {
                 spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
-                prioque_remove (xp->prioque, task_node);
-                link_list_attach_to_tail (&xp->currtask, &task->node.l);
+                prioque_remove (loop->prioque, task_node);
+                link_list_attach_to_tail (&loop->currtask, &task->node.l);
             }
         } else {
-            pthread_mutex_lock (&xp->lock);
-            link_list_cat (&xp->currtask, &xp->bgtask);
-            pthread_mutex_unlock (&xp->lock);
+            pthread_mutex_lock (&loop->lock);
+            link_list_cat (&loop->currtask, &loop->bgtask);
+            pthread_mutex_unlock (&loop->lock);
         }
     }
 }
 
 
-int spin_loop_run (spin_loop_t xp)
+int spin_loop_run (spin_loop_t loop)
 {
-    pthread_mutex_lock (&xp->lock);
-    if (xp->state != SPIN_LOOP_RUN) {
-        pthread_cond_signal (&xp->guard);
-        xp->state = SPIN_LOOP_RUN;
+    if (loop == NULL) {
+        errno = EINVAL;
+        return -1;
     }
-    pthread_mutex_unlock (&xp->lock);
-
     do {
-        link_list_cat (&xp->currtask, &xp->nexttask);
-        wait_for_task (xp);
+        link_list_cat (&loop->currtask, &loop->nexttask);
+        wait_for_task (loop);
 
-        while (!link_list_is_empty(&xp->currtask)) {
-            link_node_t *node = xp->currtask.head;
-            link_list_dettach (&xp->currtask, node);
+        while (!link_list_is_empty(&loop->currtask)) {
+            link_node_t *node = loop->currtask.head;
+            link_list_dettach (&loop->currtask, node);
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
             task->callback(task->args);
             spin_task_free (task);
         }
     } while (1); /* test if there are event to be fired */
-
-    pthread_mutex_unlock (&xp->lock);
+    return 0;
 }
 
 void *spin_poll_thread (void *param)
 {
-    /*
-     * do preparation
-     *
-     * pthread_mutex_lock
-     * while state != XPOLL_RUN
-     *     pthread_cond_wait
-     * pthread_mutex_unlock
-     *
-     * :sh
-     */
+    /* TODO: Mask all signals */
+    spin_loop_t loop = (spin_loop_t) param;
+    int looping = 1;
+    struct link_list_t event_list;
+    link_list_init (&event_list);
+
+    while (looping) {
+        struct epoll_event event[256];
+        int i;
+        int ret = epoll_wait (loop->epollfd, event, 256, -1);
+
+        /* XXX: Handle error */
+        if (ret <= 0)
+            continue;
+
+        for (i = 0; i < ret; i++) {
+            spin_task_t task = (spin_task_t) event[i].data.ptr;
+            if (task != NULL) {
+                link_list_attach_to_tail (&event_list, &task->node.l);
+            } else {
+                char ch;
+                int ret = read (loop->dummy_pipe[0], &ch, sizeof(ch));
+                if (ret == 0)
+                    /* The dummy_pipe[1] is closed, indicate that this thread
+                     * should go exit */
+                    looping = 0;
+            }
+        }
+
+        pthread_mutex_lock (&loop->lock);
+        if (link_list_is_empty (&loop->bgtask))
+            pthread_cond_signal (&loop->guard);
+        link_list_cat (&loop->bgtask, &event_list);
+        pthread_mutex_unlock (&loop->lock);
+    }
+
     return NULL;
 }
 
 spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
-                                int (*callback) (void*), void *args)
+                              int (*callback) (void*), void *args)
 {
     /* TODO: Error checking and free memeory in some where */
     struct timespec ts;
