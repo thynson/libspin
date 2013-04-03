@@ -19,7 +19,7 @@ configure
 .deps/
 .libs/
 Makefile
-config.h
+/config.h
 config.log
 config.status
 libtool
