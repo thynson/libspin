@@ -65,6 +65,8 @@ spin_timer_t spin_timer_create (spin_loop_t loop, unsigned msecs,
 
     prioque_weight_t x = msecs;
 
+    loop->refcount++;
+
     if (x == 0) {
         link_list_attach_to_tail(&loop->nexttask, &t->task.node.l);
     } else {
@@ -89,6 +91,7 @@ int spin_timer_destroy (spin_timer_t timer)
         return -1;
     }
 
+    timer->loop->refcount--;
     spin_timer_free (timer);
     return 0;
 }

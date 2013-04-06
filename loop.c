@@ -198,7 +198,7 @@ int spin_loop_run (spin_loop_t loop)
         errno = EINVAL;
         return -1;
     }
-    do {
+    while (loop->refcount > 0) {
         link_list_cat (&loop->currtask, &loop->nexttask);
         wait_for_task (loop);
 
@@ -208,7 +208,7 @@ int spin_loop_run (spin_loop_t loop)
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
             task->callback(task);
         }
-    } while (1); /* test if there are event to be fired */
+    }
     return 0;
 }
 

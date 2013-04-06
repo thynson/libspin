@@ -57,7 +57,7 @@ struct __spin_loop {
     link_list_t currtask;
     link_list_t nexttask;
     prioque_t prioque;
-    unsigned refcount;
+    size_t refcount;
 
     /* Misc */
     int dummy_pipe[2];
@@ -90,6 +90,7 @@ static inline void spin_task_init (spin_task_t task,
 
 struct __spin_timer {
     struct __spin_task task;
+    spin_loop_t loop;
     int (*callback) (void *);
     void *context;
 };
