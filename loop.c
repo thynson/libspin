@@ -143,6 +143,8 @@ void spin_loop_destroy (spin_loop_t loop)
 void wait_for_task (spin_loop_t loop)
 {
     int ret = 0;
+    prioque_weight_t ticks;
+    struct timespec now;
 
     prioque_node_t *task_node;
     prioque_front (loop->prioque, &task_node);
@@ -154,31 +156,38 @@ void wait_for_task (spin_loop_t loop)
         link_list_cat (&loop->currtask, &loop->bgtask);
         pthread_mutex_unlock (&loop->lock);
     } else {
-        struct timespec ts = startup_timespec;
-        struct timespec now;
-        prioque_weight_t msecs;
-        prioque_get_node_weight (loop->prioque, task_node, &msecs);
-
-        timespec_now (&now);
-        timespec_add_milliseconds (&ts, msecs);
 
         if (link_list_is_empty (&loop->currtask)) {
+            struct timespec ts = startup_timespec;
+            prioque_get_node_weight (loop->prioque, task_node, &ticks);
+
+            timespec_now (&now);
+            timespec_add_milliseconds (&ts, ticks);
+
+            /* Don't use pthread_mutex_timedwait here because I/O event would
+             * starve in extreme situation */
+
             pthread_mutex_lock (&loop->lock);
-            ret = pthread_cond_timedwait (&loop->guard, &loop->lock, &ts);
-            if (ret == 0)
+            if (link_list_is_empty (&loop->bgtask)) {
+                ret = pthread_cond_timedwait (&loop->guard, &loop->lock, &ts);
+                if (ret == 0)
+                    link_list_cat (&loop->currtask, &loop->bgtask);
+            } else {
                 link_list_cat (&loop->currtask, &loop->bgtask);
+            }
             pthread_mutex_unlock (&loop->lock);
 
-            if (ret == ETIMEDOUT) {
-                spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
-                prioque_remove (loop->prioque, task_node);
-                link_list_attach_to_tail (&loop->currtask, &task->node.l);
-            }
         } else {
             pthread_mutex_lock (&loop->lock);
             link_list_cat (&loop->currtask, &loop->bgtask);
             pthread_mutex_unlock (&loop->lock);
         }
+    }
+
+    if (ret == ETIMEDOUT) {
+        spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
+        prioque_remove (loop->prioque, task_node);
+        link_list_attach_to_tail (&loop->currtask, &task->node.l);
     }
 }
 
