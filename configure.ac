@@ -32,7 +32,7 @@ AC_CHECK_LIB(rt, clock_gettime)
 
 AM_CPPFLAGS="-Wall -D_GNU_SOURCE=1 -std=c99 -fvisibility=hidden"
 AM_CFLAGS=""
-AM_LDFLAGS=""
+AM_LDFLAGS="-Xlinker --no-undefined"
 
 AC_SUBST(AM_CPPFLAGS)
 AC_SUBST(AM_CFLAGS)
