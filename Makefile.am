@@ -21,8 +21,11 @@ lib_LTLIBRARIES=libspin.la
 libspin_la_LDFLAGS=@AM_LDFLAGS@ -lpthread -lrt
 libspin_la_CPPFLAGS=@AM_CPPFLAGS@
 libspin_la_SOURCES=\
+				   spin/spin.h\
 				   spin/loop.h\
+				   spin/timer.h\
 				   loop.c\
+				   timer.c\
 				   prioque.h\
 				   prioque.c\
 				   linklist.h\

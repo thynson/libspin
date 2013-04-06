@@ -25,7 +25,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <unistd.h>
-#include "spin/loop.h"
+#include "spin/spin.h"
 #include "linklist.h"
 #include "prioque.h"
 #include "timespec.h"
@@ -40,6 +40,9 @@ enum {
     SPIN_LOOP_RUN,
     SPIN_LOOP_EXIT
 };
+
+extern pthread_once_t startup_timespec_once;
+extern struct timespec startup_timespec;
 
 struct __spin_loop {
     pthread_t poll_thread;
@@ -84,6 +87,15 @@ static inline void spin_task_init (spin_task_t task,
     task->node.l.next = NULL;
     task->callback = callback;
 }
+
+struct __spin_timer {
+    struct __spin_task task;
+    int (*callback) (void *);
+    void *context;
+};
+
+#define CAST_TASK_TO_TIMER(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_timer, task, x)
 
 struct __spin_poll_target;
 

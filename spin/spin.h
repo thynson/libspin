@@ -14,21 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __SPIN_LOOP_H__
-#define __SPIN_LOOP_H__
+#ifndef __SPIN_SPIN_H__
+#define __SPIN_SPIN_H__
 
 #include "config.h"
-
-typedef struct __spin_loop *spin_loop_t;
-
-spin_loop_t __SPIN_EXPORT__
-spin_loop_create();
-
-void __SPIN_EXPORT__
-spin_loop_destroy (spin_loop_t loop);
-
-int __SPIN_EXPORT__
-spin_loop_run (spin_loop_t loop);
-
+#include "loop.h"
+#include "timer.h"
 
 #endif
