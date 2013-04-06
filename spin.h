@@ -85,4 +85,16 @@ static inline void spin_task_init (spin_task_t task,
     task->callback = callback;
 }
 
+struct __spin_poll_target;
+
+typedef struct __spin_poll_target *spin_poll_target_t;
+
+struct __spin_poll_target {
+    struct __spin_task task;
+    int (*callback)(int event, spin_poll_target_t);
+};
+
+#define CAST_TASK_TO_POLL_TARGET(x) \
+    SPIN_DEFINE_DOWNCAST(spin_poll_target_t, task, x)
+
 #endif
