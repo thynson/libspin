@@ -18,7 +18,7 @@
 #include "spin.h"
 
 
-static spin_task_t spin_task_alloc (int (*callback)(void *), void *args);
+static spin_task_t spin_task_alloc (int (*callback)(void *));
 static void spin_task_free (spin_task_t task);
 
 static void *spin_poll_thread (void *param);
@@ -32,7 +32,7 @@ static void startup_timespec_init (void)
     clock_gettime (CLOCK_MONOTONIC, &startup_timespec);
 }
 
-static inline spin_task_t spin_task_alloc (int (*callback)(void *), void *args)
+static inline spin_task_t spin_task_alloc (int (*callback)(spin_task_t))
 {
     spin_task_t ret;
 
@@ -47,7 +47,6 @@ static inline spin_task_t spin_task_alloc (int (*callback)(void *), void *args)
         return NULL;
 
     ret->callback = callback;
-    ret->args = args;
     return ret;
 }
 
@@ -223,7 +222,7 @@ int spin_loop_run (spin_loop_t loop)
             link_node_t *node = loop->currtask.head;
             link_list_dettach (&loop->currtask, node);
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
-            task->callback(task->args);
+            task->callback(task);
             spin_task_free (task);
         }
     } while (1); /* test if there are event to be fired */
@@ -276,7 +275,7 @@ spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
 {
     /* TODO: Error checking and free memeory in some where */
     struct timespec ts;
-    spin_task_t task = spin_task_alloc (callback, args);
+    spin_task_t task = spin_task_alloc (callback);
     if (task == NULL)
         return NULL;
 

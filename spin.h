@@ -60,8 +60,7 @@ struct __spin_task {
         prioque_node_t q;
         link_node_t l;
     } node;
-    int (*callback) (void*);
-    void *args;
+    int (*callback) (spin_task_t);
 };
 
 #define CAST_PRIOQUE_NODE_TO_TASK(x) \
