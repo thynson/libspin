@@ -221,9 +221,10 @@ void *spin_poll_thread (void *param)
             continue;
 
         for (i = 0; i < ret; i++) {
-            spin_task_t task = (spin_task_t) event[i].data.ptr;
-            if (task != NULL) {
-                link_list_attach_to_tail (&event_list, &task->node.l);
+            spin_poll_target_t t = (spin_poll_target_t) event[i].data.ptr;
+            if (t != NULL) {
+                t->events = event[i].events;
+                link_list_attach_to_tail (&event_list, &t->task.node.l);
             } else {
                 char ch;
                 int ret = read (loop->dummy_pipe[0], &ch, sizeof(ch));

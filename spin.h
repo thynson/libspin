@@ -104,6 +104,7 @@ typedef struct __spin_poll_target *spin_poll_target_t;
 struct __spin_poll_target {
     struct __spin_task task;
     int (*callback)(int event, spin_poll_target_t);
+    int events;
 };
 
 #define CAST_TASK_TO_POLL_TARGET(x) \
