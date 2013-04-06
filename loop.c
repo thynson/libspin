@@ -17,9 +17,18 @@
 
 #include "spin.h"
 
+struct __spin_timer {
+    struct __spin_task task;
+    int (*callback) (void *);
+    void *context;
+};
 
-static spin_task_t spin_task_alloc (int (*callback)(void *));
-static void spin_task_free (spin_task_t task);
+#define CAST_TASK_TO_TIMER(x) \
+    ((spin_timer_t)((int8_t *)(x) - offsetof(struct __spin_timer, task)))
+
+static int spin_timer_task_callback (spin_task_t task);
+static spin_timer_t spin_timer_alloc (int (*callback)(void *), void *context);
+static void spin_timer_free (spin_timer_t task);
 
 static void *spin_poll_thread (void *param);
 static void wait_for_task (spin_loop_t xp);
@@ -32,27 +41,39 @@ static void startup_timespec_init (void)
     clock_gettime (CLOCK_MONOTONIC, &startup_timespec);
 }
 
-static inline spin_task_t spin_task_alloc (int (*callback)(spin_task_t))
+static inline spin_timer_t spin_timer_alloc (int (*callback)(void *),
+                                             void *context)
 {
-    spin_task_t ret;
+    spin_timer_t ret;
 
     if (callback == NULL) {
         errno = EINVAL;
         return NULL;
     }
 
-    ret = (spin_task_t) malloc (sizeof (*ret));
+    ret = (spin_timer_t) malloc (sizeof (*ret));
 
     if (ret == NULL)
         return NULL;
 
+    spin_task_init (&ret->task, spin_timer_task_callback);
     ret->callback = callback;
+    ret->context = context;
     return ret;
 }
 
-static inline void spin_task_free (spin_task_t task)
+static inline void spin_timer_free (spin_timer_t t)
 {
-    free (task);
+    free (t);
+}
+
+static int spin_timer_task_callback (spin_task_t task)
+{
+    spin_timer_t timer = CAST_TASK_TO_TIMER (task);
+    timer->callback(timer->context);
+    /* XXX: clean up in else where ?*/
+    spin_timer_free (timer);
+    return 0;
 }
 
 /**
@@ -223,7 +244,6 @@ int spin_loop_run (spin_loop_t loop)
             link_list_dettach (&loop->currtask, node);
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
             task->callback(task);
-            spin_task_free (task);
         }
     } while (1); /* test if there are event to be fired */
     return 0;
@@ -270,41 +290,56 @@ void *spin_poll_thread (void *param)
     return NULL;
 }
 
-spin_task_t spin_task_create (spin_loop_t loop, unsigned msecs,
+spin_timer_t spin_timer_create (spin_loop_t loop, unsigned msecs,
                               int (*callback) (void*), void *args)
 {
     /* TODO: Error checking and free memeory in some where */
     struct timespec ts;
-    spin_task_t task = spin_task_alloc (callback);
-    if (task == NULL)
+    spin_timer_t t = spin_timer_alloc (callback, args);
+    if (t == NULL)
         return NULL;
 
     prioque_weight_t x = msecs;
 
     if (x == 0) {
-        link_list_attach_to_tail(&loop->nexttask, &task->node.l);
+        link_list_attach_to_tail(&loop->nexttask, &t->task.node.l);
     } else {
         timespec_now (&ts);
 
         x += timespec_diff_millisecons (&ts, &startup_timespec);
 
-        if (prioque_insert(loop->prioque, &task->node.q, x) != 0) {
-            spin_task_free (task);
+        if (prioque_insert(loop->prioque, &t->task.node.q, x) != 0) {
+            spin_timer_free (t);
             return NULL;
         }
     }
 
-    return task;
+    return t;
 }
 
-int spin_task_destroy (spin_task_t task)
+int spin_timer_destroy (spin_timer_t timer)
 {
     /* FIXME: remove from loop */
-    if (task == NULL) {
+    if (timer == NULL) {
         errno = EINVAL;
         return -1;
     }
 
-    spin_task_free (task);
+    spin_timer_free (timer);
     return 0;
 }
+
+int spin_timer_pause (spin_timer_t timer)
+{
+    /* TODO */
+    errno = ENOSYS;
+    return -1;
+}
+
+int spin_timer_resume (spin_timer_t timer)
+{
+    /* TODO */
+    errno = ENOSYS;
+    return -1;
+}
+

@@ -55,6 +55,8 @@ struct __spin_loop {
     int dummy_pipe[2];
 };
 
+typedef struct __spin_task *spin_task_t;
+
 struct __spin_task {
     union {
         prioque_node_t q;
@@ -68,5 +70,14 @@ struct __spin_task {
 
 #define CAST_LINK_NODE_TO_TASK(x) \
     ((spin_task_t)((int8_t *)(x) - offsetof(struct __spin_task, node.l)))
+
+static inline void spin_task_init (spin_task_t task,
+                                   int (*callback)(spin_task_t))
+{
+    task->node.q.__offset = 0;
+    task->node.l.prev = NULL;
+    task->node.l.next = NULL;
+    task->callback = callback;
+}
 
 #endif

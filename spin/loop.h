@@ -20,7 +20,7 @@
 #include "config.h"
 
 typedef struct __spin_loop *spin_loop_t;
-typedef struct __spin_task *spin_task_t;
+typedef struct __spin_timer *spin_timer_t;
 
 spin_loop_t __SPIN_EXPORT__
 spin_loop_create();
@@ -31,17 +31,17 @@ spin_loop_destroy (spin_loop_t loop);
 int __SPIN_EXPORT__
 spin_loop_run (spin_loop_t loop);
 
-spin_task_t __SPIN_EXPORT__
-spin_task_create (spin_loop_t loop, unsigned msecs,
+spin_timer_t __SPIN_EXPORT__
+spin_timer_create (spin_loop_t loop, unsigned msecs,
                   int (*callback)(void*), void *args);
 
 int __SPIN_EXPORT__
-spin_task_destroy (spin_task_t task);
+spin_timer_destroy (spin_timer_t timer);
 
 int __SPIN_EXPORT__
-spin_task_pause (spin_task_t task);
+spin_timer_pause (spin_timer_t timer);
 
 int __SPIN_EXPORT__
-spin_task_resume (spin_task_t task);
+spin_timer_resume (spin_timer_t timer);
 
 #endif
