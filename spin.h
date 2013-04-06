@@ -30,6 +30,11 @@
 #include "prioque.h"
 #include "timespec.h"
 
+#define SPIN_DEFINE_DOWNCAST(type, member, args)\
+    ((type *)((int8_t *)(args) - offsetof(type, member)))
+
+
+
 enum {
     SPIN_LOOP_PREPARE = 0,
     SPIN_LOOP_RUN,
@@ -66,10 +71,10 @@ struct __spin_task {
 };
 
 #define CAST_PRIOQUE_NODE_TO_TASK(x) \
-    ((spin_task_t)((int8_t *)(x) - offsetof(struct __spin_task, node.q)))
+    SPIN_DEFINE_DOWNCAST(struct __spin_task, node.q, x)
 
 #define CAST_LINK_NODE_TO_TASK(x) \
-    ((spin_task_t)((int8_t *)(x) - offsetof(struct __spin_task, node.l)))
+    SPIN_DEFINE_DOWNCAST(struct __spin_task, node.l, x)
 
 static inline void spin_task_init (spin_task_t task,
                                    int (*callback)(spin_task_t))

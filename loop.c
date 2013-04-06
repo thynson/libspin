@@ -24,7 +24,7 @@ struct __spin_timer {
 };
 
 #define CAST_TASK_TO_TIMER(x) \
-    ((spin_timer_t)((int8_t *)(x) - offsetof(struct __spin_timer, task)))
+    SPIN_DEFINE_DOWNCAST(struct __spin_timer, task, x)
 
 static int spin_timer_task_callback (spin_task_t task);
 static spin_timer_t spin_timer_alloc (int (*callback)(void *), void *context);
