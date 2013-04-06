@@ -14,58 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/epoll.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <pthread.h>
-#include <time.h>
-#include <errno.h>
-#include <stdint.h>
-#include <unistd.h>
-#include "spin/loop.h"
-#include "linklist.h"
-#include "prioque.h"
-#include "timespec.h"
 
-enum {
-    SPIN_LOOP_PREPARE = 0,
-    SPIN_LOOP_RUN,
-    SPIN_LOOP_EXIT
-};
+#include "spin.h"
 
-struct __spin_loop {
-    pthread_t poll_thread;
-    pthread_mutex_t lock;
-    pthread_cond_t guard;
-
-    /* task and bgtask may used across thread */
-    int epollfd;
-    link_list_t bgtask;
-
-    /* the following member should only used in running thread */
-    link_list_t currtask;
-    link_list_t nexttask;
-    prioque_t prioque;
-    unsigned refcount;
-
-    /* Misc */
-    int dummy_pipe[2];
-};
-
-struct __spin_task {
-    union {
-        prioque_node_t q;
-        link_node_t l;
-    } node;
-    int (*callback) (void*);
-    void *args;
-};
-
-#define CAST_PRIOQUE_NODE_TO_TASK(x) \
-    ((spin_task_t)((int8_t *)(x) - offsetof(struct __spin_task, node.q)))
-
-#define CAST_LINK_NODE_TO_TASK(x) \
-    ((spin_task_t)((int8_t *)(x) - offsetof(struct __spin_task, node.l)))
 
 static spin_task_t spin_task_alloc (int (*callback)(void *), void *args);
 static void spin_task_free (spin_task_t task);
