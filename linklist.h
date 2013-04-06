@@ -139,4 +139,9 @@ static inline void link_list_dettach (link_list_t *l, link_node_t *n)
     }
 }
 
+static inline int link_node_is_dettached (link_node_t *n)
+{
+    return n->prev == NULL && n->next == NULL;
+}
+
 #endif

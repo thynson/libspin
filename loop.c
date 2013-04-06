@@ -194,7 +194,7 @@ void wait_for_task (spin_loop_t loop)
     if (ret == ETIMEDOUT) {
         spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
         prioque_remove (loop->prioque, task_node);
-        link_list_attach_to_tail (&loop->currtask, &task->node.l);
+        link_list_attach_to_tail (&loop->currtask, &task->l);
     }
 }
 
@@ -213,6 +213,7 @@ int spin_loop_run (spin_loop_t loop)
             link_node_t *node = loop->currtask.head;
             link_list_dettach (&loop->currtask, node);
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
+            loop->refcount--;
             task->callback(task);
         }
     }
@@ -240,7 +241,7 @@ void *spin_poll_thread (void *param)
             spin_poll_target_t t = (spin_poll_target_t) event[i].data.ptr;
             if (t != NULL) {
                 t->events = event[i].events;
-                link_list_attach_to_tail (&event_list, &t->task.node.l);
+                link_list_attach_to_tail (&event_list, &t->task.l);
             } else {
                 char ch;
                 int ret = read (loop->dummy_pipe[0], &ch, sizeof(ch));

@@ -16,97 +16,172 @@
 
 #include "spin.h"
 
-static int spin_timer_task_callback (spin_task_t task);
-static spin_timer_t spin_timer_alloc (int (*callback)(void *), void *context);
-static inline void spin_timer_free (spin_timer_t t);
+enum {
+    TIMER_STATE_STOP,
+    TIMER_STATE_START,
+};
 
-static int spin_timer_task_callback (spin_task_t task)
+static int spin_timer_task_callback (spin_task_t task);
+
+static inline int tick_add_expiration (prioque_weight_t *ret)
 {
-    spin_timer_t timer = CAST_TASK_TO_TIMER (task);
-    timer->callback(timer->context);
-    /* XXX: clean up in else where ?*/
-    spin_timer_free (timer);
+    struct timespec now;
+    int x;
+    x = timespec_now (&now);
+    if (x != 0)
+        return x;
+    *ret += timespec_diff_millisecons (&now, &startup_timespec);
     return 0;
 }
 
-static spin_timer_t spin_timer_alloc (int (*callback)(void *), void *context)
+static int spin_timer_task_callback (spin_task_t task)
 {
-    spin_timer_t ret;
+    int ret;
+    spin_timer_t timer = CAST_TASK_TO_TIMER (task);
+    ret = timer->callback(timer->context);
+    if (timer->interval != 0) {
+        timer->loop->refcount++;
+        timer->tick = timer->interval;
 
-    if (callback == NULL) {
+        ret = tick_add_expiration (&timer->tick);
+
+        if (ret != 0)
+            return ret;
+
+        ret = prioque_insert (timer->loop->prioque,
+                              &timer->task.q, timer->tick);
+        if (ret != 0)
+            return ret;
+    }
+    return 0;
+}
+
+spin_timer_t spin_timer_create (spin_loop_t loop, int (*callback) (void*),
+                                void *context)
+{
+    if (loop == NULL || callback == NULL) {
         errno = EINVAL;
         return NULL;
     }
 
-    ret = (spin_timer_t) malloc (sizeof (*ret));
+    spin_timer_t t = (spin_timer_t) malloc (sizeof (*t));
 
-    if (ret == NULL)
-        return NULL;
-
-    spin_task_init (&ret->task, spin_timer_task_callback);
-    ret->callback = callback;
-    ret->context = context;
-    return ret;
-}
-
-static inline void spin_timer_free (spin_timer_t t)
-{
-    free (t);
-}
-
-spin_timer_t spin_timer_create (spin_loop_t loop, unsigned msecs,
-                              int (*callback) (void*), void *args)
-{
-    /* TODO: Error checking and free memeory in some where */
-    struct timespec ts;
-    spin_timer_t t = spin_timer_alloc (callback, args);
     if (t == NULL)
         return NULL;
 
-    prioque_weight_t x = msecs;
-
-    loop->refcount++;
-
-    if (x == 0) {
-        link_list_attach_to_tail(&loop->nexttask, &t->task.node.l);
-    } else {
-        timespec_now (&ts);
-
-        x += timespec_diff_millisecons (&ts, &startup_timespec);
-
-        if (prioque_insert(loop->prioque, &t->task.node.q, x) != 0) {
-            spin_timer_free (t);
-            return NULL;
-        }
-    }
+    spin_task_init (&t->task, spin_timer_task_callback);
+    t->loop = loop;
+    t->callback = callback;
+    t->context = context;
+    t->interval = 0;
+    t->tick = 0;
 
     return t;
 }
 
 int spin_timer_destroy (spin_timer_t timer)
 {
+    int ret;
     /* FIXME: remove from loop */
     if (timer == NULL) {
         errno = EINVAL;
         return -1;
     }
 
-    timer->loop->refcount--;
-    spin_timer_free (timer);
+    if (timer->task.q.__offset >= 0) {
+        ret = prioque_remove (timer->loop->prioque, &timer->task.q);
+        timer->loop->refcount--;
+        if (ret != 0)
+            return ret;
+    } else if (!link_node_is_dettached(&timer->task.l)) {
+        link_list_dettach (&timer->loop->currtask, &timer->task.l);
+        timer->loop->refcount--;
+    }
+    free (timer);
+
     return 0;
 }
 
-int spin_timer_pause (spin_timer_t timer)
-{
-    /* TODO */
-    errno = ENOSYS;
-    return -1;
-}
 
-int spin_timer_resume (spin_timer_t timer)
+
+int spin_timer_ctl (spin_timer_t timer,
+                    const struct spin_itimespec *val,
+                    struct spin_itimespec *stat)
 {
-    /* TODO */
-    errno = ENOSYS;
-    return -1;
+    prioque_weight_t w;
+    int ret;
+
+    if (timer == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (stat != NULL) {
+        if (timer->task.q.__offset >= 0) {
+            stat->interval = timer->interval;
+            ret = prioque_get_node_weight (timer->loop->prioque,
+                                           &timer->task.q,
+                                           &w);
+
+            if (ret != 0)
+                return ret;
+
+            stat->initial = w - timer->tick;
+        } else if (!link_node_is_dettached (&timer->task.l)) {
+            stat->interval = timer->interval;
+            stat->initial = 0;
+        } else {
+            stat->interval = 0;
+            stat->initial = 0;
+        }
+    }
+
+    if (val != NULL) {
+        if (val->interval == 0 && val->initial == 0) {
+            /* Stop the timer */
+            timer->interval = 0;
+            timer->tick = 0;
+            if (timer->task.q.__offset >= 0) {
+                int ret = prioque_remove (timer->loop->prioque,
+                                          &timer->task.q);
+                if (ret != 0)
+                    return ret;
+                timer->loop->refcount--;
+            } else if (!link_node_is_dettached (&timer->task.l)) {
+                link_list_dettach (&timer->loop->currtask, &timer->task.l);
+                timer->loop->refcount--;
+            }
+        } else {
+            timer->interval = val->interval;
+            if (val->initial == 0)
+                timer->tick = val->interval;
+            else
+                timer->tick = val->initial;
+
+            ret = tick_add_expiration (&timer->tick);
+
+            if (ret != 0)
+                return ret;
+
+            if (timer->task.q.__offset >= 0) {
+                ret = prioque_update (timer->loop->prioque,
+                                      &timer->task.q, timer->tick);
+                if (ret != 0)
+                    return ret;
+            } else if (!link_node_is_dettached(&timer->task.l)) {
+                link_list_dettach (&timer->loop->currtask, &timer->task.l);
+                ret = prioque_insert (timer->loop->prioque,
+                                      &timer->task.q, timer->tick);
+                if (ret != 0)
+                    return ret;
+            } else {
+                /* Start the timer, increase refcount */
+                timer->loop->refcount++;
+                ret = prioque_insert (timer->loop->prioque,
+                                      &timer->task.q, timer->tick);
+            }
+        }
+    }
+    return 0;
 }
 

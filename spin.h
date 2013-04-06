@@ -66,25 +66,23 @@ struct __spin_loop {
 typedef struct __spin_task *spin_task_t;
 
 struct __spin_task {
-    union {
-        prioque_node_t q;
-        link_node_t l;
-    } node;
+    prioque_node_t q;
+    link_node_t l;
     int (*callback) (spin_task_t);
 };
 
 #define CAST_PRIOQUE_NODE_TO_TASK(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_task, node.q, x)
+    SPIN_DEFINE_DOWNCAST(struct __spin_task, q, x)
 
 #define CAST_LINK_NODE_TO_TASK(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_task, node.l, x)
+    SPIN_DEFINE_DOWNCAST(struct __spin_task, l, x)
 
 static inline void spin_task_init (spin_task_t task,
                                    int (*callback)(spin_task_t))
 {
-    task->node.q.__offset = 0;
-    task->node.l.prev = NULL;
-    task->node.l.next = NULL;
+    task->q.__offset = -1;
+    task->l.prev = NULL;
+    task->l.next = NULL;
     task->callback = callback;
 }
 
@@ -93,6 +91,8 @@ struct __spin_timer {
     spin_loop_t loop;
     int (*callback) (void *);
     void *context;
+    prioque_weight_t tick;
+    unsigned interval;
 };
 
 #define CAST_TASK_TO_TIMER(x) \

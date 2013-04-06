@@ -22,17 +22,42 @@
 
 typedef struct __spin_timer *spin_timer_t;
 
-spin_timer_t __SPIN_EXPORT__
-spin_timer_create (spin_loop_t loop, unsigned msecs,
-                  int (*callback)(void*), void *args);
+struct spin_itimespec {
+    unsigned initial;   /* Initial expiration */
+    unsigned interval;  /* Interval, 0 indicates one-shot timer */
+};
 
+/**
+ * @brief Create a timer
+ * @param loop The event loop object which handle this timer
+ * @param callback The callback routine to be called when timer event is fired
+ * @param context The context parameter for callback
+ */
+spin_timer_t __SPIN_EXPORT__
+spin_timer_create (spin_loop_t loop, int (*callback) (void *), void *context);
+
+/**
+ * @brief Destroy a timer
+ * @param timer The timer to be destroyed
+ */
 int __SPIN_EXPORT__
 spin_timer_destroy (spin_timer_t timer);
 
+/**
+ * @brief Operate a timer
+ * @param timer The timer
+ * @param val Specifies the initial expiration and interval for the timer, or
+ *            give NULL value if you just want to get the status of timer
+ * @param stat Current state of timer, or give NULL if you don't care
+ * @note If val->initial is 0, the timer will not arm immediatly but wait for
+ *       an interval time and if val->interval is 0, the timer will stop after
+ *       first arm. If both val->initial and val->interval is 0, the timer
+ *       will be stop. While stat->initial reports the remaining time before
+ *       next arm and stat->interval return current interval time
+ */
 int __SPIN_EXPORT__
-spin_timer_pause (spin_timer_t timer);
+spin_timer_ctl (spin_timer_t timer, const struct spin_itimespec *val,
+                struct spin_itimespec *stat);
 
-int __SPIN_EXPORT__
-spin_timer_resume (spin_timer_t timer);
 
 #endif

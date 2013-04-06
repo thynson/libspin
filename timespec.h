@@ -19,6 +19,7 @@
 #ifndef __SPIN_TIMESPEC_H__
 #define __SPIN_TIMESPEC_H__
 
+#include "spin.h"
 #include <stdint.h>
 #include <time.h>
 #include <assert.h>
@@ -47,10 +48,10 @@ static inline int64_t timespec_diff_millisecons (struct timespec *lhs,
     return ms;
 }
 
-static inline void timespec_now (struct timespec *ts)
+static inline int timespec_now (struct timespec *ts)
 {
     assert (ts != NULL);
-    clock_gettime (CLOCK_MONOTONIC, ts);
+    return clock_gettime (CLOCK_MONOTONIC, ts);
 }
 
 #endif
