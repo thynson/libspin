@@ -120,9 +120,14 @@ clean_and_exit:
  * event to be fired. you should only close an spin object before or after
  * calling spin_loop_run
  */
-void spin_loop_destroy (spin_loop_t loop)
+int spin_loop_destroy (spin_loop_t loop)
 {
     assert (loop != NULL);
+
+    if (loop->refcount != 0) {
+        errno = EBUSY;
+        return -1;
+    }
 
     /* Close the dummy_pipe[1] and the poller thread will an EPOLLIN evnet
      * for the dummy_pipe[0], so the poller thread know when to exit */
@@ -138,6 +143,8 @@ void spin_loop_destroy (spin_loop_t loop)
     close (loop->dummy_pipe[1]);
     prioque_destroy (loop->prioque);
     free (loop);
+
+    return 0;
 }
 
 void wait_for_task (spin_loop_t loop)
