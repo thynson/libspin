@@ -191,6 +191,7 @@ int prioque_remove (prioque_t q, prioque_node_t *n)
     q->count--;
     elem = pop_heap (q->queue, q->queue + q->count, elem);
     elem->node = NULL;
+    n->__offset = -1;
     return 0;
 }
 

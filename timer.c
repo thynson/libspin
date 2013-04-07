@@ -41,9 +41,7 @@ static int spin_timer_task_callback (spin_task_t task)
     ret = timer->callback(timer->context);
     if (timer->interval != 0) {
         timer->loop->refcount++;
-        timer->tick = timer->interval;
-
-        ret = tick_add_expiration (&timer->tick);
+        timer->tick += timer->interval;
 
         if (ret != 0)
             return ret;
@@ -108,7 +106,6 @@ int spin_timer_ctl (spin_timer_t timer,
                     const struct spin_itimespec *val,
                     struct spin_itimespec *stat)
 {
-    prioque_weight_t w;
     int ret;
 
     if (timer == NULL) {
@@ -119,14 +116,13 @@ int spin_timer_ctl (spin_timer_t timer,
     if (stat != NULL) {
         if (timer->task.q.__offset >= 0) {
             stat->interval = timer->interval;
-            ret = prioque_get_node_weight (timer->loop->prioque,
-                                           &timer->task.q,
-                                           &w);
+            prioque_weight_t tick = 0;
 
+            ret = tick_add_expiration (&tick);
             if (ret != 0)
                 return ret;
 
-            stat->initial = w - timer->tick;
+            stat->initial = timer->tick - tick;
         } else if (!link_node_is_dettached (&timer->task.l)) {
             stat->interval = timer->interval;
             stat->initial = 0;
