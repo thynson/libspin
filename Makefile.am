@@ -18,7 +18,9 @@ AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 lib_LTLIBRARIES=libspin.la
 
-libspin_la_LDFLAGS=@AM_LDFLAGS@ -lpthread -lrt
+libspin_la_LDFLAGS=@AM_LDFLAGS@ -lpthread -lrt \
+				   -version-info $(subst .,:,$(API_VERSION))
+
 libspin_la_CPPFLAGS=@AM_CPPFLAGS@
 libspin_la_SOURCES=\
 				   spin/spin.h\

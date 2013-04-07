@@ -30,10 +30,12 @@ AC_PROG_CC
 AC_CHECK_LIB(pthread, pthread_create)
 AC_CHECK_LIB(rt, clock_gettime)
 
+API_VERSION="0:0:0"
 AM_CPPFLAGS="-Wall -D_GNU_SOURCE=1 -std=c99 -fvisibility=hidden"
 AM_CFLAGS=""
 AM_LDFLAGS="-Xlinker --no-undefined"
 
+AC_SUBST(API_VERSION)
 AC_SUBST(AM_CPPFLAGS)
 AC_SUBST(AM_CFLAGS)
 AC_SUBST(AM_LDFLAGS)
