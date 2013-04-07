@@ -211,8 +211,8 @@ int spin_loop_run (spin_loop_t loop)
 
         while (!link_list_is_empty(&loop->currtask)) {
             link_node_t *node = loop->currtask.head;
-            link_list_dettach (&loop->currtask, node);
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
+            link_list_dettach (&loop->currtask, node);
             loop->refcount--;
             task->callback(task);
         }
@@ -240,8 +240,8 @@ void *spin_poll_thread (void *param)
         for (i = 0; i < ret; i++) {
             spin_poll_target_t t = (spin_poll_target_t) event[i].data.ptr;
             if (t != NULL) {
-                t->events = event[i].events;
-                link_list_attach_to_tail (&event_list, &t->task.l);
+                t->notified_events = event[i].events;
+                link_list_attach_to_tail (&event_list, &t->bgtask.l);
             } else {
                 char ch;
                 int ret = read (loop->dummy_pipe[0], &ch, sizeof(ch));

@@ -31,6 +31,8 @@ libspin_la_SOURCES=\
 				   prioque.h\
 				   prioque.c\
 				   linklist.h\
-				   timespec.h
+				   timespec.h\
+				   poll-target.c\
+				   stream.c
 
 SUBDIRS=docs

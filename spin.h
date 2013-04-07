@@ -103,11 +103,41 @@ typedef struct __spin_poll_target *spin_poll_target_t;
 
 struct __spin_poll_target {
     struct __spin_task task;
-    int (*callback)(int event, spin_poll_target_t);
-    int events;
+    struct __spin_task bgtask;
+    spin_loop_t loop;
+    int (*callback)(spin_poll_target_t);
+    int cached_events;
+    int notified_events;
 };
 
+void
+spin_poll_target_init (spin_poll_target_t pt,
+                       spin_loop_t loop,
+                       int (*callback)(spin_poll_target_t pt));
+
 #define CAST_TASK_TO_POLL_TARGET(x) \
-    SPIN_DEFINE_DOWNCAST(spin_poll_target_t, task, x)
+    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, task, x)
+#define CAST_BGTASK_TO_POLL_TARGET(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, bgtask, x)
+
+
+struct spin_stream_spec {
+    ssize_t (*read) (spin_stream_t stream, char *buff, size_t size);
+    ssize_t (*write) (spin_stream_t stream, const char *buff, size_t size);
+    ssize_t (*close) (spin_stream_t stream);
+};
+
+struct __spin_stream {
+    struct __spin_poll_target poll_target;
+    struct spin_stream_spec spec;
+    struct spin_io_req *in_req;
+    struct spin_io_req *out_req;
+};
+
+#define CAST_POLL_TARGET_TO_STREAM(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_stream, poll_target, x)
+
+#define CAST_TASK_TO_STRAM(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_stream, poll_target.task, x)
 
 #endif
