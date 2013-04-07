@@ -32,3 +32,5 @@ libspin_la_SOURCES=\
 				   prioque.c\
 				   linklist.h\
 				   timespec.h
+
+SUBDIRS=docs
