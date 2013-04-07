@@ -47,7 +47,7 @@ static int spin_timer_task_callback (spin_task_t task)
             return ret;
 
         ret = prioque_insert (timer->loop->prioque,
-                              &timer->task.q, timer->tick);
+                              &timer->q, timer->tick);
         if (ret != 0)
             return ret;
     }
@@ -68,6 +68,7 @@ spin_timer_t spin_timer_create (spin_loop_t loop, int (*callback) (void*),
         return NULL;
 
     spin_task_init (&t->task, spin_timer_task_callback);
+    t->q.__offset = -1;
     t->loop = loop;
     t->callback = callback;
     t->context = context;
@@ -86,8 +87,8 @@ int spin_timer_destroy (spin_timer_t timer)
         return -1;
     }
 
-    if (timer->task.q.__offset >= 0) {
-        ret = prioque_remove (timer->loop->prioque, &timer->task.q);
+    if (timer->q.__offset >= 0) {
+        ret = prioque_remove (timer->loop->prioque, &timer->q);
         timer->loop->refcount--;
         if (ret != 0)
             return ret;
@@ -114,7 +115,7 @@ int spin_timer_ctl (spin_timer_t timer,
     }
 
     if (stat != NULL) {
-        if (timer->task.q.__offset >= 0) {
+        if (timer->q.__offset >= 0) {
             stat->interval = timer->interval;
             prioque_weight_t tick = 0;
 
@@ -137,9 +138,9 @@ int spin_timer_ctl (spin_timer_t timer,
             /* Stop the timer */
             timer->interval = 0;
             timer->tick = 0;
-            if (timer->task.q.__offset >= 0) {
+            if (timer->q.__offset >= 0) {
                 int ret = prioque_remove (timer->loop->prioque,
-                                          &timer->task.q);
+                                          &timer->q);
                 if (ret != 0)
                     return ret;
                 timer->loop->refcount--;
@@ -159,22 +160,22 @@ int spin_timer_ctl (spin_timer_t timer,
             if (ret != 0)
                 return ret;
 
-            if (timer->task.q.__offset >= 0) {
+            if (timer->q.__offset >= 0) {
                 ret = prioque_update (timer->loop->prioque,
-                                      &timer->task.q, timer->tick);
+                                      &timer->q, timer->tick);
                 if (ret != 0)
                     return ret;
             } else if (!link_node_is_dettached(&timer->task.l)) {
                 link_list_dettach (&timer->loop->currtask, &timer->task.l);
                 ret = prioque_insert (timer->loop->prioque,
-                                      &timer->task.q, timer->tick);
+                                      &timer->q, timer->tick);
                 if (ret != 0)
                     return ret;
             } else {
                 /* Start the timer, increase refcount */
                 timer->loop->refcount++;
                 ret = prioque_insert (timer->loop->prioque,
-                                      &timer->task.q, timer->tick);
+                                      &timer->q, timer->tick);
             }
         }
     }

@@ -153,10 +153,10 @@ void wait_for_task (spin_loop_t loop)
     prioque_weight_t ticks;
     struct timespec now;
 
-    prioque_node_t *task_node;
-    prioque_front (loop->prioque, &task_node);
+    prioque_node_t *pnode;
+    prioque_front (loop->prioque, &pnode);
 
-    if (task_node == NULL) {
+    if (pnode == NULL) {
         pthread_mutex_lock (&loop->lock);
         if (link_list_is_empty (&loop->currtask))
             pthread_cond_wait (&loop->guard, &loop->lock);
@@ -166,7 +166,7 @@ void wait_for_task (spin_loop_t loop)
 
         if (link_list_is_empty (&loop->currtask)) {
             struct timespec ts = startup_timespec;
-            prioque_get_node_weight (loop->prioque, task_node, &ticks);
+            prioque_get_node_weight (loop->prioque, pnode, &ticks);
 
             timespec_now (&now);
             timespec_add_milliseconds (&ts, ticks);
@@ -192,9 +192,9 @@ void wait_for_task (spin_loop_t loop)
     }
 
     if (ret == ETIMEDOUT) {
-        spin_task_t task = CAST_PRIOQUE_NODE_TO_TASK (task_node);
-        prioque_remove (loop->prioque, task_node);
-        link_list_attach_to_tail (&loop->currtask, &task->l);
+        spin_timer_t timer = CAST_PRIOQUE_NODE_TO_TIMER (pnode);
+        prioque_remove (loop->prioque, pnode);
+        link_list_attach_to_tail (&loop->currtask, &timer->task.l);
     }
 }
 
