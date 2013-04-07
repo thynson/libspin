@@ -19,14 +19,27 @@
 
 #include "config.h"
 
+/* Event loop handle */
 typedef struct __spin_loop *spin_loop_t;
 
+/**
+ * @brief Create an event loop
+ */
 spin_loop_t __SPIN_EXPORT__
 spin_loop_create();
 
+/**
+ * @brief Destroy an event loop
+ * @param loop The even loop
+ */
 int __SPIN_EXPORT__
 spin_loop_destroy (spin_loop_t loop);
 
+/**
+ * @brief Run an event loop
+ * @param loop The event loop
+ * @note this function will block until the reference counter decrease to 0
+ */
 int __SPIN_EXPORT__
 spin_loop_run (spin_loop_t loop);
 

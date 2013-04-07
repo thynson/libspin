@@ -20,6 +20,7 @@
 #include "config.h"
 #include "loop.h"
 
+/* Timer handle */
 typedef struct __spin_timer *spin_timer_t;
 
 struct spin_itimespec {

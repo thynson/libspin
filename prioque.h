@@ -75,6 +75,7 @@ int prioque_update (prioque_t q, prioque_node_t *n, prioque_weight_t weight);
 /**
  * @brief First node of the priority queue
  * @param q priority queue
+ * @param n where the pointer for first elem in priority queue will be stored
  */
 int prioque_front (prioque_t q, prioque_node_t **n);
 
@@ -89,6 +90,7 @@ int prioque_remove (prioque_t q, prioque_node_t *n);
 /**
  * @brief Get length of priority queue
  * @param q priority queue
+ * @param length where the length of priority queue will be stored
  */
 int prioque_length (prioque_t q, size_t *length);
 
@@ -96,6 +98,7 @@ int prioque_length (prioque_t q, size_t *length);
  * @brief Get weight of a given node in a priority queue
  * @param q priority queue
  * @param n node of which to get weight
+ * @param weight where the weight of n will be stored
  */
 int prioque_get_node_weight (prioque_t q, prioque_node_t *n,
                              prioque_weight_t *weight);
