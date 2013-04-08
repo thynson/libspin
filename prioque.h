@@ -95,6 +95,15 @@ int prioque_remove (prioque_t q, prioque_node_t *n);
 int prioque_length (prioque_t q, size_t *length);
 
 /**
+ * @brief Test if priority queue is empty
+ * @param q The queue to be tested
+ * @retval 1 if empty
+ * @retval 0 if not empty
+ * @retval -1 if error
+ */
+int prioque_is_empty (prioque_t q);
+
+/**
  * @brief Get weight of a given node in a priority queue
  * @param q priority queue
  * @param n node of which to get weight

@@ -220,6 +220,15 @@ int prioque_length (prioque_t q, size_t *length)
     return 0;
 }
 
+int prioque_is_empty (prioque_t q)
+{
+    if (q == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+    return q->count == 0 ? 1 : 0;
+}
+
 int prioque_get_node_weight (prioque_t q, prioque_node_t *n,
                              prioque_weight_t *weight)
 {
