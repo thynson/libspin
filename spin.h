@@ -124,7 +124,7 @@ spin_poll_target_init (spin_poll_target_t pt,
 struct spin_stream_spec {
     ssize_t (*read) (spin_stream_t stream, char *buff, size_t size);
     ssize_t (*write) (spin_stream_t stream, const char *buff, size_t size);
-    ssize_t (*close) (spin_stream_t stream);
+    int (*close) (spin_stream_t stream);
 };
 
 struct __spin_stream {
@@ -133,6 +133,9 @@ struct __spin_stream {
     struct spin_io_req *in_req;
     struct spin_io_req *out_req;
 };
+
+void spin_stream_init (spin_stream_t is, spin_loop_t loop,
+                       const struct spin_stream_spec *spec);
 
 #define CAST_POLL_TARGET_TO_STREAM(x) \
     SPIN_DEFINE_DOWNCAST(struct __spin_stream, poll_target, x)

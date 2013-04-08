@@ -138,10 +138,10 @@ void spin_stream_init (spin_stream_t is, spin_loop_t loop,
     spin_poll_target_init (&is->poll_target, loop,
                            stream_poll_target_callback);
 
+    is->spec = *spec;
     is->in_req = NULL;
     is->out_req = NULL;
 }
-
 
 int spin_stream_read (spin_stream_t stream, struct spin_io_req *req)
 {

@@ -14,13 +14,17 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __SPIN_SPIN_H__
-#define __SPIN_SPIN_H__
+#ifndef __SPIN_SOCKET_H__
+#define __SPIN_SOCKET_H__
 
 #include "config.h"
 #include "loop.h"
-#include "timer.h"
 #include "stream.h"
-#include "socket.h"
+#include <sys/socket.h>
+
+int __SPIN_EXPORT__
+spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
+                  void (*callback) (spin_stream_t socket));
+
 
 #endif

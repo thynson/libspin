@@ -24,7 +24,9 @@ static int spin_poll_target_task_callback (spin_task_t task)
     spin_poll_target_t pt = CAST_TASK_TO_POLL_TARGET (task);
     pt->callback (pt);
     if (pt->cached_events != 0)
-        link_list_attach_to_tail(&pt->loop->nexttask, &task->l);
+        link_list_attach_to_tail (&pt->loop->nexttask, &task->l);
+    else
+        link_list_attach_to_tail (&pt->loop->polltask, &task->l);
     return 0;
 }
 
@@ -37,10 +39,12 @@ static int spin_poll_target_task_callback (spin_task_t task)
 static int spin_poll_target_bgtask_callback (spin_task_t task)
 {
     spin_poll_target_t pt = CAST_BGTASK_TO_POLL_TARGET (task);
-    pt->cached_events = pt->notified_events;
-    if (link_node_is_dettached (&pt->task.l)) {
+    if (pt->cached_events == 0) {
+        /* This task should in polltask list, it's time to wake it up */
+        link_list_dettach (&pt->loop->polltask, &pt->task.l);
         link_list_attach_to_tail (&pt->loop->nexttask, &pt->task.l);
     }
+    pt->cached_events = pt->notified_events;
     return 0;
 }
 
@@ -54,5 +58,8 @@ void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
     spin_task_init (&pt->bgtask, spin_poll_target_bgtask_callback);
     pt->loop = loop;
     pt->callback = callback;
+    pt->cached_events = 0;
+    pt->notified_events = 0;
 }
+
 

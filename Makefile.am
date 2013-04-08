@@ -29,7 +29,8 @@ libspin_la_HEADERS=\
 				   spin/spin.h\
 				   spin/loop.h\
 				   spin/timer.h\
-				   spin/stream.h
+				   spin/stream.h\
+				   spin/socket.h
 
 libspin_la_SOURCES=\
 				   loop.c\
@@ -40,6 +41,7 @@ libspin_la_SOURCES=\
 				   timespec.h\
 				   poll-target.c\
 				   stream.c\
+				   socket.c\
 				   spin.h
 
 SUBDIRS=docs
