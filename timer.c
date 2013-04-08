@@ -40,7 +40,6 @@ static int spin_timer_task_callback (spin_task_t task)
     spin_timer_t timer = CAST_TASK_TO_TIMER (task);
     ret = timer->callback(timer->context);
     if (timer->interval != 0) {
-        timer->loop->refcount++;
         timer->tick += timer->interval;
 
         if (ret != 0)
@@ -89,12 +88,10 @@ int spin_timer_destroy (spin_timer_t timer)
 
     if (timer->q.__offset >= 0) {
         ret = prioque_remove (timer->loop->prioque, &timer->q);
-        timer->loop->refcount--;
         if (ret != 0)
             return ret;
     } else if (!link_node_is_dettached(&timer->task.l)) {
         link_list_dettach (&timer->loop->currtask, &timer->task.l);
-        timer->loop->refcount--;
     }
     free (timer);
 
@@ -143,10 +140,8 @@ int spin_timer_ctl (spin_timer_t timer,
                                           &timer->q);
                 if (ret != 0)
                     return ret;
-                timer->loop->refcount--;
             } else if (!link_node_is_dettached (&timer->task.l)) {
                 link_list_dettach (&timer->loop->currtask, &timer->task.l);
-                timer->loop->refcount--;
             }
         } else {
             timer->interval = val->interval;
@@ -172,8 +167,6 @@ int spin_timer_ctl (spin_timer_t timer,
                 if (ret != 0)
                     return ret;
             } else {
-                /* Start the timer, increase refcount */
-                timer->loop->refcount++;
                 ret = prioque_insert (timer->loop->prioque,
                                       &timer->q, timer->tick);
             }

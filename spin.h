@@ -57,7 +57,6 @@ struct __spin_loop {
     link_list_t currtask;
     link_list_t nexttask;
     prioque_t prioque;
-    size_t refcount;
 
     /* Misc */
     int dummy_pipe[2];

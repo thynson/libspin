@@ -124,7 +124,9 @@ int spin_loop_destroy (spin_loop_t loop)
 {
     assert (loop != NULL);
 
-    if (loop->refcount != 0) {
+    if (!link_list_is_empty (&loop->currtask)
+            || !link_list_is_empty (&loop->nexttask)
+            || !prioque_is_empty (loop->prioque)) {
         errno = EBUSY;
         return -1;
     }
@@ -205,7 +207,8 @@ int spin_loop_run (spin_loop_t loop)
         errno = EINVAL;
         return -1;
     }
-    while (loop->refcount > 0) {
+    while (!link_list_is_empty(&loop->nexttask)
+            || !prioque_is_empty(loop->prioque)) {
         link_list_cat (&loop->currtask, &loop->nexttask);
         wait_for_task (loop);
 
@@ -213,7 +216,6 @@ int spin_loop_run (spin_loop_t loop)
             link_node_t *node = loop->currtask.head;
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);
             link_list_dettach (&loop->currtask, node);
-            loop->refcount--;
             task->callback(task);
         }
     }
