@@ -22,11 +22,19 @@ pthread_once_t startup_timespec_once = PTHREAD_ONCE_INIT;
 struct timespec startup_timespec;
 
 static void *spin_poll_thread (void *param);
-static void wait_for_task (spin_loop_t xp);
+static int wait_for_task (spin_loop_t xp);
 
 static void startup_timespec_init (void)
 {
     clock_gettime (CLOCK_MONOTONIC, &startup_timespec);
+}
+
+static inline int spin_loop_is_busy (spin_loop_t loop)
+{
+    return !link_list_is_empty (&loop->nexttask)
+        || !link_list_is_empty (&loop->currtask)
+        || !link_list_is_empty (&loop->polltask)
+        || !prioque_is_empty (loop->prioque);
 }
 
 
@@ -86,6 +94,7 @@ spin_loop_t spin_loop_create (void)
 
     link_list_init (&ret->currtask);
     link_list_init (&ret->nexttask);
+    link_list_init (&ret->polltask);
     link_list_init (&ret->bgtask);
 
     /* since SPIN_LOOP_PREPARE is exactly 0, we don't need to set it */
@@ -124,9 +133,7 @@ int spin_loop_destroy (spin_loop_t loop)
 {
     assert (loop != NULL);
 
-    if (!link_list_is_empty (&loop->currtask)
-            || !link_list_is_empty (&loop->nexttask)
-            || !prioque_is_empty (loop->prioque)) {
+    if (spin_loop_is_busy(loop)) {
         errno = EBUSY;
         return -1;
     }
@@ -149,69 +156,82 @@ int spin_loop_destroy (spin_loop_t loop)
     return 0;
 }
 
-void wait_for_task (spin_loop_t loop)
+int wait_for_task (spin_loop_t loop)
 {
-    int ret = 0;
+    int ret = 0, currtask_not_empty = 0;
     prioque_weight_t ticks;
     struct timespec now;
-
     prioque_node_t *pnode;
-    prioque_front (loop->prioque, &pnode);
+
+    ret = prioque_front (loop->prioque, &pnode);
+
+    if (ret == -1)
+        return -1;
+
+    link_list_cat (&loop->currtask, &loop->nexttask);
+
+    if (!link_list_is_empty (&loop->currtask))
+        currtask_not_empty = 1;
 
     if (pnode == NULL) {
         pthread_mutex_lock (&loop->lock);
-        if (link_list_is_empty (&loop->currtask))
-            pthread_cond_wait (&loop->guard, &loop->lock);
-        link_list_cat (&loop->currtask, &loop->bgtask);
-        pthread_mutex_unlock (&loop->lock);
-    } else {
-
-        if (link_list_is_empty (&loop->currtask)) {
-            struct timespec ts = startup_timespec;
-            prioque_get_node_weight (loop->prioque, pnode, &ticks);
-
-            timespec_now (&now);
-            timespec_add_milliseconds (&ts, ticks);
-
-            /* Don't use pthread_mutex_timedwait here because I/O event would
-             * starve in extreme situation */
-
-            pthread_mutex_lock (&loop->lock);
-            if (link_list_is_empty (&loop->bgtask)) {
-                ret = pthread_cond_timedwait (&loop->guard, &loop->lock, &ts);
-                if (ret == 0)
-                    link_list_cat (&loop->currtask, &loop->bgtask);
-            } else {
+        if (link_list_is_empty (&loop->bgtask)) {
+            if (currtask_not_empty) {
+                ret = 0;
+            } else if (!link_list_is_empty (&loop->polltask)) {
+                do
+                    pthread_cond_wait (&loop->guard, &loop->lock);
+                while (link_list_is_empty (&loop->bgtask));
                 link_list_cat (&loop->currtask, &loop->bgtask);
-            }
-            pthread_mutex_unlock (&loop->lock);
-
-        } else {
-            pthread_mutex_lock (&loop->lock);
+            } else
+                ret = 1;
+        } else
+            /* If no task is polling, then we don't need to wait */
             link_list_cat (&loop->currtask, &loop->bgtask);
-            pthread_mutex_unlock (&loop->lock);
-        }
-    }
+        pthread_mutex_unlock (&loop->lock);
+        return ret;
+    } else {
+        struct timespec ts = startup_timespec;
+        prioque_get_node_weight (loop->prioque, pnode, &ticks);
 
-    if (ret == ETIMEDOUT) {
-        spin_timer_t timer = CAST_PRIOQUE_NODE_TO_TIMER (pnode);
-        prioque_remove (loop->prioque, pnode);
-        link_list_attach_to_tail (&loop->currtask, &timer->task.l);
+        timespec_now (&now);
+        timespec_add_milliseconds (&ts, ticks);
+        pthread_mutex_lock (&loop->lock);
+
+        /* We don't need to check if there are task in bgtask list or
+         * polltask list, but just wait till timedout */
+        do {
+            ret = pthread_cond_timedwait (&loop->guard, &loop->lock, &ts);
+            if (ret == 0) {
+                link_list_cat (&loop->currtask, &loop->bgtask);
+                break;
+            } else if (ret == ETIMEDOUT)
+                break;
+        } while (link_list_is_empty (&loop->bgtask));
+        pthread_mutex_unlock (&loop->lock);
+
+        if (ret == ETIMEDOUT) {
+            spin_timer_t timer = CAST_PRIOQUE_NODE_TO_TIMER (pnode);
+            prioque_remove (loop->prioque, pnode);
+            link_list_attach_to_tail (&loop->currtask, &timer->task.l);
+            return 0;
+        } else {
+            errno = ret;
+            return -1;
+        }
     }
 }
 
 
 int spin_loop_run (spin_loop_t loop)
 {
+    int ret;
     if (loop == NULL) {
         errno = EINVAL;
         return -1;
     }
-    while (!link_list_is_empty(&loop->nexttask)
-            || !prioque_is_empty(loop->prioque)) {
-        link_list_cat (&loop->currtask, &loop->nexttask);
-        wait_for_task (loop);
-
+    link_list_cat (&loop->currtask, &loop->nexttask);
+    while ((ret = wait_for_task (loop)) == 0) {
         while (!link_list_is_empty(&loop->currtask)) {
             link_node_t *node = loop->currtask.head;
             spin_task_t task = CAST_LINK_NODE_TO_TASK(node);

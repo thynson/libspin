@@ -56,6 +56,7 @@ struct __spin_loop {
     /* the following member should only used in running thread */
     link_list_t currtask;
     link_list_t nexttask;
+    link_list_t polltask;
     prioque_t prioque;
 
     /* Misc */
