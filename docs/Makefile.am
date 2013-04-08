@@ -1,22 +1,21 @@
 
-publicdir=public
-install_publicdir=public
-privatedir=private
-dist_public_DATA=public
-install_public_DATA=public
-dist_private_DATA=private
+EXTRA_DIST=public private
 
 public:
-	mkdir public
+	doxygen Doxyfile
 
 private:
-	mkdir private
-
-dist-hook:
 	doxygen Doxyfile.private
-	doxygen Doxyfile
+
+install-data-local:
+	$(MKDIR_P) $(DISTDIR)$(pkgdatadir)/docs
+	cp -rf public $(DISTDIR)$(pkgdatadir)/docs
+
+uninstall-local:
+	rm -rf $(DISTDIR)$(pkgdatadir)/docs
+
+install-exec-hook: public
 
 distclean-local:
 	$(RM) -rf public private
 
-.PHONY: all
