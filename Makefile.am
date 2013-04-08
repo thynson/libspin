@@ -18,14 +18,20 @@ AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 lib_LTLIBRARIES=libspin.la
 
+libspin_ladir=$(includedir)/spin
+
 libspin_la_LDFLAGS=@AM_LDFLAGS@ -lpthread -lrt \
 				   -version-info $(subst .,:,$(API_VERSION))
 
 libspin_la_CPPFLAGS=@AM_CPPFLAGS@
-libspin_la_SOURCES=\
+libspin_la_HEADERS=\
+				   spin/config.h\
 				   spin/spin.h\
 				   spin/loop.h\
 				   spin/timer.h\
+				   spin/stream.h
+
+libspin_la_SOURCES=\
 				   loop.c\
 				   timer.c\
 				   prioque.h\
@@ -33,6 +39,7 @@ libspin_la_SOURCES=\
 				   linklist.h\
 				   timespec.h\
 				   poll-target.c\
-				   stream.c
+				   stream.c\
+				   spin.h
 
 SUBDIRS=docs
