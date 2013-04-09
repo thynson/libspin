@@ -22,9 +22,34 @@
 #include "stream.h"
 #include <sys/socket.h>
 
+typedef struct __spin_tcp_server *spin_tcp_server_t;
+
+/**
+ * @brief Connect to a server
+ * @param loop The loop to handle this socket
+ * @param addr The address of the server
+ * @param callback The callback to be called when connected
+ */
 int __SPIN_EXPORT__
 spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
                   void (*callback) (spin_stream_t socket));
+
+/**
+ * @brief Create a tcp server
+ * @param loop The loop to handle this server
+ * @param fd The listening socket fd, should be bind to an address first
+ * @param connected The callback to be called when a client is connected
+ */
+spin_tcp_server_t __SPIN_EXPORT__
+spin_tcp_server_from_fd (spin_loop_t loop, int fd,
+                         void (*connected) (spin_stream_t,
+                                            const struct sockaddr_storage *));
+
+/**
+ * @brief Close a tcp server
+ * @param srv The server to be closed
+ */
+int spin_tcp_server_destroy (spin_tcp_server_t srv);
 
 
 #endif

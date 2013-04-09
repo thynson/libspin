@@ -18,6 +18,7 @@
 
 typedef struct __spin_socket *spin_socket_t;
 
+
 struct __spin_socket {
     struct __spin_stream stream;
     int fd;
@@ -26,6 +27,13 @@ struct __spin_socket {
 
 #define CAST_STREAM_TO_SOCKET(x) \
     SPIN_DOWNCAST(struct __spin_socket, stream, x)
+
+struct __spin_tcp_server {
+    struct __spin_poll_target poll_target;
+    int fd;
+    void (*connected) (spin_stream_t sock, const struct sockaddr_storage *);
+    struct __spin_task in_task;
+};
 
 static ssize_t
 spin_socket_read (spin_stream_t stream, char *buff, size_t size)
@@ -83,10 +91,18 @@ spin_socket_connected (int event, spin_poll_target_t pt)
     return 0;
 }
 
+static void set_nonblocking (int fd)
+{
+    int flags;
+    flags = fcntl (fd, F_GETFL);
+    flags |= O_NONBLOCK;
+    fcntl (fd, F_SETFL, flags);
+}
+
 int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
                       void (*callback) (spin_stream_t))
 {
-    int flags, ret;
+    int ret;
     struct epoll_event event;
     socklen_t length = sizeof (*addr);
     spin_socket_t sock = (spin_socket_t) malloc (sizeof (*socket));
@@ -98,12 +114,10 @@ int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
 
     sock->callback = callback;
     sock->fd = socket (addr->ss_family, SOCK_STREAM, 0);
+
     if (sock->fd == -1)
         goto cleanup_and_exit;
-
-    flags = fcntl (sock->fd, F_GETFL);
-    flags |= O_NONBLOCK;
-    fcntl (sock->fd, F_SETFL, flags);
+    set_nonblocking (sock->fd);
 
     event.events = EPOLLIN | EPOLLOUT | EPOLLET;
     event.data.ptr = &sock->stream.poll_target;
@@ -134,4 +148,98 @@ cleanup_and_exit:
     return -1;
 }
 
+static int
+spin_tcp_server_accept (spin_task_t t)
+{
+    spin_tcp_server_t srv = SPIN_DOWNCAST (struct __spin_tcp_server,
+                                           in_task, t);
+    size_t max_connect_once = 255;
+    int fd;
+    struct sockaddr_storage addr;
+    socklen_t length = sizeof (addr);
 
+    while (max_connect_once > 0) {
+        spin_socket_t s;
+        struct spin_stream_spec spec;
+        fd = accept (srv->fd, (struct sockaddr *)&addr, &length);
+        if (fd ==-1)
+            break;
+        max_connect_once--;
+        s = (spin_socket_t) malloc (sizeof (*s));
+        if (s == NULL) {
+            close (fd);
+            break;
+        }
+        s->fd = fd;
+        s->callback = NULL;
+        spec.read = &spin_socket_read;
+        spec.write = &spin_socket_write;
+        spec.close = &spin_socket_close;
+
+        spin_stream_init (&s->stream, srv->poll_target.loop, &spec);
+        srv->connected (&s->stream, &addr);
+    }
+
+    if (max_connect_once == 0) {
+        link_list_attach_to_tail (&srv->poll_target.loop->nexttask,
+                                  &srv->in_task.l);
+    } else if (errno == EAGAIN) {
+        link_list_attach_to_tail (&srv->poll_target.loop->polltask,
+                                  &srv->in_task.l);
+    }
+    return 0;
+}
+
+static int
+spin_tcp_server_poll_target_callback (int event, spin_poll_target_t pt)
+{
+    spin_tcp_server_t s = SPIN_DOWNCAST (struct __spin_tcp_server,
+                                         poll_target, pt);
+
+    if (event & EPOLLIN) {
+        link_list_dettach (&s->poll_target.loop->polltask,
+                           &s->in_task.l);
+        link_list_attach_to_tail (&s->poll_target.loop->nexttask,
+                                  &s->in_task.l);
+    }
+    return 0;
+}
+
+
+spin_tcp_server_t
+spin_tcp_server_from_fd (spin_loop_t loop, int fd,
+                         void (*connected) (spin_stream_t,
+                                            const struct sockaddr_storage *))
+{
+    int ret;
+    struct epoll_event event;
+    spin_tcp_server_t srv = (spin_tcp_server_t) malloc (sizeof (*srv));
+    if (srv == NULL)
+        return NULL;
+
+    spin_poll_target_init (&srv->poll_target, loop,
+                           spin_tcp_server_poll_target_callback);
+    spin_task_init (&srv->in_task, spin_tcp_server_accept);
+
+    set_nonblocking (fd);
+    srv->fd = fd;
+    srv->connected = connected;
+
+    event.events = EPOLLIN | EPOLLET;
+    event.data.ptr = &srv->poll_target;
+    ret = listen (fd, SOMAXCONN);
+
+    link_list_attach_to_tail (&loop->polltask,
+                              &srv->in_task.l);
+
+    ret = epoll_ctl (loop->epollfd, EPOLL_CTL_ADD, fd, &event);
+    /* TODO: Check ret */
+
+    return srv;
+}
+
+int spin_tcp_server_destroy (spin_tcp_server_t srv)
+{
+    /* TODO: Not implemented */
+    return -1;
+}

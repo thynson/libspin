@@ -111,7 +111,7 @@ static int stream_handle_write (spin_stream_t stream)
 
 static int stream_poll_target_callback (int event, spin_poll_target_t pt)
 {
-    spin_stream_t stream = CAST_POLL_TARGET_TO_STREAM(pt);
+    spin_stream_t stream = CAST_POLL_TARGET_TO_STREAM (pt);
 
     /* TODO: Compare the cached_event sand notified_events, else link list may
      * be corrupted */
