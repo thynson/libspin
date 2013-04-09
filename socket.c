@@ -25,7 +25,7 @@ struct __spin_socket {
 };
 
 #define CAST_STREAM_TO_SOCKET(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_socket, stream, x)
+    SPIN_DOWNCAST(struct __spin_socket, stream, x)
 
 static ssize_t
 spin_socket_read (spin_stream_t stream, char *buff, size_t size)

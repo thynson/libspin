@@ -30,7 +30,7 @@
 #include "prioque.h"
 #include "timespec.h"
 
-#define SPIN_DEFINE_DOWNCAST(type, member, args)\
+#define SPIN_DOWNCAST(type, member, args)\
     ((type *)((int8_t *)(args) - offsetof(type, member)))
 
 
@@ -71,7 +71,7 @@ struct __spin_task {
 };
 
 #define CAST_LINK_NODE_TO_TASK(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_task, l, x)
+    SPIN_DOWNCAST(struct __spin_task, l, x)
 
 static inline void spin_task_init (spin_task_t task,
                                    int (*callback)(spin_task_t))
@@ -92,10 +92,10 @@ struct __spin_timer {
 };
 
 #define CAST_TASK_TO_TIMER(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_timer, task, x)
+    SPIN_DOWNCAST(struct __spin_timer, task, x)
 
 #define CAST_PRIOQUE_NODE_TO_TIMER(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_timer, q, x)
+    SPIN_DOWNCAST(struct __spin_timer, q, x)
 
 struct __spin_poll_target;
 
@@ -116,11 +116,11 @@ spin_poll_target_init (spin_poll_target_t pt,
                        int (*callback)(int event, spin_poll_target_t pt));
 
 #define CAST_IN_TASK_TO_POLL_TARGET(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, in_task, x)
+    SPIN_DOWNCAST(struct __spin_poll_target, in_task, x)
 #define CAST_OUT_TASK_TO_POLL_TARGET(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, out_task, x)
+    SPIN_DOWNCAST(struct __spin_poll_target, out_task, x)
 #define CAST_ERR_TASK_TO_POLL_TARGET(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, err_task, x)
+    SPIN_DOWNCAST(struct __spin_poll_target, err_task, x)
 
 
 struct spin_stream_spec {
@@ -142,16 +142,16 @@ void spin_stream_init (spin_stream_t is, spin_loop_t loop,
                        const struct spin_stream_spec *spec);
 
 #define CAST_POLL_TARGET_TO_STREAM(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_stream, poll_target, x)
+    SPIN_DOWNCAST(struct __spin_stream, poll_target, x)
 
 #define CAST_TASK_TO_STREAM(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_stream, poll_target.task, x)
+    SPIN_DOWNCAST(struct __spin_stream, poll_target.task, x)
 
 #define CAST_IN_TASK_TO_STREAM(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_stream, in_task, x);
+    SPIN_DOWNCAST(struct __spin_stream, in_task, x);
 
 #define CAST_OUT_TASK_TO_STREAM(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_stream, out_task, x);
+    SPIN_DOWNCAST(struct __spin_stream, out_task, x);
 
 
 #endif
