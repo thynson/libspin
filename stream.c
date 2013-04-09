@@ -30,14 +30,14 @@ static int stream_handle_read (spin_stream_t stream)
 
         assert (stream->spec.read != NULL);
         assert (in_req->buff != NULL);
-        assert (in_req->count < in_req->size);
+        assert (in_req->size < in_req->maxsize);
 
-        read_size = in_req->size - in_req->count;
+        read_size = in_req->maxsize - in_req->size;
 
         if (read_size > tmpsize)
             read_size = tmpsize;
 
-        retsize = stream->spec.read (stream, in_req->buff + in_req->count,
+        retsize = stream->spec.read (stream, in_req->buff + in_req->size,
                                      read_size);
 
         if (retsize == -1) {
@@ -49,7 +49,7 @@ static int stream_handle_read (spin_stream_t stream)
             return 1;
         }
 
-        in_req->count += retsize;
+        in_req->size += retsize;
         tmpsize -= retsize;
 
         if (retsize < read_size) {
@@ -57,7 +57,7 @@ static int stream_handle_read (spin_stream_t stream)
                 return -1;
             }
         }
-        if (in_req->count == in_req->size) {
+        if (in_req->size >= in_req->minsize) {
             stream->in_req = NULL;
             in_req->callback (in_req);
         }
@@ -75,14 +75,14 @@ static int stream_handle_write (spin_stream_t stream)
         struct spin_io_req *out_req = stream->out_req;
 
         assert (stream->spec.write != NULL);
-        assert (out_req->count < out_req->size);
+        assert (out_req->size < out_req->maxsize);
 
-        write_size = out_req->size - out_req->count;
+        write_size = out_req->maxsize - out_req->size;
 
         if (write_size > tmpsize)
             write_size  = tmpsize;
 
-        retsize = stream->spec.write (stream, out_req->buff + out_req->count,
+        retsize = stream->spec.write (stream, out_req->buff + out_req->size,
                                       write_size);
 
         if (retsize == -1) {
@@ -92,7 +92,7 @@ static int stream_handle_write (spin_stream_t stream)
             /* XXX: Won't happen if read_size > 0 */
         }
 
-        out_req->count += retsize;
+        out_req->size += retsize;
         tmpsize -= retsize;
 
         if (retsize < write_size) {
@@ -101,7 +101,7 @@ static int stream_handle_write (spin_stream_t stream)
             }
         }
 
-        if (out_req->count == out_req->size) {
+        if (out_req->size >= out_req->minsize) {
             stream->out_req = NULL;
             out_req->callback(out_req);
         }
@@ -183,7 +183,7 @@ void spin_stream_init (spin_stream_t is, spin_loop_t loop,
 int spin_stream_read (spin_stream_t stream, struct spin_io_req *req)
 {
     if (stream == NULL || req == NULL
-            || req->buff == NULL || req->count >= req->size) {
+            || req->buff == NULL || req->size >= req->maxsize) {
         errno = EINVAL;
         return -1;
     }
@@ -207,7 +207,7 @@ int spin_stream_read (spin_stream_t stream, struct spin_io_req *req)
 int spin_stream_write (spin_stream_t stream, struct spin_io_req *req)
 {
     if (stream == NULL || req == NULL
-            || req->buff == NULL || req->count >= req->size) {
+            || req->buff == NULL || req->size >= req->maxsize) {
         errno = EINVAL;
         return -1;
     }
