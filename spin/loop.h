@@ -19,7 +19,7 @@
 
 #include "config.h"
 
-/* Event loop handle */
+/** @breif Event loop handle */
 typedef struct __spin_loop *spin_loop_t;
 
 /**
@@ -38,7 +38,7 @@ spin_loop_destroy (spin_loop_t loop);
 /**
  * @brief Run an event loop
  * @param loop The event loop
- * @note this function will block until the reference counter decrease to 0
+ * @note this function will block until the all associated task finished.
  */
 int __SPIN_EXPORT__
 spin_loop_run (spin_loop_t loop);
