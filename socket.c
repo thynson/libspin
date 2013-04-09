@@ -57,11 +57,13 @@ spin_socket_close (spin_stream_t stream)
 }
 
 static int
-spin_socket_connected (spin_poll_target_t pt)
+spin_socket_connected (int event, spin_poll_target_t pt)
 {
     spin_socket_t s = CAST_STREAM_TO_SOCKET (CAST_POLL_TARGET_TO_STREAM (pt));
 
-    if (s->stream.poll_target.cached_events & EPOLLERR) {
+    link_list_dettach(&s->stream.poll_target.loop->polltask,
+                      &s->stream.out_task.l);
+    if (event & EPOLLERR) {
         void (*callback) (spin_stream_t);
         callback = s->callback;
         close (s->fd);
@@ -107,8 +109,9 @@ int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
     event.data.ptr = &sock->stream.poll_target;
 
     ret = epoll_ctl (loop->epollfd, EPOLL_CTL_ADD, sock->fd, &event);
+
     link_list_attach_to_tail (&loop->polltask,
-                              &sock->stream.poll_target.task.l);
+                              &sock->stream.out_task.l);
 
 
     ret = connect (sock->fd, (const struct sockaddr *)addr, length);

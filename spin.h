@@ -102,23 +102,25 @@ struct __spin_poll_target;
 typedef struct __spin_poll_target *spin_poll_target_t;
 
 struct __spin_poll_target {
-    struct __spin_task task;
-    struct __spin_task bgtask;
+    struct __spin_task in_task;
+    struct __spin_task out_task;
+    struct __spin_task err_task;
     spin_loop_t loop;
-    int (*callback)(spin_poll_target_t);
+    int (*callback)(int, spin_poll_target_t);
     int cached_events;
-    int notified_events;
 };
 
 void
 spin_poll_target_init (spin_poll_target_t pt,
                        spin_loop_t loop,
-                       int (*callback)(spin_poll_target_t pt));
+                       int (*callback)(int event, spin_poll_target_t pt));
 
-#define CAST_TASK_TO_POLL_TARGET(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, task, x)
-#define CAST_BGTASK_TO_POLL_TARGET(x) \
-    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, bgtask, x)
+#define CAST_IN_TASK_TO_POLL_TARGET(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, in_task, x)
+#define CAST_OUT_TASK_TO_POLL_TARGET(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, out_task, x)
+#define CAST_ERR_TASK_TO_POLL_TARGET(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_poll_target, err_task, x)
 
 
 struct spin_stream_spec {
@@ -130,6 +132,8 @@ struct spin_stream_spec {
 struct __spin_stream {
     struct __spin_poll_target poll_target;
     struct spin_stream_spec spec;
+    struct __spin_task in_task;
+    struct __spin_task out_task;
     struct spin_io_req *in_req;
     struct spin_io_req *out_req;
 };
@@ -140,7 +144,14 @@ void spin_stream_init (spin_stream_t is, spin_loop_t loop,
 #define CAST_POLL_TARGET_TO_STREAM(x) \
     SPIN_DEFINE_DOWNCAST(struct __spin_stream, poll_target, x)
 
-#define CAST_TASK_TO_STRAM(x) \
+#define CAST_TASK_TO_STREAM(x) \
     SPIN_DEFINE_DOWNCAST(struct __spin_stream, poll_target.task, x)
+
+#define CAST_IN_TASK_TO_STREAM(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_stream, in_task, x);
+
+#define CAST_OUT_TASK_TO_STREAM(x) \
+    SPIN_DEFINE_DOWNCAST(struct __spin_stream, out_task, x);
+
 
 #endif

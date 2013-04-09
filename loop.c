@@ -262,8 +262,13 @@ void *spin_poll_thread (void *param)
         for (i = 0; i < ret; i++) {
             spin_poll_target_t t = (spin_poll_target_t) event[i].data.ptr;
             if (t != NULL) {
-                t->notified_events = event[i].events;
-                link_list_attach_to_tail (&event_list, &t->bgtask.l);
+                /* Report events seperately so there is no need to sync */
+                if (event[i].events & EPOLLIN)
+                    link_list_attach_to_tail (&event_list, &t->in_task.l);
+                if (event[i].events & EPOLLOUT)
+                    link_list_attach_to_tail (&event_list, &t->out_task.l);
+                if (event[i].events & EPOLLERR)
+                    link_list_attach_to_tail (&event_list, &t->err_task.l);
             } else {
                 char ch;
                 int ret = read (loop->dummy_pipe[0], &ch, sizeof(ch));

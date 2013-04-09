@@ -109,28 +109,63 @@ static int stream_handle_write (spin_stream_t stream)
     return 0;
 }
 
-static int stream_poll_target_callback (spin_poll_target_t pt)
+static int stream_poll_target_callback (int event, spin_poll_target_t pt)
 {
     spin_stream_t stream = CAST_POLL_TARGET_TO_STREAM(pt);
 
-    int ret;
-    if (stream->poll_target.cached_events & EPOLLIN) {
-        ret = stream_handle_read (stream);
-        if (ret != 0) {
-            stream->poll_target.cached_events &= ~EPOLLIN;
-        }
+    /* TODO: Compare the cached_event sand notified_events, else link list may
+     * be corrupted */
+    if ((event & EPOLLIN) && (stream->in_req != NULL)) {
+        link_list_dettach (&stream->poll_target.loop->polltask,
+                           &stream->in_task.l);
+        link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
+                                  &stream->in_task.l);
     }
 
-    if (stream->poll_target.cached_events & EPOLLOUT) {
-        ret = stream_handle_write (stream);
-        if (ret != 0) {
-            stream->poll_target.cached_events &= ~EPOLLOUT;
-        }
+    if ((event & EPOLLOUT) && (stream->out_req != NULL)) {
+        link_list_dettach (&stream->poll_target.loop->polltask,
+                           &stream->out_task.l);
+        link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
+                                  &stream->out_task.l);
     }
-
     return 0;
 }
 
+static int stream_in_task_callback (spin_task_t task)
+{
+    int ret;
+    spin_stream_t stream = CAST_IN_TASK_TO_STREAM (task);
+    ret = stream_handle_read (stream);
+    if (ret != 0) {
+        if (stream->out_req != NULL) {
+            link_list_attach_to_tail (&stream->poll_target.loop->polltask,
+                                      &stream->out_task.l);
+        }
+        stream->poll_target.cached_events &= ~EPOLLIN;
+    } else if (stream->in_req != NULL) {
+        link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
+                                  &stream->in_task.l);
+    }
+    return 0;
+}
+
+static int stream_out_task_callback (spin_task_t task)
+{
+    int ret;
+    spin_stream_t stream = CAST_OUT_TASK_TO_STREAM (task);
+    ret = stream_handle_write (stream);
+    if (ret != 0) {
+        if (stream->out_req != NULL) {
+            link_list_attach_to_tail (&stream->poll_target.loop->polltask,
+                                      &stream->out_task.l);
+        }
+        stream->poll_target.cached_events &= ~EPOLLOUT;
+    } else if (stream->out_req != NULL) {
+        link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
+                                  &stream->out_task.l);
+    }
+    return 0;
+}
 
 void spin_stream_init (spin_stream_t is, spin_loop_t loop,
                        const struct spin_stream_spec *spec)
@@ -138,6 +173,8 @@ void spin_stream_init (spin_stream_t is, spin_loop_t loop,
     spin_poll_target_init (&is->poll_target, loop,
                            stream_poll_target_callback);
 
+    spin_task_init (&is->in_task, stream_in_task_callback);
+    spin_task_init (&is->out_task, stream_out_task_callback);
     is->spec = *spec;
     is->in_req = NULL;
     is->out_req = NULL;
@@ -157,10 +194,12 @@ int spin_stream_read (spin_stream_t stream, struct spin_io_req *req)
     }
 
     stream->in_req = req;
-
-    if (link_node_is_dettached (&stream->poll_target.task.l))
+    if (stream->poll_target.cached_events & EPOLLIN)
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
-                                  &stream->poll_target.task.l);
+                                  &stream->in_task.l);
+    else
+        link_list_attach_to_tail (&stream->poll_target.loop->polltask,
+                                  &stream->in_task.l);
 
     return 0;
 }
@@ -179,8 +218,12 @@ int spin_stream_write (spin_stream_t stream, struct spin_io_req *req)
     }
 
     stream->out_req = req;
-    if (link_node_is_dettached (&stream->poll_target.task.l))
+    /* TODO: Read write use different task */
+    if (stream->poll_target.cached_events & EPOLLOUT)
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
-                                  &stream->poll_target.task.l);
+                                  &stream->out_task.l);
+    else
+        link_list_attach_to_tail (&stream->poll_target.loop->polltask,
+                                  &stream->out_task.l);
     return 0;
 }
