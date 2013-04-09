@@ -137,7 +137,7 @@ static int stream_in_task_callback (spin_task_t task)
     spin_stream_t stream = CAST_IN_TASK_TO_STREAM (task);
     ret = stream_handle_read (stream);
     if (ret != 0) {
-        if (stream->out_req != NULL) {
+        if (stream->in_req != NULL) {
             link_list_attach_to_tail (&stream->poll_target.loop->polltask,
                                       &stream->out_task.l);
         }
