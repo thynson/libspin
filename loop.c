@@ -78,11 +78,11 @@ int spin_loop_destroy (spin_loop_t loop)
 {
     assert (loop != NULL);
     int busy;
-    pthread_mutex_lock (&spin.lock);
+    pthread_mutex_lock (&spin_poller.lock);
     busy = spin_loop_is_busy (loop);
-    pthread_mutex_unlock (&spin.lock);
+    pthread_mutex_unlock (&spin_poller.lock);
     if (busy) {
-        ernno = EBUSY;
+        errno = EBUSY;
         return -1;
     }
     prioque_destroy (loop->prioque);
