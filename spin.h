@@ -33,6 +33,7 @@
 #define SPIN_DOWNCAST(type, member, args)\
     ((type *)((int8_t *)(args) - offsetof(type, member)))
 
+/** @brief Global poller */
 extern struct spin_poller_t
 {
     unsigned refcount;
@@ -64,14 +65,20 @@ extern int spin_init ();
  */
 extern int spin_uninit ();
 
-struct __spin_loop {
 
-    /* task and bgtask may used across thread */
+struct __spin_loop {
+    /* the following member should only used in running thread */
+
+    /** @brief Timer priority queue */
     prioque_t prioque;
 
-    /* the following member should only used in running thread */
+    /** @brief Tasks to be executed */
     link_list_t currtask;
+
+    /** @brief Tasks to be executed in next iteration */
     link_list_t nexttask;
+
+    /** @brief Tasks currently waiting for poll event */
     link_list_t polltask;
 
     /* only accessible when #spin_poller.lock is acquired, except being
@@ -82,7 +89,10 @@ struct __spin_loop {
 typedef struct __spin_task *spin_task_t;
 
 struct __spin_task {
+    /** @brief Link node, will be attached to link lists in spin_loop_t */
     link_node_t l;
+
+    /** @brief Callback */
     int (*callback) (spin_task_t);
 };
 
@@ -98,12 +108,25 @@ static inline void spin_task_init (spin_task_t task,
 }
 
 struct __spin_timer {
+    /** @brief Inherating task */
     struct __spin_task task;
-    prioque_node_t q;
+
+    /** @brief The loop object this timer belong to */
     spin_loop_t loop;
+
+    /** @brief Priority queue node */
+    prioque_node_t q;
+
+    /** @brief Callback */
     int (*callback) (void *);
+
+    /** @brief Context for callback */
     void *context;
+
+    /** @brief The time tick when this timer should arm */
     prioque_weight_t tick;
+
+    /** @brief Interval of timer, 0 stand for one-shot timer */
     unsigned interval;
 };
 

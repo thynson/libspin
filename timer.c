@@ -16,11 +16,6 @@
 
 #include "spin.h"
 
-enum {
-    TIMER_STATE_STOP,
-    TIMER_STATE_START,
-};
-
 static int spin_timer_task_callback (spin_task_t task);
 
 static inline int tick_add_expiration (prioque_weight_t *ret)
@@ -80,7 +75,6 @@ spin_timer_t spin_timer_create (spin_loop_t loop, int (*callback) (void*),
 int spin_timer_destroy (spin_timer_t timer)
 {
     int ret;
-    /* FIXME: remove from loop */
     if (timer == NULL) {
         errno = EINVAL;
         return -1;

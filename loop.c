@@ -28,11 +28,6 @@ static inline int spin_loop_is_busy (spin_loop_t loop)
         || !prioque_is_empty (loop->prioque);
 }
 
-
-/**
- * Create an spin object
- * return NULL if exited, and then you may want to see errno
- */
 spin_loop_t spin_loop_create (void)
 {
     spin_loop_t ret;
@@ -53,8 +48,6 @@ spin_loop_t spin_loop_create (void)
     link_list_init (&ret->polltask);
     link_list_init (&ret->bgtask);
 
-    /* since SPIN_LOOP_PREPARE is exactly 0, we don't need to set it */
-
     return ret;
 clean_and_exit:
 
@@ -67,13 +60,6 @@ clean_and_exit:
     return NULL;
 }
 
-/**
- * Destroy an spin object
- * you should not close an spin object within event loop!
- * the control flow of the program will block on spin_loop_run if the are any
- * event to be fired. you should only close an spin object before or after
- * calling spin_loop_run
- */
 int spin_loop_destroy (spin_loop_t loop)
 {
     assert (loop != NULL);
@@ -177,5 +163,3 @@ int spin_loop_run (spin_loop_t loop)
     }
     return 0;
 }
-
-

@@ -31,6 +31,10 @@ spin_loop_create();
 /**
  * @brief Destroy an event loop
  * @param loop The even loop
+ * @note you should not close an spin object within event loop!  the control
+ *       flow of the program will block on spin_loop_run if the are any event
+ *       to be fired. you should only close an spin object before or after
+ *       calling spin_loop_run
  */
 int __SPIN_EXPORT__
 spin_loop_destroy (spin_loop_t loop);
