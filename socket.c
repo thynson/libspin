@@ -122,7 +122,7 @@ int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
     event.events = EPOLLIN | EPOLLOUT | EPOLLET;
     event.data.ptr = &sock->stream.poll_target;
 
-    ret = epoll_ctl (loop->epollfd, EPOLL_CTL_ADD, sock->fd, &event);
+    ret = epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, sock->fd, &event);
 
     link_list_attach_to_tail (&loop->polltask,
                               &sock->stream.out_task.l);
@@ -232,7 +232,7 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
     link_list_attach_to_tail (&loop->polltask,
                               &srv->in_task.l);
 
-    ret = epoll_ctl (loop->epollfd, EPOLL_CTL_ADD, fd, &event);
+    ret = epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, fd, &event);
     /* TODO: Check ret */
 
     return srv;

@@ -33,34 +33,50 @@
 #define SPIN_DOWNCAST(type, member, args)\
     ((type *)((int8_t *)(args) - offsetof(type, member)))
 
+extern struct spin_poller_t
+{
+    unsigned refcount;
+    int epollfd;
+    int pipe[2];
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    pthread_t thread;
+    struct timespec basetime;
+} spin_poller;
 
+/**
+ * @brief Do internal initialization, creating poll thread, etc
+ * @retval 0 First init
+ * @retval 1 Initialized
+ * @retval -1 Failed
+ * @see spin_uninit
+ * @note This function may be called multriple times, and it's need to call
+ *       spin_uninit same times, to do uninitialization
+ */
+extern int spin_init ();
 
-enum {
-    SPIN_LOOP_PREPARE = 0,
-    SPIN_LOOP_RUN,
-    SPIN_LOOP_EXIT
-};
-
-extern pthread_once_t startup_timespec_once;
-extern struct timespec startup_timespec;
+/**
+ * @brief Do uninitialize
+ * @retval 0 Actually destroyed
+ * @retval 1 Reference counter is greater than 0, pending
+ * @retval -1 Failed
+ * @see spin_init
+ */
+extern int spin_uninit ();
 
 struct __spin_loop {
-    pthread_t poll_thread;
-    pthread_mutex_t lock;
-    pthread_cond_t guard;
 
     /* task and bgtask may used across thread */
-    int epollfd;
-    link_list_t bgtask;
+    prioque_t prioque;
 
     /* the following member should only used in running thread */
     link_list_t currtask;
     link_list_t nexttask;
     link_list_t polltask;
-    prioque_t prioque;
 
-    /* Misc */
-    int dummy_pipe[2];
+    /* only accessible when #spin_poller.lock is acquired, except being
+     * initialized */
+    link_list_t bgtask;
 };
 
 typedef struct __spin_task *spin_task_t;
@@ -102,6 +118,7 @@ struct __spin_poll_target;
 typedef struct __spin_poll_target *spin_poll_target_t;
 
 struct __spin_poll_target {
+    /* TODO: pthread_spin_lock is needed */
     struct __spin_task in_task;
     struct __spin_task out_task;
     struct __spin_task err_task;
