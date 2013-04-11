@@ -52,14 +52,14 @@ static int stream_handle_read (spin_stream_t stream)
         in_req->size += retsize;
         tmpsize -= retsize;
 
-        if (retsize < read_size) {
-            if (errno == EAGAIN) {
-                return -1;
-            }
-        }
+
         if (in_req->size >= in_req->minsize) {
             stream->in_req = NULL;
             in_req->callback (in_req);
+        } else if (retsize < read_size) {
+            if (errno == EAGAIN) {
+                return -1;
+            }
         }
     }
     return 0;
@@ -95,16 +95,15 @@ static int stream_handle_write (spin_stream_t stream)
         out_req->size += retsize;
         tmpsize -= retsize;
 
-        if (retsize < write_size) {
+        if (out_req->size >= out_req->minsize) {
+            stream->out_req = NULL;
+            out_req->callback(out_req);
+        } else if (retsize < write_size) {
             if (errno == EAGAIN) {
                 return -1;
             }
         }
 
-        if (out_req->size >= out_req->minsize) {
-            stream->out_req = NULL;
-            out_req->callback(out_req);
-        }
     }
     return 0;
 }
