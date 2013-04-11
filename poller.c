@@ -47,15 +47,14 @@ void *spin_poll_thread (void *param)
         for (i = 0; i < ret; i++) {
             spin_poll_target_t t = (spin_poll_target_t) event[i].data.ptr;
             if (t != NULL) {
-                if (event[i].events & EPOLLIN)
-                    link_list_attach_to_tail (&t->loop->bgtask,
-                                              &t->in_task.l);
-                if (event[i].events & EPOLLOUT)
-                    link_list_attach_to_tail (&t->loop->bgtask,
-                                              &t->out_task.l);
-                if (event[i].events & EPOLLERR)
-                    link_list_attach_to_tail (&t->loop->bgtask,
-                                              &t->err_task.l);
+                pthread_spin_lock (&t->lock);
+                if (t->notified_events != 0)
+                    t->notified_events |= event[i].events;
+                else {
+                    t->notified_events |= event[i].events;
+                    link_list_attach_to_tail (&t->loop->bgtask, &t->task.l);
+                }
+                pthread_spin_unlock (&t->lock);
             } else {
                 char ch;
                 int ret = read (spin_poller.pipe[0], &ch, sizeof(ch));

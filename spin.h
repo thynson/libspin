@@ -141,26 +141,34 @@ struct __spin_poll_target;
 typedef struct __spin_poll_target *spin_poll_target_t;
 
 struct __spin_poll_target {
-    /* TODO: pthread_spin_lock is needed */
-    struct __spin_task in_task;
-    struct __spin_task out_task;
-    struct __spin_task err_task;
+    /** @brief Inherates task */
+    struct __spin_task task;
+
+    /** @brief The loop this poll target belongs to */
     spin_loop_t loop;
-    int (*callback)(int, spin_poll_target_t);
+
+    /** @brief Spin lock for notified_event */
+    pthread_spinlock_t lock;
+
+    /** @brief Events reported by epoll and is about to notifiy, must acquire
+     *         the lock before access this */
+    int notified_events;
+
+    /** @brief Cached event, can be access directly */
     int cached_events;
+
+    /** @breif Callback that will be called when cached_events changed */
+    int (*callback)(spin_poll_target_t);
 };
 
-void
-spin_poll_target_init (spin_poll_target_t pt,
-                       spin_loop_t loop,
-                       int (*callback)(int event, spin_poll_target_t pt));
+/**
+ * @brief Initialize a poll target
+ */
+void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
+                            int (*callback)(spin_poll_target_t pt));
 
-#define CAST_IN_TASK_TO_POLL_TARGET(x) \
-    SPIN_DOWNCAST(struct __spin_poll_target, in_task, x)
-#define CAST_OUT_TASK_TO_POLL_TARGET(x) \
-    SPIN_DOWNCAST(struct __spin_poll_target, out_task, x)
-#define CAST_ERR_TASK_TO_POLL_TARGET(x) \
-    SPIN_DOWNCAST(struct __spin_poll_target, err_task, x)
+#define CAST_TASK_TO_POLL_TARGET(x) \
+    SPIN_DOWNCAST(struct __spin_poll_target, task, x);
 
 
 struct spin_stream_spec {

@@ -65,9 +65,10 @@ spin_socket_close (spin_stream_t stream)
 }
 
 static int
-spin_socket_connected (int event, spin_poll_target_t pt)
+spin_socket_connected (spin_poll_target_t pt)
 {
     spin_socket_t s = CAST_STREAM_TO_SOCKET (CAST_POLL_TARGET_TO_STREAM (pt));
+    int event = pt->cached_events;
 
     link_list_dettach(&s->stream.poll_target.loop->polltask,
                       &s->stream.out_task.l);
@@ -191,8 +192,9 @@ spin_tcp_server_accept (spin_task_t t)
 }
 
 static int
-spin_tcp_server_poll_target_callback (int event, spin_poll_target_t pt)
+spin_tcp_server_poll_target_callback (spin_poll_target_t pt)
 {
+    int event = pt->cached_events;
     spin_tcp_server_t s = SPIN_DOWNCAST (struct __spin_tcp_server,
                                          poll_target, pt);
 

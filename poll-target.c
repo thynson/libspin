@@ -17,30 +17,14 @@
 #include "spin.h"
 
 
-/* XXX: We may use our symbol other than EPOLLIN/EPOLLOUT/EPOLLERR for
- * portability */
-
-static int spin_poll_target_in_task_callback (spin_task_t task)
+static int spin_poll_target_task_callback (spin_task_t task)
 {
-    spin_poll_target_t pt = CAST_IN_TASK_TO_POLL_TARGET (task);
-    pt->cached_events |= EPOLLIN;
-    pt->callback (EPOLLIN, pt);
-    return 0;
-}
-
-static int spin_poll_target_out_task_callback (spin_task_t task)
-{
-    spin_poll_target_t pt = CAST_OUT_TASK_TO_POLL_TARGET (task);
-    pt->cached_events |= EPOLLOUT;
-    pt->callback (EPOLLOUT, pt);
-    return 0;
-}
-
-static int spin_poll_target_err_task_callback (spin_task_t task)
-{
-    spin_poll_target_t pt = CAST_ERR_TASK_TO_POLL_TARGET (task);
-    pt->cached_events |= EPOLLERR;
-    pt->callback (EPOLLERR, pt);
+    spin_poll_target_t pt = CAST_TASK_TO_POLL_TARGET (task);
+    pthread_spin_lock (&pt->lock);
+    pt->cached_events |= pt->notified_events;
+    pt->notified_events = 0;
+    pthread_spin_unlock (&pt->lock);
+    pt->callback (pt);
     return 0;
 }
 
@@ -48,11 +32,9 @@ static int spin_poll_target_err_task_callback (spin_task_t task)
  * @brief Initialize a poll-target object
  */
 void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
-                            int (*callback) (int, spin_poll_target_t pt))
+                            int (*callback) (spin_poll_target_t pt))
 {
-    spin_task_init (&pt->in_task, spin_poll_target_in_task_callback);
-    spin_task_init (&pt->out_task, spin_poll_target_out_task_callback);
-    spin_task_init (&pt->err_task, spin_poll_target_err_task_callback);
+    spin_task_init (&pt->task, spin_poll_target_task_callback);
     pt->loop = loop;
     pt->callback = callback;
     pt->cached_events = 0;
