@@ -35,6 +35,7 @@ void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
                             int (*callback) (spin_poll_target_t pt))
 {
     spin_task_init (&pt->task, spin_poll_target_task_callback);
+    pthread_spin_init (&pt->lock, 0);
     pt->loop = loop;
     pt->callback = callback;
     pt->cached_events = 0;
