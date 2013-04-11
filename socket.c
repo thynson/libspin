@@ -162,6 +162,7 @@ spin_tcp_server_accept (spin_task_t t)
     while (max_connect_once > 0) {
         spin_socket_t s;
         struct spin_stream_spec spec;
+        struct epoll_event event;
         fd = accept (srv->fd, (struct sockaddr *)&addr, &length);
         if (fd ==-1)
             break;
@@ -178,6 +179,9 @@ spin_tcp_server_accept (spin_task_t t)
         spec.close = &spin_socket_close;
 
         spin_stream_init (&s->stream, srv->poll_target.loop, &spec);
+        event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+        event.data.ptr = &s->stream.poll_target;
+        epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, fd, &event);
         srv->connected (&s->stream, &addr);
     }
 
