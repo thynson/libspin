@@ -218,7 +218,6 @@ int spin_stream_write (spin_stream_t stream, struct spin_io_req *req)
     }
 
     stream->out_req = req;
-    /* TODO: Read write use different task */
     if (stream->poll_target.cached_events & EPOLLOUT)
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
                                   &stream->out_task.l);

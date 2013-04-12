@@ -18,8 +18,6 @@
 #include "spin.h"
 
 
-static int wait_for_task (spin_loop_t xp);
-
 static inline int spin_loop_is_busy (spin_loop_t loop)
 {
     return !link_list_is_empty (&loop->nexttask)
