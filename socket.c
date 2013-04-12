@@ -43,6 +43,10 @@ spin_socket_read (spin_stream_t stream, char *buff, size_t size)
     do
         ret = recv (socket->fd, buff, size, 0);
     while (ret == -1 && errno == EINTR);
+    if (ret > 0 && ret < size) {
+        errno = EAGAIN;
+    }
+
     return ret;
 }
 

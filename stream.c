@@ -47,18 +47,18 @@ static int stream_handle_read (spin_stream_t stream)
             /* EOF */
             in_req->callback (in_req);
             return 1;
-        }
+        } else {
+            in_req->size += retsize;
+            tmpsize -= retsize;
 
-        in_req->size += retsize;
-        tmpsize -= retsize;
-
-
-        if (in_req->size >= in_req->minsize) {
-            stream->in_req = NULL;
-            in_req->callback (in_req);
-        } else if (retsize < read_size) {
-            if (errno == EAGAIN) {
-                return -1;
+            if (in_req->size >= in_req->minsize) {
+                stream->in_req = NULL;
+                in_req->callback (in_req);
+            }
+            if (retsize < read_size) {
+                if (errno == EAGAIN) {
+                    return -1;
+                }
             }
         }
     }
@@ -90,20 +90,19 @@ static int stream_handle_write (spin_stream_t stream)
             return -1;
         } else if (retsize == 0) {
             /* XXX: Won't happen if read_size > 0 */
-        }
+        } else {
+            out_req->size += retsize;
+            tmpsize -= retsize;
 
-        out_req->size += retsize;
-        tmpsize -= retsize;
-
-        if (out_req->size >= out_req->minsize) {
-            stream->out_req = NULL;
-            out_req->callback(out_req);
-        } else if (retsize < write_size) {
-            if (errno == EAGAIN) {
-                return -1;
+            if (out_req->size >= out_req->minsize) {
+                stream->out_req = NULL;
+                out_req->callback(out_req);
+            } else if (retsize < write_size) {
+                if (errno == EAGAIN) {
+                    return -1;
+                }
             }
         }
-
     }
     return 0;
 }
@@ -136,12 +135,13 @@ static int stream_in_task_callback (spin_task_t task)
     int ret;
     spin_stream_t stream = CAST_IN_TASK_TO_STREAM (task);
     ret = stream_handle_read (stream);
-    if (ret != 0) {
+    if (ret == -1) {
         if (stream->in_req != NULL) {
             link_list_attach_to_tail (&stream->poll_target.loop->polltask,
                                       &stream->out_task.l);
         }
         stream->poll_target.cached_events &= ~EPOLLIN;
+    } else if (ret == 1)  {
     } else if (stream->in_req != NULL) {
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
                                   &stream->in_task.l);
@@ -154,12 +154,13 @@ static int stream_out_task_callback (spin_task_t task)
     int ret;
     spin_stream_t stream = CAST_OUT_TASK_TO_STREAM (task);
     ret = stream_handle_write (stream);
-    if (ret != 0) {
+    if (ret == -1) {
         if (stream->out_req != NULL) {
             link_list_attach_to_tail (&stream->poll_target.loop->polltask,
                                       &stream->out_task.l);
         }
         stream->poll_target.cached_events &= ~EPOLLOUT;
+    } else if (ret == 1) {
     } else if (stream->out_req != NULL) {
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
                                   &stream->out_task.l);
