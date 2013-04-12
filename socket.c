@@ -169,6 +169,12 @@ spin_tcp_server_accept (spin_task_t t)
         if (fd ==-1)
             break;
         max_connect_once--;
+        if (set_nonblocking (fd) == -1) {
+            /* XXX */
+            close (fd);
+            continue;
+        }
+
         s = (spin_socket_t) malloc (sizeof (*s));
         if (s == NULL) {
             close (fd);
