@@ -92,12 +92,14 @@ spin_socket_connected (spin_poll_target_t pt)
     return 0;
 }
 
-static void set_nonblocking (int fd)
+static int set_nonblocking (int fd)
 {
     int flags;
     flags = fcntl (fd, F_GETFL);
+    if (flags == -1)
+        return -1;
     flags |= O_NONBLOCK;
-    fcntl (fd, F_SETFL, flags);
+    return fcntl (fd, F_SETFL, flags);
 }
 
 int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
@@ -118,7 +120,7 @@ int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
 
     if (sock->fd == -1)
         goto cleanup_and_exit;
-    set_nonblocking (sock->fd);
+    ret = set_nonblocking (sock->fd);
 
     event.events = EPOLLIN | EPOLLOUT | EPOLLET;
     event.data.ptr = &sock->stream.poll_target;
@@ -217,9 +219,14 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
                          void (*connected) (spin_stream_t,
                                             const struct sockaddr_storage *))
 {
-    int ret;
     struct epoll_event event;
-    spin_tcp_server_t srv = (spin_tcp_server_t) malloc (sizeof (*srv));
+    spin_tcp_server_t srv;
+    int ret = set_nonblocking (fd);
+
+    if (ret == -1)
+        return NULL;
+
+    srv = (spin_tcp_server_t) malloc (sizeof (*srv));
     if (srv == NULL)
         return NULL;
 
@@ -227,7 +234,6 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
                            spin_tcp_server_poll_target_callback);
     spin_task_init (&srv->in_task, spin_tcp_server_accept);
 
-    set_nonblocking (fd);
     srv->fd = fd;
     srv->connected = connected;
 
@@ -239,7 +245,12 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
                               &srv->in_task.l);
 
     ret = epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, fd, &event);
-    /* TODO: Check ret */
+
+    if (ret == -1) {
+        link_list_dettach (&loop->polltask, &srv->in_task.l);
+        free (srv);
+        return NULL;
+    }
 
     return srv;
 }
