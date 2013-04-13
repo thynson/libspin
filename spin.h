@@ -104,8 +104,7 @@ struct __spin_task {
 static inline void spin_task_init (spin_task_t task,
                                    void (*callback)(spin_task_t))
 {
-    task->l.prev = NULL;
-    task->l.next = NULL;
+    link_node_init (&task->l);
     task->callback = callback;
 }
 

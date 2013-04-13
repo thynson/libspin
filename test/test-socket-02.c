@@ -17,7 +17,7 @@ struct client_socket {
 
 void write_complete (struct spin_io_req *out_req)
 {
-    printf ("write completed\n");
+    //printf ("write completed\n");
     struct client_socket *p = (void*)
         (((int8_t*)out_req) - offsetof(struct client_socket, out_req));
     p->in_req.buff = p->buff;
@@ -30,7 +30,7 @@ void write_complete (struct spin_io_req *out_req)
 
 void read_complete (struct spin_io_req *in_req)
 {
-    printf ("read completed\n");
+    //printf ("read completed\n");
     struct client_socket *p = (void*)
         (((int8_t*)in_req) - offsetof(struct client_socket, in_req));
     p->out_req.buff = p->buff;

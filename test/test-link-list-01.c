@@ -7,6 +7,8 @@ int main()
     int i;
 
     link_list_init (&list);
+    for (i = 0; i < 5; i++)
+        link_node_init (node + i);
     link_list_attach_to_tail (&list, node+0);
 
     assert (list.head == list.tail);

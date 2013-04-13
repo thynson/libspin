@@ -30,6 +30,9 @@ typedef struct link_list_t {
 typedef struct link_node_t {
     struct link_node_t *next;
     struct link_node_t *prev;
+#ifndef NDEBUG
+    link_list_t *list;
+#endif
 } link_node_t;
 
 
@@ -46,43 +49,12 @@ static inline int link_list_is_empty (link_list_t *l)
     return l->head == NULL && l->tail == NULL;
 }
 
-static inline void link_list_swap (link_list_t *lhs, link_list_t *rhs)
-{
-    struct link_node_t *tmp_head, *tmp_tail;
-
-    assert (lhs != NULL);
-    assert (rhs != NULL);
-
-    tmp_head = lhs->head;
-    tmp_tail = lhs->tail;
-    lhs->head = rhs->head;
-    lhs->tail = rhs->tail;
-    rhs->head = tmp_head;
-    rhs->tail = tmp_tail;
-}
-
-static inline void link_list_cat (link_list_t *dst, link_list_t *src)
-{
-    assert (dst != NULL);
-    assert (src != NULL);
-
-    if (dst->head == NULL) {
-        assert (dst->tail == NULL);
-        dst->head = src->head;
-        dst->tail = src->tail;
-        src->head = src->tail = NULL;
-    } else if (src->head != NULL) {
-        assert (dst->tail != NULL);
-        dst->tail->next = src->head;
-        src->head->prev = dst->tail;
-        dst->tail = src->tail;
-        src->head = src->tail = NULL;
-    }
-}
-
 static inline void link_list_attach_to_tail (link_list_t *l, link_node_t *n)
 {
     assert (l != NULL && n != NULL);
+#ifndef NDEBUG
+    assert (n->list == NULL);
+#endif
 
     if (l->head != NULL) {
         assert (l->tail != NULL);
@@ -95,11 +67,18 @@ static inline void link_list_attach_to_tail (link_list_t *l, link_node_t *n)
         n->next = n->prev = n;
         l->head = l->tail = n;
     }
+
+#ifndef NDEBUG
+    n->list = l;
+#endif
 }
 
 static inline void link_list_attach_to_head (link_list_t *l, link_node_t *n)
 {
     assert (l != NULL && n != NULL);
+#ifndef NDEBUG
+    assert (n->list == NULL);
+#endif
 
     if (l->head != NULL) {
         assert (l->tail != NULL);
@@ -112,11 +91,17 @@ static inline void link_list_attach_to_head (link_list_t *l, link_node_t *n)
         n->next = n->prev = n;
         l->head = l->tail = n;
     }
+#ifndef NDEBUG
+    n->list = l;
+#endif
 }
 
 static inline void link_list_dettach (link_list_t *l, link_node_t *n)
 {
     assert (l != NULL && n != NULL);
+#ifndef NDEBUG
+    assert (n->list == l);
+#endif
 
     if (n->next == n) {
         if (n->prev == n) {
@@ -137,11 +122,74 @@ static inline void link_list_dettach (link_list_t *l, link_node_t *n)
             n->next = n->prev = NULL;
         }
     }
+#ifndef NDEBUG
+    n->list = NULL;
+#endif
+}
+
+#ifdef NDEBUG
+static inline void link_list_swap (link_list_t *lhs, link_list_t *rhs)
+{
+    struct link_node_t *tmp_head, *tmp_tail;
+
+    assert (lhs != NULL);
+    assert (rhs != NULL);
+
+    tmp_head = lhs->head;
+    tmp_tail = lhs->tail;
+    lhs->head = rhs->head;
+    lhs->tail = rhs->tail;
+    rhs->head = tmp_head;
+    rhs->tail = tmp_tail;
+}
+#endif
+
+static inline void link_list_cat (link_list_t *dst, link_list_t *src)
+{
+    assert (dst != NULL);
+    assert (src != NULL);
+
+#ifdef NDEBUG
+    if (dst->head == NULL) {
+        assert (dst->tail == NULL);
+        dst->head = src->head;
+        dst->tail = src->tail;
+        src->head = src->tail = NULL;
+    } else if (src->head != NULL) {
+        assert (dst->tail != NULL);
+        dst->tail->next = src->head;
+        src->head->prev = dst->tail;
+        dst->tail = src->tail;
+        src->head = src->tail = NULL;
+    }
+#else
+    while (!link_list_is_empty (src)) {
+        link_node_t *node = src->head;
+        link_list_dettach (src, node);
+        link_list_attach_to_tail (dst, node);
+    }
+#endif
 }
 
 static inline int link_node_is_dettached (link_node_t *n)
 {
+#ifndef NDEBUG
+    if (n->prev == NULL && n->next == NULL) {
+        assert (n->list == NULL);
+        return 1;
+    } else
+        return 0;
+#else
     return n->prev == NULL && n->next == NULL;
+#endif
+}
+
+static inline void link_node_init (link_node_t *n)
+{
+    n->prev = n->next = NULL;
+#ifndef NDEBUG
+    n->list = NULL;
+#endif
 }
 
 #endif
