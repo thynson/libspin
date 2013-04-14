@@ -197,11 +197,9 @@ spin_tcp_server_accept (spin_task_t t)
     }
 
     if (max_connect_once == 0) {
-        link_list_attach_to_tail (&srv->poll_target.loop->nexttask,
-                                  &srv->in_task.l);
+        spin_loop_next_round (srv->poll_target.loop, &srv->in_task);
     } else if (errno == EAGAIN) {
-        link_list_attach_to_tail (&srv->poll_target.loop->polltask,
-                                  &srv->in_task.l);
+        spin_loop_wait_event (srv->poll_target.loop, &srv->in_task);
     }
 }
 
@@ -211,12 +209,8 @@ spin_tcp_server_poll_target_callback (spin_poll_target_t pt)
     int event = pt->cached_events;
     spin_tcp_server_t s = SPIN_DOWNCAST (struct __spin_tcp_server,
                                          poll_target, pt);
-    if (event & EPOLLIN) {
-        link_list_dettach (&s->poll_target.loop->polltask,
-                           &s->in_task.l);
-        link_list_attach_to_tail (&s->poll_target.loop->nexttask,
-                                  &s->in_task.l);
-    }
+    if (event & EPOLLIN)
+        spin_loop_fire_event (s->poll_target.loop, &s->in_task);
 }
 
 
@@ -247,16 +241,19 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
     event.data.ptr = &srv->poll_target;
     ret = listen (fd, SOMAXCONN);
 
-    link_list_attach_to_tail (&loop->polltask,
-                              &srv->in_task.l);
+    if (ret == -1) {
+        free (srv);
+        return NULL;
+    }
 
     ret = epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, fd, &event);
 
     if (ret == -1) {
-        link_list_dettach (&loop->polltask, &srv->in_task.l);
         free (srv);
         return NULL;
     }
+
+    spin_loop_wait_event (loop, &srv->in_task);
 
     return srv;
 }

@@ -86,6 +86,7 @@ struct __spin_loop {
     link_list_t bgtask;
 };
 
+
 typedef struct __spin_task *spin_task_t;
 
 struct __spin_task {
@@ -105,6 +106,25 @@ static inline void spin_task_init (spin_task_t task,
     task->l.prev = NULL;
     task->l.next = NULL;
     task->callback = callback;
+}
+
+static inline void
+spin_loop_next_round (spin_loop_t loop, spin_task_t t)
+{
+    link_list_attach_to_tail (&loop->nexttask, &t->l);
+}
+
+static inline void
+spin_loop_wait_event (spin_loop_t loop, spin_task_t t)
+{
+    link_list_attach_to_tail (&loop->polltask, &t->l);
+}
+
+static inline void
+spin_loop_fire_event (spin_loop_t loop, spin_task_t t)
+{
+    link_list_dettach (&loop->polltask, &t->l);
+    link_list_attach_to_tail (&loop->nexttask, &t->l);
 }
 
 struct __spin_timer {
