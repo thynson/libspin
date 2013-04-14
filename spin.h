@@ -123,7 +123,8 @@ spin_loop_wait_event (spin_loop_t loop, spin_task_t t)
 static inline void
 spin_loop_fire_event (spin_loop_t loop, spin_task_t t)
 {
-    link_list_dettach (&loop->polltask, &t->l);
+    if (!link_node_is_dettached (&t->l))
+        link_list_dettach (&loop->polltask, &t->l);
     link_list_attach_to_tail (&loop->nexttask, &t->l);
 }
 
@@ -178,14 +179,20 @@ struct __spin_poll_target {
     int cached_events;
 
     /** @breif Callback that will be called when cached_events changed */
-    void (*callback) (spin_poll_target_t);
+    void (*callback) (int event, spin_poll_target_t);
 };
 
 /**
  * @brief Initialize a poll target
  */
 void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
-                            void (*callback) (spin_poll_target_t pt));
+                            void (*callback) (int, spin_poll_target_t));
+
+void spin_poll_target_clean_cached_event (spin_poll_target_t pt,
+                                          int event_type);
+
+int spin_poll_target_test_event (spin_poll_target_t pt,
+                                 int event_mask);
 
 #define CAST_TASK_TO_POLL_TARGET(x) \
     SPIN_DOWNCAST(struct __spin_poll_target, task, x);

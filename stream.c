@@ -41,8 +41,11 @@ static int stream_handle_read (spin_stream_t stream)
                                      read_size);
 
         if (retsize == -1) {
-            /* TODO: Handle error and test EAGAIN */
-            return -1;
+            if (errno == EAGAIN)
+                return -1;
+            else
+                /* TODO: Handle error and test EAGAIN */
+                return 1;
         } else if (retsize == 0) {
             /* EOF */
             in_req->callback (in_req);
@@ -86,8 +89,11 @@ static int stream_handle_write (spin_stream_t stream)
                                       write_size);
 
         if (retsize == -1) {
-            /* TODO: Handle error and test EAGAIN */
-            return -1;
+            if (errno == EAGAIN)
+                return -1;
+            else
+                /* TODO: Handle error and test EAGAIN */
+                return 1;
         } else if (retsize == 0) {
             /* XXX: Won't happen if read_size > 0 */
         } else {
@@ -107,10 +113,9 @@ static int stream_handle_write (spin_stream_t stream)
     return 0;
 }
 
-static void stream_poll_target_callback (spin_poll_target_t pt)
+static void stream_poll_target_callback (int event, spin_poll_target_t pt)
 {
     spin_stream_t stream = CAST_POLL_TARGET_TO_STREAM (pt);
-    int event = pt->cached_events;
 
     /* TODO: Compare the cached_event sand notified_events, else link list may
      * be corrupted */
@@ -130,7 +135,7 @@ static void stream_in_task_callback (spin_task_t task)
         if (stream->in_req != NULL)
             spin_loop_wait_event (stream->poll_target.loop,
                                   &stream->in_task);
-        stream->poll_target.cached_events &= ~EPOLLIN;
+        spin_poll_target_clean_cached_event (&stream->poll_target, EPOLLIN);
     } else if (ret == 1)  {
     } else if (stream->in_req != NULL) {
         spin_loop_next_round (stream->poll_target.loop, &stream->in_task);
@@ -143,11 +148,10 @@ static void stream_out_task_callback (spin_task_t task)
     spin_stream_t stream = CAST_OUT_TASK_TO_STREAM (task);
     ret = stream_handle_write (stream);
     if (ret == -1) {
-        if (stream->out_req != NULL) {
+        if (stream->out_req != NULL)
             spin_loop_wait_event (stream->poll_target.loop,
                                   &stream->out_task);
-        }
-        stream->poll_target.cached_events &= ~EPOLLOUT;
+        spin_poll_target_clean_cached_event (&stream->poll_target, EPOLLOUT);
     } else if (ret == 1) {
     } else if (stream->out_req != NULL) {
         spin_loop_next_round (stream->poll_target.loop, &stream->out_task);
@@ -181,7 +185,7 @@ int spin_stream_read (spin_stream_t stream, struct spin_io_req *req)
     }
 
     stream->in_req = req;
-    if (stream->poll_target.cached_events & EPOLLIN)
+    if (spin_poll_target_test_event (&stream->poll_target, EPOLLIN))
         spin_loop_next_round (stream->poll_target.loop, &stream->in_task);
     else
         spin_loop_wait_event (stream->poll_target.loop, &stream->in_task);
@@ -203,7 +207,7 @@ int spin_stream_write (spin_stream_t stream, struct spin_io_req *req)
     }
 
     stream->out_req = req;
-    if (stream->poll_target.cached_events & EPOLLOUT)
+    if (spin_poll_target_test_event (&stream->poll_target, EPOLLOUT))
         spin_loop_next_round (stream->poll_target.loop, &stream->out_task);
     else
         spin_loop_wait_event (stream->poll_target.loop, &stream->out_task);

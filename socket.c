@@ -69,10 +69,9 @@ spin_socket_close (spin_stream_t stream)
 }
 
 static void
-spin_socket_connected (spin_poll_target_t pt)
+spin_socket_connected (int event, spin_poll_target_t pt)
 {
     spin_socket_t s = CAST_STREAM_TO_SOCKET (CAST_POLL_TARGET_TO_STREAM (pt));
-    int event = pt->cached_events;
 
     link_list_dettach(&s->stream.poll_target.loop->polltask,
                       &s->stream.out_task.l);
@@ -83,6 +82,7 @@ spin_socket_connected (spin_poll_target_t pt)
         free (s);
         callback (NULL);
     } else {
+        /* TODO: Fix here */
         struct spin_stream_spec spec;
         int cached_events = s->stream.poll_target.cached_events;
         spec.read = &spin_socket_read;
@@ -199,14 +199,14 @@ spin_tcp_server_accept (spin_task_t t)
     if (max_connect_once == 0) {
         spin_loop_next_round (srv->poll_target.loop, &srv->in_task);
     } else if (errno == EAGAIN) {
+        spin_poll_target_clean_cached_event (&srv->poll_target, EPOLLIN);
         spin_loop_wait_event (srv->poll_target.loop, &srv->in_task);
     }
 }
 
 static void
-spin_tcp_server_poll_target_callback (spin_poll_target_t pt)
+spin_tcp_server_poll_target_callback (int event, spin_poll_target_t pt)
 {
-    int event = pt->cached_events;
     spin_tcp_server_t s = SPIN_DOWNCAST (struct __spin_tcp_server,
                                          poll_target, pt);
     if (event & EPOLLIN)

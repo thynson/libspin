@@ -20,24 +20,42 @@
 static void spin_poll_target_task_callback (spin_task_t task)
 {
     spin_poll_target_t pt = CAST_TASK_TO_POLL_TARGET (task);
+    int event = 0;
     pthread_spin_lock (&pt->lock);
+    event = pt->notified_events;
     pt->cached_events |= pt->notified_events;
     pt->notified_events = 0;
     pthread_spin_unlock (&pt->lock);
-    pt->callback (pt);
+    pt->callback (event, pt);
+}
+
+void spin_poll_target_clean_cached_event (spin_poll_target_t pt, int et)
+{
+    pthread_spin_lock (&pt->lock);
+    pt->cached_events &= ~et;
+    pthread_spin_unlock (&pt->lock);
+}
+
+int spin_poll_target_test_event (spin_poll_target_t pt, int mask)
+{
+    pthread_spin_lock (&pt->lock);
+    mask &= pt->cached_events;
+    pthread_spin_unlock (&pt->lock);
+    return mask;
 }
 
 /*
  * @brief Initialize a poll-target object
  */
 void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
-                            void (*callback) (spin_poll_target_t pt))
+                            void (*callback) (int, spin_poll_target_t pt))
 {
     spin_task_init (&pt->task, spin_poll_target_task_callback);
     pthread_spin_init (&pt->lock, 0);
     pt->loop = loop;
     pt->callback = callback;
     pt->cached_events = 0;
+    pt->notified_events = 0;
 }
 
 
