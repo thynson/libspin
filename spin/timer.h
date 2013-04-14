@@ -35,7 +35,7 @@ struct spin_itimespec {
  * @param context The context parameter for callback
  */
 spin_timer_t __SPIN_EXPORT__
-spin_timer_create (spin_loop_t loop, int (*callback) (void *), void *context);
+spin_timer_create (spin_loop_t loop, void (*callback) (void *), void *context);
 
 /**
  * @brief Destroy a timer

@@ -93,14 +93,14 @@ struct __spin_task {
     link_node_t l;
 
     /** @brief Callback */
-    int (*callback) (spin_task_t);
+    void (*callback) (spin_task_t);
 };
 
 #define CAST_LINK_NODE_TO_TASK(x) \
     SPIN_DOWNCAST(struct __spin_task, l, x)
 
 static inline void spin_task_init (spin_task_t task,
-                                   int (*callback)(spin_task_t))
+                                   void (*callback)(spin_task_t))
 {
     task->l.prev = NULL;
     task->l.next = NULL;
@@ -118,7 +118,7 @@ struct __spin_timer {
     prioque_node_t q;
 
     /** @brief Callback */
-    int (*callback) (void *);
+    void (*callback) (void *);
 
     /** @brief Context for callback */
     void *context;
@@ -158,14 +158,14 @@ struct __spin_poll_target {
     int cached_events;
 
     /** @breif Callback that will be called when cached_events changed */
-    int (*callback)(spin_poll_target_t);
+    void (*callback) (spin_poll_target_t);
 };
 
 /**
  * @brief Initialize a poll target
  */
 void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
-                            int (*callback)(spin_poll_target_t pt));
+                            void (*callback) (spin_poll_target_t pt));
 
 #define CAST_TASK_TO_POLL_TARGET(x) \
     SPIN_DOWNCAST(struct __spin_poll_target, task, x);

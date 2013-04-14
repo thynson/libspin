@@ -16,8 +16,6 @@
 
 #include "spin.h"
 
-static int spin_timer_task_callback (spin_task_t task);
-
 static inline int tick_add_expiration (prioque_weight_t *ret)
 {
     struct timespec now;
@@ -29,26 +27,19 @@ static inline int tick_add_expiration (prioque_weight_t *ret)
     return 0;
 }
 
-static int spin_timer_task_callback (spin_task_t task)
+static void spin_timer_task_callback (spin_task_t task)
 {
-    int ret;
     spin_timer_t timer = CAST_TASK_TO_TIMER (task);
-    ret = timer->callback(timer->context);
+    timer->callback(timer->context);
     if (timer->interval != 0) {
         timer->tick += timer->interval;
-
-        if (ret != 0)
-            return ret;
-
-        ret = prioque_insert (timer->loop->prioque,
-                              &timer->q, timer->tick);
-        if (ret != 0)
-            return ret;
+        /* TODO: Report error */
+        prioque_insert (timer->loop->prioque,
+                        &timer->q, timer->tick);
     }
-    return 0;
 }
 
-spin_timer_t spin_timer_create (spin_loop_t loop, int (*callback) (void*),
+spin_timer_t spin_timer_create (spin_loop_t loop, void (*callback) (void*),
                                 void *context)
 {
     if (loop == NULL || callback == NULL) {

@@ -68,7 +68,7 @@ spin_socket_close (spin_stream_t stream)
     return close (socket->fd);
 }
 
-static int
+static void
 spin_socket_connected (spin_poll_target_t pt)
 {
     spin_socket_t s = CAST_STREAM_TO_SOCKET (CAST_POLL_TARGET_TO_STREAM (pt));
@@ -93,7 +93,6 @@ spin_socket_connected (spin_poll_target_t pt)
         s->stream.poll_target.cached_events = cached_events;
         s->callback (&s->stream);
     }
-    return 0;
 }
 
 static int set_nonblocking (int fd)
@@ -155,7 +154,7 @@ cleanup_and_exit:
     return -1;
 }
 
-static int
+static void
 spin_tcp_server_accept (spin_task_t t)
 {
     spin_tcp_server_t srv = SPIN_DOWNCAST (struct __spin_tcp_server,
@@ -204,23 +203,20 @@ spin_tcp_server_accept (spin_task_t t)
         link_list_attach_to_tail (&srv->poll_target.loop->polltask,
                                   &srv->in_task.l);
     }
-    return 0;
 }
 
-static int
+static void
 spin_tcp_server_poll_target_callback (spin_poll_target_t pt)
 {
     int event = pt->cached_events;
     spin_tcp_server_t s = SPIN_DOWNCAST (struct __spin_tcp_server,
                                          poll_target, pt);
-
     if (event & EPOLLIN) {
         link_list_dettach (&s->poll_target.loop->polltask,
                            &s->in_task.l);
         link_list_attach_to_tail (&s->poll_target.loop->nexttask,
                                   &s->in_task.l);
     }
-    return 0;
 }
 
 

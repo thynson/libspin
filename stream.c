@@ -107,7 +107,7 @@ static int stream_handle_write (spin_stream_t stream)
     return 0;
 }
 
-static int stream_poll_target_callback (spin_poll_target_t pt)
+static void stream_poll_target_callback (spin_poll_target_t pt)
 {
     spin_stream_t stream = CAST_POLL_TARGET_TO_STREAM (pt);
     int event = pt->cached_events;
@@ -127,10 +127,9 @@ static int stream_poll_target_callback (spin_poll_target_t pt)
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
                                   &stream->out_task.l);
     }
-    return 0;
 }
 
-static int stream_in_task_callback (spin_task_t task)
+static void stream_in_task_callback (spin_task_t task)
 {
     int ret;
     spin_stream_t stream = CAST_IN_TASK_TO_STREAM (task);
@@ -146,10 +145,9 @@ static int stream_in_task_callback (spin_task_t task)
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
                                   &stream->in_task.l);
     }
-    return 0;
 }
 
-static int stream_out_task_callback (spin_task_t task)
+static void stream_out_task_callback (spin_task_t task)
 {
     int ret;
     spin_stream_t stream = CAST_OUT_TASK_TO_STREAM (task);
@@ -165,7 +163,6 @@ static int stream_out_task_callback (spin_task_t task)
         link_list_attach_to_tail (&stream->poll_target.loop->nexttask,
                                   &stream->out_task.l);
     }
-    return 0;
 }
 
 void spin_stream_init (spin_stream_t is, spin_loop_t loop,
