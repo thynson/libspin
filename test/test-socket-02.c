@@ -1,4 +1,5 @@
 #include <spin/socket.h>
+#include <spin/timer.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -14,6 +15,14 @@ struct client_socket {
     struct spin_io_req in_req;
     char buff[100];
 };
+
+spin_timer_t timer_close_tcp_server;
+
+void callback_close_tcp_server (void *param)
+{
+    spin_tcp_server_destroy (srv);
+	return 0;
+}
 
 void write_complete (struct spin_io_req *out_req)
 {
@@ -54,6 +63,7 @@ int main()
     int fd = socket (PF_INET, SOCK_STREAM, 0);
     struct sockaddr_storage sockaddr;
     struct sockaddr_in *inaddr = (struct sockaddr_in *) &sockaddr;
+	struct spin_itimespec x;
     inaddr->sin_family = AF_INET;
     inaddr->sin_port = htons (4000);
     inaddr->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -62,6 +72,12 @@ int main()
     bind (fd, &sockaddr, sizeof(sockaddr));
     spin_loop_t loop = spin_loop_create ();
     srv = spin_tcp_server_from_fd (loop, fd, connected);
+	x.initial = 10000;
+	x.interval = 0;
+    timer_close_tcp_server = spin_timer_create (loop,
+                                                callback_close_tcp_server,
+                                                NULL);
+	spin_timer_ctl (timer_close_tcp_server, &x, NULL);
     spin_loop_run (loop);
     spin_loop_destroy (loop);
 }
