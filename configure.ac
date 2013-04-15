@@ -31,7 +31,7 @@ AC_CHECK_LIB(pthread, pthread_create)
 AC_CHECK_LIB(rt, clock_gettime)
 
 API_VERSION="0:0:0"
-AM_CPPFLAGS="-Wall -D_GNU_SOURCE=1 -std=c99 -fvisibility=hidden"
+AM_CPPFLAGS="-Wall -Werror -D_GNU_SOURCE=1 -std=c99 -fvisibility=hidden"
 AM_CFLAGS=""
 AM_LDFLAGS="-Xlinker --no-undefined"
 
