@@ -105,39 +105,46 @@ int wait_for_task (spin_loop_t loop)
             } else
                 ret = 1;
         } else
-            /* If no task is polling, then we don't need to wait */
             link_list_cat (&loop->currtask, &loop->bgtask);
         pthread_mutex_unlock (&spin_poller.lock);
         return ret;
     } else {
         struct timespec ts = spin_poller.basetime;
         prioque_get_node_weight (loop->prioque, pnode, &ticks);
+        int timedout = 0;
 
         timespec_now (&now);
         timespec_add_milliseconds (&ts, ticks);
         pthread_mutex_lock (&spin_poller.lock);
 
-        /* We don't need to check if there are task in bgtask list or
-         * polltask list, but just wait till timedout */
-        do {
-            ret = pthread_cond_timedwait (&spin_poller.cond,
-                                          &spin_poller.lock, &ts);
-            if (ret == 0) {
-                link_list_cat (&loop->currtask, &loop->bgtask);
-                break;
-            } else if (ret == ETIMEDOUT)
-                break;
-        } while (link_list_is_empty (&loop->bgtask));
+        if (link_list_is_empty (&loop->bgtask)) {
+            if (currtask_not_empty) {
+                ret = 0;
+            } else {
+                do {
+                    ret = pthread_cond_timedwait (&spin_poller.cond,
+                                                  &spin_poller.lock, &ts);
+                    if (ret == 0) {
+                        link_list_cat (&loop->currtask, &loop->bgtask);
+                        break;
+                    } else if (ret == ETIMEDOUT) {
+                        timedout = 1;
+                        ret = 0;
+                        break;
+                    }
+                } while (link_list_is_empty (&loop->bgtask));
+            }
+        } else
+            link_list_cat (&loop->currtask, &loop->bgtask);
         pthread_mutex_unlock (&spin_poller.lock);
 
-        if (ret == ETIMEDOUT) {
+        if (timedout) {
             spin_timer_t timer = CAST_PRIOQUE_NODE_TO_TIMER (pnode);
             prioque_remove (loop->prioque, pnode);
             link_list_attach_to_tail (&loop->currtask, &timer->task.l);
             return 0;
         } else {
-            errno = ret;
-            return -1;
+            return ret;
         }
     }
 }
