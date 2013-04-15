@@ -258,8 +258,36 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
     return srv;
 }
 
+static void spin_tcp_server_end_destroy (spin_task_t task)
+{
+    spin_poll_target_t pt = CAST_TASK_TO_POLL_TARGET (task);
+    spin_tcp_server_t srv = SPIN_DOWNCAST (struct __spin_tcp_server,
+                                           poll_target, pt);
+    close (srv->fd);
+    free (srv);
+}
+
+
 int spin_tcp_server_destroy (spin_tcp_server_t srv)
 {
     /* TODO: Not implemented */
-    return -1;
+    if (srv == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    epoll_ctl (spin_poller.epollfd, EPOLL_CTL_DEL, srv->fd, NULL);
+    if (!link_node_is_dettached (&srv->in_task.l)) {
+        if (spin_poll_target_test_event (&srv->poll_target, EPOLLIN))
+            link_list_dettach (&srv->poll_target.loop->nexttask,
+                               &srv->in_task.l);
+        else
+            link_list_dettach (&srv->poll_target.loop->polltask,
+                               &srv->in_task.l);
+    }
+
+    spin_poll_target_begin_destroy (&srv->poll_target,
+                                    spin_tcp_server_end_destroy);
+
+    return 0;
 }
