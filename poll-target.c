@@ -44,6 +44,16 @@ int spin_poll_target_test_event (spin_poll_target_t pt, int mask)
     return mask;
 }
 
+void spin_poll_target_begin_destroy (spin_poll_target_t pt,
+                                     void (*callback) (spin_task_t))
+{
+    pthread_spin_lock (&pt->lock);
+    if (pt->notified_events == 0)
+        spin_loop_next_round (pt->loop, &pt->task);
+    pthread_spin_unlock (&pt->lock);
+    pt->task.callback = callback;
+}
+
 /*
  * @brief Initialize a poll-target object
  */

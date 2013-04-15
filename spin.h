@@ -188,6 +188,9 @@ struct __spin_poll_target {
 void spin_poll_target_init (spin_poll_target_t pt, spin_loop_t loop,
                             void (*callback) (int, spin_poll_target_t));
 
+void spin_poll_target_begin_desttroy (spin_poll_target_t pt,
+                                      void (*callback) (spin_task_t));
+
 void spin_poll_target_clean_cached_event (spin_poll_target_t pt,
                                           int event_type);
 
