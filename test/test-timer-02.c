@@ -37,6 +37,7 @@ int callback_b (void *param)
 int main()
 {
 	struct spin_itimespec x;
+	spin_init ();
 	spin_loop_t loop = spin_loop_create ();
 	timer_a = spin_timer_create (loop, callback_a, NULL);
 	timer_b = spin_timer_create (loop, callback_b, NULL);
@@ -63,6 +64,7 @@ int main()
 
 	spin_loop_run (loop);
 	spin_loop_destroy (loop);
+	spin_uninit ();
 	return 0;
 }
 

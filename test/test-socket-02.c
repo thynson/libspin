@@ -70,6 +70,7 @@ int main()
     int value = 1;
     setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
     bind (fd, &sockaddr, sizeof(sockaddr));
+    spin_init ();
     spin_loop_t loop = spin_loop_create ();
     srv = spin_tcp_server_from_fd (loop, fd, connected);
 	x.initial = 10000;
@@ -80,4 +81,6 @@ int main()
 	spin_timer_ctl (timer_close_tcp_server, &x, NULL);
     spin_loop_run (loop);
     spin_loop_destroy (loop);
+    spin_uninit ();
+    return 0;
 }

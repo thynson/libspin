@@ -20,12 +20,14 @@ int main()
 	struct spin_itimespec x;
 	x.initial = 2000;
 	x.interval = 1000;
+	spin_init ();
 	spin_loop_t loop = spin_loop_create ();
 	timer = spin_timer_create (loop, callback, NULL);
 	spin_timer_ctl (timer, &x, NULL);
 
 	spin_loop_run (loop);
 	spin_loop_destroy (loop);
+	spin_uninit ();
 	return 0;
 }
 

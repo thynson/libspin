@@ -44,8 +44,11 @@ int main()
 	inaddr->sin_family = AF_INET;
 	inaddr->sin_port = htons (4000);
 	inaddr->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	spin_init ();
 	spin_loop_t loop = spin_loop_create ();
 	spin_tcp_connect (loop, &sockaddr, callback);
 	spin_loop_run (loop);
 	spin_loop_destroy (loop);
+	spin_uninit ();
+	return 0;
 }
