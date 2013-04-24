@@ -23,7 +23,7 @@ static inline int tick_add_expiration (prioque_weight_t *ret)
     x = timespec_now (&now);
     if (x != 0)
         return x;
-    *ret += timespec_diff_millisecons (&now, &spin_poller.basetime);
+    *ret += timespec_diff_millisecons (&now, &spin_global.basetime);
     return 0;
 }
 

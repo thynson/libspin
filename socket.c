@@ -128,7 +128,7 @@ int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
     event.events = EPOLLIN | EPOLLOUT | EPOLLET;
     event.data.ptr = &sock->stream.poll_target;
 
-    ret = epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, sock->fd, &event);
+    ret = epoll_ctl (spin_global.epollfd, EPOLL_CTL_ADD, sock->fd, &event);
 
     link_list_attach_to_tail (&loop->polltask,
                               &sock->stream.out_task.l);
@@ -192,7 +192,7 @@ spin_tcp_server_accept (spin_task_t t)
         spin_stream_init (&s->stream, srv->poll_target.loop, &spec);
         event.events = EPOLLIN | EPOLLOUT | EPOLLET;
         event.data.ptr = &s->stream.poll_target;
-        epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, fd, &event);
+        epoll_ctl (spin_global.epollfd, EPOLL_CTL_ADD, fd, &event);
         srv->connected (&s->stream, &addr);
     }
 
@@ -246,7 +246,7 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
         return NULL;
     }
 
-    ret = epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD, fd, &event);
+    ret = epoll_ctl (spin_global.epollfd, EPOLL_CTL_ADD, fd, &event);
 
     if (ret == -1) {
         free (srv);
@@ -276,7 +276,7 @@ int spin_tcp_server_destroy (spin_tcp_server_t srv)
         return -1;
     }
 
-    epoll_ctl (spin_poller.epollfd, EPOLL_CTL_DEL, srv->fd, NULL);
+    epoll_ctl (spin_global.epollfd, EPOLL_CTL_DEL, srv->fd, NULL);
     if (!link_node_is_dettached (&srv->in_task.l)) {
         if (spin_poll_target_test_event (&srv->poll_target, EPOLLIN))
             link_list_dettach (&srv->poll_target.loop->nexttask,

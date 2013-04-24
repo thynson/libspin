@@ -59,9 +59,9 @@ int spin_loop_destroy (spin_loop_t loop)
 {
     assert (loop != NULL);
     int busy;
-    pthread_mutex_lock (&spin_poller.lock);
+    pthread_mutex_lock (&spin_global.lock);
     busy = spin_loop_is_busy (loop);
-    pthread_mutex_unlock (&spin_poller.lock);
+    pthread_mutex_unlock (&spin_global.lock);
     if (busy) {
         errno = EBUSY;
         return -1;
@@ -89,37 +89,37 @@ int wait_for_task (spin_loop_t loop)
         currtask_not_empty = 1;
 
     if (pnode == NULL) {
-        pthread_mutex_lock (&spin_poller.lock);
+        pthread_mutex_lock (&spin_global.lock);
         if (link_list_is_empty (&loop->bgtask)) {
             if (currtask_not_empty) {
                 ret = 0;
             } else if (!link_list_is_empty (&loop->polltask)) {
                 do
-                    pthread_cond_wait (&spin_poller.cond, &spin_poller.lock);
+                    pthread_cond_wait (&spin_global.cond, &spin_global.lock);
                 while (link_list_is_empty (&loop->bgtask));
                 link_list_cat (&loop->currtask, &loop->bgtask);
             } else
                 ret = 1;
         } else
             link_list_cat (&loop->currtask, &loop->bgtask);
-        pthread_mutex_unlock (&spin_poller.lock);
+        pthread_mutex_unlock (&spin_global.lock);
         return ret;
     } else {
-        struct timespec ts = spin_poller.basetime;
+        struct timespec ts = spin_global.basetime;
         prioque_get_node_weight (loop->prioque, pnode, &ticks);
         int timedout = 0;
 
         timespec_now (&now);
         timespec_add_milliseconds (&ts, ticks);
-        pthread_mutex_lock (&spin_poller.lock);
+        pthread_mutex_lock (&spin_global.lock);
 
         if (link_list_is_empty (&loop->bgtask)) {
             if (currtask_not_empty) {
                 ret = 0;
             } else {
                 do {
-                    ret = pthread_cond_timedwait (&spin_poller.cond,
-                                                  &spin_poller.lock, &ts);
+                    ret = pthread_cond_timedwait (&spin_global.cond,
+                                                  &spin_global.lock, &ts);
                     if (ret == 0) {
                         link_list_cat (&loop->currtask, &loop->bgtask);
                         break;
@@ -132,7 +132,7 @@ int wait_for_task (spin_loop_t loop)
             }
         } else
             link_list_cat (&loop->currtask, &loop->bgtask);
-        pthread_mutex_unlock (&spin_poller.lock);
+        pthread_mutex_unlock (&spin_global.lock);
 
         if (timedout) {
             spin_timer_t timer = CAST_PRIOQUE_NODE_TO_TIMER (pnode);

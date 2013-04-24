@@ -38,7 +38,7 @@
     ((type *)((int8_t *)(args) - offsetof(type, member)))
 
 /** @brief Global poller */
-extern struct spin_poller_t
+extern struct spin_global_t
 {
 #ifndef NDEBUG
     FILE *log;
@@ -49,7 +49,7 @@ extern struct spin_poller_t
     pthread_cond_t cond;
     pthread_t thread;
     struct timespec basetime;
-} spin_poller;
+} spin_global;
 
 #ifndef NDEBUG
 void spin_debug (const char *fmt, ...);
@@ -72,7 +72,7 @@ struct __spin_loop {
     /** @brief Tasks currently waiting for poll event */
     link_list_t polltask;
 
-    /* only accessible when #spin_poller.lock is acquired, except being
+    /* only accessible when #spin_global.lock is acquired, except being
      * initialized */
     link_list_t bgtask;
 };

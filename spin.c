@@ -21,7 +21,7 @@
 #endif
 
 
-struct spin_poller_t spin_poller = {
+struct spin_global_t spin_global = {
 #ifndef NDEBUG
     NULL,
 #endif
@@ -43,13 +43,13 @@ void *spin_poll_thread (void *param)
         int i, ret;
         struct epoll_event event [EVENT_ARRAY_SIZE];
 
-        ret = epoll_wait (spin_poller.epollfd, event, EVENT_ARRAY_SIZE, -1);
+        ret = epoll_wait (spin_global.epollfd, event, EVENT_ARRAY_SIZE, -1);
 
         /* XXX: Handle error */
         if (ret <= 0)
             continue;
 
-        pthread_mutex_lock (&spin_poller.lock);
+        pthread_mutex_lock (&spin_global.lock);
         for (i = 0; i < ret; i++) {
             spin_poll_target_t t = (spin_poll_target_t) event[i].data.ptr;
             if (t != NULL) {
@@ -67,15 +67,15 @@ void *spin_poll_thread (void *param)
                 pthread_spin_unlock (&t->lock);
             } else {
                 char ch;
-                int ret = read (spin_poller.pipe[0], &ch, sizeof(ch));
+                int ret = read (spin_global.pipe[0], &ch, sizeof(ch));
                 if (ret == 0)
                     /* The dummy_pipe[1] is closed, indicate that this thread
                      * should go exit */
                     looping = 0;
             }
         }
-        pthread_cond_broadcast (&spin_poller.cond);
-        pthread_mutex_unlock (&spin_poller.lock);
+        pthread_cond_broadcast (&spin_global.cond);
+        pthread_mutex_unlock (&spin_global.lock);
     }
 
     return NULL;
@@ -87,12 +87,12 @@ int spin_init (void)
     pthread_condattr_t condattr;
     struct epoll_event event;
 
-    if (spin_poller.epollfd > 0)
+    if (spin_global.epollfd > 0)
         return 1;
 
 #ifndef NDEBUG
-    spin_poller.log = fdopen(dup(fileno(stderr)), "w");
-    if (spin_poller.log == NULL)
+    spin_global.log = fdopen(dup(fileno(stderr)), "w");
+    if (spin_global.log == NULL)
         return -1;
 #endif
 
@@ -102,32 +102,32 @@ int spin_init (void)
     ret = pthread_condattr_setclock (&condattr, CLOCK_MONOTONIC);
     if (ret != 0)
         goto error_clean_up;
-    ret = pthread_cond_init (&spin_poller.cond, &condattr);
+    ret = pthread_cond_init (&spin_global.cond, &condattr);
     if (ret != 0)
         goto error_clean_up;
-    ret = clock_gettime (CLOCK_MONOTONIC, &spin_poller.basetime);
+    ret = clock_gettime (CLOCK_MONOTONIC, &spin_global.basetime);
     if (ret != 0)
         goto error_clean_up;
 
     ret = epoll_create1 (O_CLOEXEC);
     if (ret == -1)
         goto error_clean_up;
-    spin_poller.epollfd = ret;
+    spin_global.epollfd = ret;
 
-    ret = pipe2 (spin_poller.pipe, O_CLOEXEC | O_NONBLOCK);
+    ret = pipe2 (spin_global.pipe, O_CLOEXEC | O_NONBLOCK);
     if (ret == -1)
         goto error_clean_up;
 
     event.events = EPOLLIN | EPOLLET;
     event.data.ptr = NULL;
 
-    ret = epoll_ctl (spin_poller.epollfd, EPOLL_CTL_ADD,
-                     spin_poller.pipe[0], &event);
+    ret = epoll_ctl (spin_global.epollfd, EPOLL_CTL_ADD,
+                     spin_global.pipe[0], &event);
 
     if (ret == -1)
         goto error_clean_up;
 
-    ret = pthread_create (&spin_poller.thread, NULL, spin_poll_thread, NULL);
+    ret = pthread_create (&spin_global.thread, NULL, spin_poll_thread, NULL);
     if (ret == -1)
         goto error_clean_up;
 
@@ -135,19 +135,19 @@ int spin_init (void)
 
     return 0;
 error_clean_up:
-    if (spin_poller.epollfd != 0) {
-        close (spin_poller.epollfd);
-        spin_poller.epollfd = 0;
+    if (spin_global.epollfd != 0) {
+        close (spin_global.epollfd);
+        spin_global.epollfd = 0;
     }
 
-    if (spin_poller.pipe[0] != 0) {
-        close (spin_poller.pipe[0]);
-        spin_poller.pipe[0] = 0;
+    if (spin_global.pipe[0] != 0) {
+        close (spin_global.pipe[0]);
+        spin_global.pipe[0] = 0;
     }
 
-    if (spin_poller.pipe[1] != 0) {
-        close (spin_poller.pipe[1]);
-        spin_poller.pipe[1] = 0;
+    if (spin_global.pipe[1] != 0) {
+        close (spin_global.pipe[1]);
+        spin_global.pipe[1] = 0;
     }
     return -1;
 }
@@ -155,11 +155,11 @@ error_clean_up:
 int spin_uninit (void)
 {
     /* Close the write end so epoll will be notified */
-    close (spin_poller.pipe[1]);
-    pthread_join (spin_poller.thread, NULL);
-    pthread_cond_destroy (&spin_poller.cond);
-    close (spin_poller.pipe[0]);
-    close (spin_poller.epollfd);
+    close (spin_global.pipe[1]);
+    pthread_join (spin_global.thread, NULL);
+    pthread_cond_destroy (&spin_global.cond);
+    close (spin_global.pipe[0]);
+    close (spin_global.epollfd);
     return 0;
 }
 
@@ -169,13 +169,13 @@ void spin_debug(const char *fmt, ...)
     va_list args;
 
     assert (fmt != NULL);
-    fprintf (spin_poller.log, "libspin: ");
+    fprintf (spin_global.log, "libspin: ");
 
     va_start (args, fmt);
-    vfprintf (spin_poller.log, fmt, args);
+    vfprintf (spin_global.log, fmt, args);
     va_end (args);
 
     if (fmt[strlen(fmt) - 1] != '\n')
-        fputc ('\n', spin_poller.log);
+        fputc ('\n', spin_global.log);
 }
 #endif
