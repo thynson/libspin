@@ -162,7 +162,7 @@ spin_tcp_server_accept (spin_task_t t)
         if (fd ==-1)
             break;
         max_connect_once--;
-        if (set_nonblocking (fd) == -1) {
+        if (spin_set_nonblocking (fd) == -1) {
             /* XXX */
             close (fd);
             continue;
@@ -211,7 +211,7 @@ spin_tcp_server_from_fd (spin_loop_t loop, int fd,
 {
     struct epoll_event event;
     spin_tcp_server_t srv;
-    int ret = set_nonblocking (fd);
+    int ret = spin_set_nonblocking (fd);
 
     if (ret == -1)
         return NULL;
