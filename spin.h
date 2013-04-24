@@ -78,6 +78,16 @@ struct __spin_loop {
 };
 
 
+static inline int spin_set_nonblocking (int fd)
+{
+    int flags;
+    flags = fcntl (fd, F_GETFL);
+    if (flags == -1)
+        return -1;
+    flags |= O_NONBLOCK;
+    return fcntl (fd, F_SETFL, flags);
+}
+
 typedef struct __spin_task *spin_task_t;
 
 struct __spin_task {

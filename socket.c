@@ -95,16 +95,6 @@ spin_socket_connected (int event, spin_poll_target_t pt)
     }
 }
 
-static int set_nonblocking (int fd)
-{
-    int flags;
-    flags = fcntl (fd, F_GETFL);
-    if (flags == -1)
-        return -1;
-    flags |= O_NONBLOCK;
-    return fcntl (fd, F_SETFL, flags);
-}
-
 int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
                       void (*callback) (spin_stream_t))
 {
@@ -123,7 +113,7 @@ int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
 
     if (sock->fd == -1)
         goto cleanup_and_exit;
-    ret = set_nonblocking (sock->fd);
+    ret = spin_set_nonblocking (sock->fd);
 
     event.events = EPOLLIN | EPOLLOUT | EPOLLET;
     event.data.ptr = &sock->stream.poll_target;
