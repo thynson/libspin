@@ -23,4 +23,23 @@
 #include "stream.h"
 #include "socket.h"
 
+/**
+ * @brief Do internal initialization, creating poll thread, etc
+ * @retval 0 First init
+ * @retval 1 Initialized
+ * @retval -1 Failed
+ * @see spin_uninit
+ */
+int __SPIN_EXPORT__
+spin_init (void);
+
+/**
+ * @brief Do uninitialize
+ * @retval 0 Actually destroyed
+ * @retval -1 Failed
+ * @see spin_init
+ */
+int __SPIN_EXPORT__
+spin_uninit (void);
+
 #endif

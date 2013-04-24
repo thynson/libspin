@@ -36,7 +36,6 @@
 /** @brief Global poller */
 extern struct spin_poller_t
 {
-    unsigned refcount;
     int epollfd;
     int pipe[2];
     pthread_mutex_t lock;
@@ -44,26 +43,6 @@ extern struct spin_poller_t
     pthread_t thread;
     struct timespec basetime;
 } spin_poller;
-
-/**
- * @brief Do internal initialization, creating poll thread, etc
- * @retval 0 First init
- * @retval 1 Initialized
- * @retval -1 Failed
- * @see spin_uninit
- * @note This function may be called multriple times, and it's need to call
- *       spin_uninit same times, to do uninitialization
- */
-extern int spin_init ();
-
-/**
- * @brief Do uninitialize
- * @retval 0 Actually destroyed
- * @retval 1 Reference counter is greater than 0, pending
- * @retval -1 Failed
- * @see spin_init
- */
-extern int spin_uninit ();
 
 
 struct __spin_loop {

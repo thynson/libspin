@@ -30,9 +30,6 @@ spin_loop_t spin_loop_create (void)
 {
     spin_loop_t ret;
 
-    if (spin_init () < 0)
-        return NULL;
-
     ret = (spin_loop_t) calloc (1, sizeof(*ret));
     if (ret == NULL)
         return NULL;
@@ -71,7 +68,6 @@ int spin_loop_destroy (spin_loop_t loop)
     }
     prioque_destroy (loop->prioque);
     free (loop);
-    spin_uninit ();
     return 0;
 }
 

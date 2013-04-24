@@ -42,7 +42,7 @@ libspin_la_SOURCES=\
 				   poll-target.c\
 				   stream.c\
 				   socket.c\
-				   poller.c\
+				   spin.c\
 				   spin.h
 
 SUBDIRS=docs

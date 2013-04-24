@@ -18,7 +18,6 @@
 
 
 struct spin_poller_t spin_poller = {
-    0, /* refcount */
     0, /* epollfd */
     { 0, 0 }, /* pipe */
     PTHREAD_MUTEX_INITIALIZER /* lock */
@@ -75,11 +74,14 @@ void *spin_poll_thread (void *param)
     return NULL;
 }
 
-static int spin_init_once (void)
+int spin_init (void)
 {
     int ret;
     pthread_condattr_t condattr;
     struct epoll_event event;
+
+    if (spin_poller.epollfd > 0)
+        return 1;
 
     ret = pthread_condattr_init (&condattr);
     if (ret != 0)
@@ -134,7 +136,7 @@ error_clean_up:
     return -1;
 }
 
-static void spin_uninit_once (void)
+int spin_uninit (void)
 {
     /* Close the write end so epoll will be notified */
     close (spin_poller.pipe[1]);
@@ -142,35 +144,5 @@ static void spin_uninit_once (void)
     pthread_cond_destroy (&spin_poller.cond);
     close (spin_poller.pipe[0]);
     close (spin_poller.epollfd);
-}
-
-int spin_init ()
-{
-    int retval;
-    pthread_mutex_lock (&spin_poller.lock);
-    if (spin_poller.refcount++ == 0)
-        retval = spin_init_once ();
-    else
-        retval = 1;
-    pthread_mutex_unlock (&spin_poller.lock);
-    return retval;
-}
-
-int spin_uninit ()
-{
-    int retval;
-    pthread_mutex_lock (&spin_poller.lock);
-    if (spin_poller.refcount == 0) {
-        retval = -1;
-    }
-    if (--spin_poller.refcount == 0) {
-        retval = 0;
-    } else {
-        retval = 1;
-    }
-    pthread_mutex_unlock (&spin_poller.lock);
-    if (retval == 0)
-        /* To avoid dead loop we put it here */
-        spin_uninit_once ();
-    return retval;
+    return 0;
 }
