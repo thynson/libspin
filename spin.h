@@ -30,12 +30,19 @@
 #include "prioque.h"
 #include "timespec.h"
 
+#ifndef NDEBUG
+#include <stdio.h> /* For FILE */
+#endif
+
 #define SPIN_DOWNCAST(type, member, args)\
     ((type *)((int8_t *)(args) - offsetof(type, member)))
 
 /** @brief Global poller */
 extern struct spin_poller_t
 {
+#ifndef NDEBUG
+    FILE *log;
+#endif
     int epollfd;
     int pipe[2];
     pthread_mutex_t lock;
@@ -44,6 +51,11 @@ extern struct spin_poller_t
     struct timespec basetime;
 } spin_poller;
 
+#ifndef NDEBUG
+void spin_debug (const char *fmt, ...);
+#else
+#define spin_debug(...)
+#endif
 
 struct __spin_loop {
     /* the following member should only used in running thread */

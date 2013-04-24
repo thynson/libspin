@@ -15,9 +15,16 @@
  */
 
 #include "spin.h"
+#ifndef NDEBUG
+#include <stdarg.h>
+#include <string.h>
+#endif
 
 
 struct spin_poller_t spin_poller = {
+#ifndef NDEBUG
+    NULL,
+#endif
     0, /* epollfd */
     { 0, 0 }, /* pipe */
     PTHREAD_MUTEX_INITIALIZER /* lock */
@@ -83,6 +90,12 @@ int spin_init (void)
     if (spin_poller.epollfd > 0)
         return 1;
 
+#ifndef NDEBUG
+    spin_poller.log = fdopen(dup(fileno(stderr)), "w");
+    if (spin_poller.log == NULL)
+        return -1;
+#endif
+
     ret = pthread_condattr_init (&condattr);
     if (ret != 0)
         goto error_clean_up;
@@ -117,6 +130,9 @@ int spin_init (void)
     ret = pthread_create (&spin_poller.thread, NULL, spin_poll_thread, NULL);
     if (ret == -1)
         goto error_clean_up;
+
+    spin_debug ("libspin initialized");
+
     return 0;
 error_clean_up:
     if (spin_poller.epollfd != 0) {
@@ -146,3 +162,20 @@ int spin_uninit (void)
     close (spin_poller.epollfd);
     return 0;
 }
+
+#ifndef NDEBUG
+void spin_debug(const char *fmt, ...)
+{
+    va_list args;
+
+    assert (fmt != NULL);
+    fprintf (spin_poller.log, "libspin: ");
+
+    va_start (args, fmt);
+    vfprintf (spin_poller.log, fmt, args);
+    va_end (args);
+
+    if (fmt[strlen(fmt) - 1] != '\n')
+        fputc ('\n', spin_poller.log);
+}
+#endif
