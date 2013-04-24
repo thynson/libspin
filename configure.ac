@@ -31,9 +31,16 @@ AC_CHECK_LIB(pthread, pthread_create)
 AC_CHECK_LIB(rt, clock_gettime)
 
 API_VERSION="0:0:0"
-AM_CPPFLAGS="-Wall -Werror -D_GNU_SOURCE=1 -std=c99 -fvisibility=hidden"
+AM_CPPFLAGS="-std=c99 -fvisibility=hidden -Wall -Werror -D_GNU_SOURCE=1"
 AM_CFLAGS=""
 AM_LDFLAGS="-Xlinker --no-undefined"
+
+AC_ARG_ENABLE(debug, [AC_HELP_STRING([--enable-debug], [enable debug])],
+			  [
+			   if test $enableval = no; then
+				   AM_CPPFLAGS="$AM_CPPFLAGS -DNDEBUG"
+			   fi
+			  ], [ AM_CPPFLAGS="$AM_CPPFLAGS -DNDEBUG" ])
 
 AC_SUBST(API_VERSION)
 AC_SUBST(AM_CPPFLAGS)
