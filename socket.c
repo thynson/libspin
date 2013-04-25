@@ -15,6 +15,7 @@
  */
 
 #include "spin.h"
+#include <string.h> /* For strerror_r */
 
 typedef struct __spin_socket *spin_socket_t;
 
@@ -35,30 +36,126 @@ struct __spin_tcp_server {
     struct __spin_task in_task;
 };
 
-static ssize_t
-spin_socket_read (spin_stream_t stream, char *buff, size_t size)
+static int
+spin_socket_read (spin_stream_t stream, char *buff, size_t *size)
 {
     spin_socket_t socket = CAST_STREAM_TO_SOCKET (stream);
     ssize_t ret;
-    do
-        ret = recv (socket->fd, buff, size, 0);
-    while (ret == -1 && errno == EINTR);
-    if (ret > 0 && ret < size) {
-        errno = EAGAIN;
-    }
 
-    return ret;
+    assert (*size <= SSIZE_MAX && *size > 0);
+retry:
+    ret = recv (socket->fd, buff, *size, 0);
+
+    if (ret >= 0) {
+        if (ret < *size) {
+            *size = ret;
+            return 1;
+        } else {
+            *size = ret;
+            return 0;
+        }
+    } else {
+        assert (ret == -1);
+        *size = 0;
+        switch (errno) {
+        /* Need retry */
+        case EINTR:
+            goto retry;
+
+        /* We should wait for an EPOLLIN event */
+        case EAGAIN:
+            return 1;
+
+        /* Fatal error: socket becomes unusable and should be closed */
+        case EPIPE:
+        case ETIMEDOUT:
+        case ENOMEM:
+        case ENOBUFS:
+            /* XXX: Will ENOMEM and ENOBUFS make a socket unusable? */
+            /* TODO: Inform user to close socket */
+            return -1;
+
+        /* Fatal error: must be a bugs in this library */
+        case EFAULT:
+        case EINVAL:
+        case EBADF:
+        case ENOTSOCK:
+        case ENOTCONN:
+        default: /* We put unknown error here */
+            {
+                int err = errno;
+                char buff[1024];
+                strerror_r (err, buff, sizeof (buff));
+                spin_debug ("Fatal error in %s", __func__);
+                spin_debug (buff);
+                abort ();
+            }
+        }
+        return ret;
+    }
 }
 
-static ssize_t
-spin_socket_write  (spin_stream_t stream, const char *buff, size_t size)
+static int
+spin_socket_write  (spin_stream_t stream, const char *buff, size_t *size)
 {
     spin_socket_t socket = CAST_STREAM_TO_SOCKET (stream);
     ssize_t ret;
-    do
-        ret = send (socket->fd, buff, size, MSG_NOSIGNAL);
-    while (ret == -1 && errno == EINTR);
-    return ret;
+
+    assert (*size <= SSIZE_MAX && *size > 0);
+retry:
+    ret = send (socket->fd, buff, *size, MSG_NOSIGNAL);
+    if (ret > 0) {
+        if (ret < *size) {
+            *size = ret;
+            return 1;
+        } else {
+            *size = ret;
+            return 0;
+        }
+    } else {
+        assert (ret == -1);
+        *size = 0;
+        switch (errno) {
+        /* Need retry */
+        case EINTR:
+            goto retry;
+
+        /* We should wait for an EPOLLIN event */
+        case EAGAIN:
+            return 1;
+
+        /* Fatal error: socket becomes unusable and should be closed */
+        case EPIPE:
+        case ETIMEDOUT:
+        case ECONNRESET:
+        case ENOMEM:
+        case ENOBUFS:
+            /* XXX: Will ENOMEM and ENOBUFS make a socket unusable? */
+            /* TODO: Inform user to close socket */
+            return -1;
+
+        /* Fatal error: must be a bugs in this library */
+        case EFAULT:
+        case EINVAL:
+        case EBADF:
+        case ENOTSOCK:
+        case ENOTCONN:
+        /* Since we are neither UNIX socket nor UDP socket, the following
+         * errno should not appear. */
+        case EACCES:
+        case EDESTADDRREQ:
+        default: /* We put unknown error here */
+            {
+                int err = errno;
+                char buff[1024];
+                strerror_r (err, buff, sizeof (buff));
+                spin_debug ("Fatal error in %s", __func__);
+                spin_debug (buff);
+                abort ();
+            }
+        }
+        return ret;
+    }
 }
 
 static int
@@ -209,7 +306,7 @@ retry:
         case EMFILE:
         case ENFILE:
             /* TODO: Report error */
-            break;
+            return -1;
         default:
             abort();
         }
@@ -227,7 +324,7 @@ spin_tcp_server_accept (spin_task_t t)
     size_t max_connect_once = 255;
     int result = 0;
 
-    while (max_connect_once > 0 && result == 0)
+    while (max_connect_once-- > 0 && result == 0)
         result = spin_tcp_server_accept_client (srv);
 
     if (max_connect_once == 0) {

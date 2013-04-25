@@ -203,8 +203,8 @@ int spin_poll_target_test_event (spin_poll_target_t pt,
 
 
 struct spin_stream_spec {
-    ssize_t (*read) (spin_stream_t stream, char *buff, size_t size);
-    ssize_t (*write) (spin_stream_t stream, const char *buff, size_t size);
+    int (*read) (spin_stream_t stream, char *buff, size_t *size);
+    int (*write) (spin_stream_t stream, const char *buff, size_t *size);
     int (*close) (spin_stream_t stream);
 };
 

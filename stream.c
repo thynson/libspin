@@ -24,8 +24,8 @@ static int stream_handle_read (spin_stream_t stream)
     size_t tmpsize = IO_MAX_ONCE_SIZE;
 
     while (tmpsize > 0 && stream->in_req != NULL) {
-        size_t read_size;
-        ssize_t retsize;
+        size_t read_size, complete_size;
+        int result;
         struct spin_io_req *in_req = stream->in_req;
 
         assert (stream->spec.read != NULL);
@@ -37,32 +37,28 @@ static int stream_handle_read (spin_stream_t stream)
         if (read_size > tmpsize)
             read_size = tmpsize;
 
-        retsize = stream->spec.read (stream, in_req->buff + in_req->size,
-                                     read_size);
+        complete_size = read_size;
+        result = stream->spec.read (stream, in_req->buff + in_req->size,
+                                    &complete_size);
 
-        if (retsize == -1) {
-            if (errno == EAGAIN)
-                return -1;
-            else
-                /* TODO: Handle error and test EAGAIN */
-                return 1;
-        } else if (retsize == 0) {
+        if (result == -1)
+            return -1;
+
+        if (complete_size == 0) {
             /* EOF */
             in_req->callback (in_req);
-            return 1;
+            return -1;
         } else {
-            in_req->size += retsize;
-            tmpsize -= retsize;
+            in_req->size += complete_size;
+            tmpsize -= complete_size;
 
             if (in_req->size >= in_req->minsize) {
                 stream->in_req = NULL;
                 in_req->callback (in_req);
             }
-            if (retsize < read_size) {
-                if (errno == EAGAIN) {
-                    return -1;
-                }
-            }
+
+            if (complete_size < read_size)
+                return result;
         }
     }
     return 0;
@@ -73,8 +69,8 @@ static int stream_handle_write (spin_stream_t stream)
     size_t tmpsize = IO_MAX_ONCE_SIZE;
 
     while (tmpsize > 0 && stream->out_req != NULL) {
-        size_t write_size;
-        ssize_t retsize;
+        size_t write_size, complete_size;
+        int result;
         struct spin_io_req *out_req = stream->out_req;
 
         assert (stream->spec.write != NULL);
@@ -85,29 +81,21 @@ static int stream_handle_write (spin_stream_t stream)
         if (write_size > tmpsize)
             write_size  = tmpsize;
 
-        retsize = stream->spec.write (stream, out_req->buff + out_req->size,
-                                      write_size);
+        complete_size = write_size;
+        result = stream->spec.write (stream, out_req->buff + out_req->size,
+                                     &complete_size);
 
-        if (retsize == -1) {
-            if (errno == EAGAIN)
-                return -1;
-            else
-                /* TODO: Handle error and test EAGAIN */
-                return 1;
-        } else if (retsize == 0) {
-            /* XXX: Won't happen if read_size > 0 */
-        } else {
-            out_req->size += retsize;
-            tmpsize -= retsize;
+        if (result == -1)
+            return -1;
 
-            if (out_req->size >= out_req->minsize) {
-                stream->out_req = NULL;
-                out_req->callback(out_req);
-            } else if (retsize < write_size) {
-                if (errno == EAGAIN) {
-                    return -1;
-                }
-            }
+        out_req->size += complete_size;
+        tmpsize -= complete_size;
+
+        if (out_req->size >= out_req->minsize) {
+            stream->out_req = NULL;
+            out_req->callback(out_req);
+        } else if (complete_size < write_size) {
+            return result;
         }
     }
     return 0;
@@ -131,12 +119,13 @@ static void stream_in_task_callback (spin_task_t task)
     int ret;
     spin_stream_t stream = CAST_IN_TASK_TO_STREAM (task);
     ret = stream_handle_read (stream);
-    if (ret == -1) {
+    if (ret == 1) {
         if (stream->in_req != NULL)
             spin_loop_wait_event (stream->poll_target.loop,
                                   &stream->in_task);
         spin_poll_target_clean_cached_event (&stream->poll_target, EPOLLIN);
-    } else if (ret == 1)  {
+    } else if (ret == -1)  {
+        /* TODO: Close resouces */
     } else if (stream->in_req != NULL) {
         spin_loop_next_round (stream->poll_target.loop, &stream->in_task);
     }
@@ -147,12 +136,13 @@ static void stream_out_task_callback (spin_task_t task)
     int ret;
     spin_stream_t stream = CAST_OUT_TASK_TO_STREAM (task);
     ret = stream_handle_write (stream);
-    if (ret == -1) {
+    if (ret == 1) {
         if (stream->out_req != NULL)
             spin_loop_wait_event (stream->poll_target.loop,
                                   &stream->out_task);
         spin_poll_target_clean_cached_event (&stream->poll_target, EPOLLOUT);
-    } else if (ret == 1) {
+    } else if (ret == -1) {
+        /* TODO: Close resouces */
     } else if (stream->out_req != NULL) {
         spin_loop_next_round (stream->poll_target.loop, &stream->out_task);
     }
