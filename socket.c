@@ -144,34 +144,25 @@ cleanup_and_exit:
     return -1;
 }
 
-static void
-spin_tcp_server_accept (spin_task_t t)
+static int
+spin_tcp_server_accept_client (spin_tcp_server_t tcpserver)
 {
-    spin_tcp_server_t srv = SPIN_DOWNCAST (struct __spin_tcp_server,
-                                           in_task, t);
-    size_t max_connect_once = 255;
-    int fd;
     struct sockaddr_storage addr;
-    socklen_t length = sizeof (addr);
+    socklen_t length;
+    spin_socket_t s;
+    struct epoll_event event;
+    struct spin_stream_spec spec;
+    int fd;
 
-    while (max_connect_once > 0) {
-        spin_socket_t s;
-        struct spin_stream_spec spec;
-        struct epoll_event event;
-        fd = accept (srv->fd, (struct sockaddr *)&addr, &length);
-        if (fd ==-1)
-            break;
-        max_connect_once--;
-        if (spin_set_nonblocking (fd) == -1) {
-            /* XXX */
-            close (fd);
-            continue;
-        }
+retry:
+    length = sizeof (addr);
+    fd = accept (tcpserver->fd, (struct sockaddr *) &addr, &length);
 
+    if (fd > 0) {
         s = (spin_socket_t) malloc (sizeof (*s));
         if (s == NULL) {
-            close (fd);
-            break;
+            /*TODO： Report error */
+            return -1;
         }
         s->fd = fd;
         s->callback = NULL;
@@ -179,18 +170,73 @@ spin_tcp_server_accept (spin_task_t t)
         spec.write = &spin_socket_write;
         spec.close = &spin_socket_close;
 
-        spin_stream_init (&s->stream, srv->poll_target.loop, &spec);
+        spin_stream_init (&s->stream, tcpserver->poll_target.loop, &spec);
         event.events = EPOLLIN | EPOLLOUT | EPOLLET;
         event.data.ptr = &s->stream.poll_target;
         epoll_ctl (spin_global.epollfd, EPOLL_CTL_ADD, fd, &event);
-        srv->connected (&s->stream, &addr);
+        tcpserver->connected (&s->stream, &addr);
+        return 0;
+    } else {
+        assert (fd == -1);
+        switch (errno) {
+
+        /* In such case(s) we should ignore and retry */
+        case EINTR:
+        case ECONNABORTED:
+        case EPROTO:
+            goto retry;
+
+        /* In such case(s) we should return and wait an EPOLLIN
+         * NOTE: On Linux EAGAIN is equals to EWOULDBLOCK, list both of them
+         * here will result in compile error. */
+        case EAGAIN:
+            break;
+
+        /* Fatal error, must be a bug of this library */
+        case EBADF:
+        case EINVAL:
+        case EFAULT:
+        case ENOTSOCK:
+        case EOPNOTSUPP:
+
+            abort();
+            break;
+
+        /* Non-fatal error, but should report to user */
+        case EPERM:
+        case ENOBUFS:
+        case ENOMEM:
+        case EMFILE:
+        case ENFILE:
+            /* TODO: Report error */
+            break;
+        default:
+            abort();
+        }
+
+        errno = 0;
+        return 1;
     }
+}
+
+static void
+spin_tcp_server_accept (spin_task_t t)
+{
+    spin_tcp_server_t srv = SPIN_DOWNCAST (struct __spin_tcp_server,
+                                           in_task, t);
+    size_t max_connect_once = 255;
+    int result = 0;
+
+    while (max_connect_once > 0 && result == 0)
+        result = spin_tcp_server_accept_client (srv);
 
     if (max_connect_once == 0) {
         spin_loop_next_round (srv->poll_target.loop, &srv->in_task);
-    } else if (errno == EAGAIN) {
+    } else if (result == 1) {
         spin_poll_target_clean_cached_event (&srv->poll_target, EPOLLIN);
         spin_loop_wait_event (srv->poll_target.loop, &srv->in_task);
+    } else {
+        /* TODO */
     }
 }
 
