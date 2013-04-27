@@ -54,7 +54,7 @@ void *spin_poll_thread (void *param)
             spin_poll_target_t t = (spin_poll_target_t) event[i].data.ptr;
             if (t != NULL) {
                 pthread_spin_lock (&t->lock);
-                event[i].events &= ~(t->cached_events | t->notified_events);
+                event[i].events &= ~t->notified_events;
                 if (event[i].events != 0) {
                     if (t->notified_events != 0)
                         t->notified_events |= event[i].events;

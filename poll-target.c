@@ -22,7 +22,7 @@ static void spin_poll_target_task_callback (spin_task_t task)
     spin_poll_target_t pt = CAST_TASK_TO_POLL_TARGET (task);
     int event = 0;
     pthread_spin_lock (&pt->lock);
-    event = pt->notified_events;
+    event = pt->notified_events & (~pt->cached_events);
     pt->cached_events |= pt->notified_events;
     pt->notified_events = 0;
     pthread_spin_unlock (&pt->lock);
