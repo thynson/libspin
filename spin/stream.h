@@ -22,7 +22,8 @@
 #include <stddef.h>
 
 /** @breif Stream handle */
-typedef struct __spin_stream *spin_stream_t;
+typedef struct __spin_istream *spin_istream_t;
+typedef struct __spin_ostream *spin_ostream_t;
 
 /** @brief A struct descript I/O request
  *  @note It's sugguest to **extends** this structure for storing context */
@@ -46,20 +47,31 @@ struct spin_io_req {
     void (*callback) (struct spin_io_req *req);
 };
 
+struct spin_pipe_req {
+    void (*callback) (struct spin_pipe_req *req);
+    size_t size;
+    size_t minsize;
+    size_t maxsize;
+};
+
+spin_streamop_t
+
 /**
  * @brief Read from a stream asynchronously
- * @param stream The stream to be read from
+ * @param istream The stream to be read from
  * @param req The description for this I/O operation request
  */
 int __SPIN_EXPORT__
-spin_stream_read (spin_stream_t stream, struct spin_io_req *req);
+spin_read (spin_istream_t istream, struct spin_io_req *req);
 
 /**
  * @brief Write to a stream asynchronously
- * @param stream The stream to be written to
+ * @param ostream The stream to be written to
  * @param req The description for this I/O operation request
  */
 int __SPIN_EXPORT__
-spin_stream_write (spin_stream_t stream, struct spin_io_req *req);
+spin_write (spin_ostream_t ostream, struct spin_io_req *req);
 
+int __SPIN_EXPORT__
+spin_pipe (spin_istream_t istream, spin_ostream_t ostream,
 #endif
