@@ -68,6 +68,7 @@ retry:
 
         /* Fatal error: socket becomes unusable and should be closed */
         case EPIPE:
+        case ECONNRESET:
         case ETIMEDOUT:
         case ENOMEM:
         case ENOBUFS:
@@ -84,10 +85,12 @@ retry:
         default: /* We put unknown error here */
             {
                 int err = errno;
-                char buff[1024];
-                strerror_r (err, buff, sizeof (buff));
+                assert (err != 0);
+                char tmp[1024] = { 0 };
+                /* This is GNU version of strerror_r */
+                const char *str = strerror_r (err, tmp, sizeof(tmp));
                 spin_debug ("Fatal error in %s", __func__);
-                spin_debug (buff);
+                spin_debug ("%s", str);
                 abort ();
             }
         }
@@ -147,10 +150,12 @@ retry:
         default: /* We put unknown error here */
             {
                 int err = errno;
-                char buff[1024];
-                strerror_r (err, buff, sizeof (buff));
+                assert (err != 0);
+                char tmp[1024] = { 0 };
+                /* This is GNU version of strerror_r */
+                const char *str = strerror_r (err, tmp, sizeof(tmp));
                 spin_debug ("Fatal error in %s", __func__);
-                spin_debug (buff);
+                spin_debug ("%s", str);
                 abort ();
             }
         }
