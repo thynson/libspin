@@ -19,11 +19,16 @@
 
 typedef struct __spin_socket *spin_socket_t;
 
+enum {
+    SOCK_CLOSE_READ = (1 << 0),
+    SOCK_CLOSE_WRITE = (1 << 1)
+};
 
 struct __spin_socket {
     struct __spin_stream stream;
     int fd;
     void (*callback) (spin_stream_t);
+    int state;
 };
 
 #define CAST_STREAM_TO_SOCKET(x) \
@@ -175,6 +180,7 @@ spin_socket_connected (int event, spin_poll_target_t pt)
 {
     spin_socket_t s = CAST_STREAM_TO_SOCKET (CAST_POLL_TARGET_TO_STREAM (pt));
 
+    s->state = 0;
     link_list_dettach(&s->stream.poll_target.loop->polltask,
                       &s->stream.out_task.l);
     if (event & EPOLLERR) {
@@ -212,6 +218,7 @@ int spin_tcp_connect (spin_loop_t loop, const struct sockaddr_storage *addr,
 
     sock->callback = callback;
     sock->fd = socket (addr->ss_family, SOCK_STREAM, 0);
+    sock->state = 0;
 
     if (sock->fd == -1)
         goto cleanup_and_exit;
@@ -268,6 +275,7 @@ retry:
         }
         s->fd = fd;
         s->callback = NULL;
+        s->state = 0;
         spec.read = &spin_socket_read;
         spec.write = &spin_socket_write;
         spec.close = &spin_socket_close;
