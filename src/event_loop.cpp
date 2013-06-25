@@ -263,8 +263,15 @@ namespace spin {
             std::cv_status status
               = poller::s_condition_variable.wait_until(guard, tp);
             if (status == std::cv_status::timeout) {
-              tasks.push_back(*m_timer_event_set.begin());
-              m_timer_event_set.erase(m_timer_event_set.begin());
+              // Insert all timer event that have same time point with tp
+              auto t = m_timer_event_set.begin();
+              do {
+                tasks.push_back(*t);
+                t->set_node<timer_event>::unlink();
+                if (m_timer_event_set.empty())
+                  break;
+                t = m_timer_event_set.begin();
+              } while(t->get_time_point() == tp);
               return tasks;
             }
           } while (m_notified_event_list.empty());
