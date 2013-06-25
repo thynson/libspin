@@ -24,6 +24,7 @@ namespace spin {
       unique_lock guard(poller_thread::s_lock);
       if (m_notified_event_list.empty()) {
         if (tasks.size() == 0 && m_io_event_list.size() != 0) {
+          // No timer, just wait for other event
           do
             poller_thread::s_condition_variable.wait(guard);
           while (m_notified_event_list.empty());
@@ -35,6 +36,7 @@ namespace spin {
       unique_lock guard(poller_thread::s_lock);
       if (m_notified_event_list.empty()) {
         if (tasks.size() == 0 && m_io_event_list.size() != 0) {
+          // There are times, wait until the latest expire time point
           do {
             std::cv_status status
               = poller_thread::s_condition_variable.wait_until(guard, tp);
