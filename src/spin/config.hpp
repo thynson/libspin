@@ -15,10 +15,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __SPIN_SPIN_HPP_INCLUDED__
-#define __SPIN_SPIN_HPP_INCLUDED__
+#ifndef __SPIN_CONFIG_HPP_INCLUDED__
+#define __SPIN_CONFIG_HPP_INCLUDED__
 
-#include "utils.hpp"
-#include "event_loop.hpp"
+#ifdef __unix__
+# if defined(PIC) && defined(__BUILD_SPIN__)
+#   if defined(__GNUC__) || defined(__clang__)
+#     define __SPIN_EXPORT__ __attribute__((visibility("default")))
+#     define __SPIN_INTERNAL__ __attribute__((visibility("hidden")))
+#   endif
+# else
+#   define __SPIN_EXPORT__
+#   define __SPIN_INTERNAL__
+# endif
+#endif
 
 #endif

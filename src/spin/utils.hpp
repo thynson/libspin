@@ -20,23 +20,10 @@
 
 #include <ratio>
 #include <chrono>
-#include <thread>
-#include <condition_variable>
 #include <mutex>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>
-
-#ifdef __unix__
-# if defined(PIC) && defined(__BUILD_SPIN__)
-#   if defined(__GNUC__) || defined(__clang__)
-#     define __SPIN_EXPORT__ __attribute__((visibility("default")))
-#     define __SPIN_INTERNAL__ __attribute__((visibility("hidden")))
-#   endif
-# else
-#   define __SPIN_EXPORT__
-#   define __SPIN_INTERNAL__
-# endif
-#endif
+#include "config.hpp"
 
 namespace spin {
 
