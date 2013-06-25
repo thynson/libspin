@@ -34,10 +34,6 @@ AM_CFLAGS="-std=c99"
 AM_CXXFLAGS="-std=c++11"
 AM_LDFLAGS="-Xlinker --no-undefined -lpthread"
 
-AC_LANG([C++])
-AC_CHECK_HEADER("boost/intrusive/list.hpp")
-AC_CHECK_HEADER("boost/intrusive/set.hpp")
-
 AC_SUBST(API_VERSION)
 AC_SUBST(AM_CPPFLAGS)
 AC_SUBST(AM_CXXFLAGS)

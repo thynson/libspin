@@ -30,14 +30,16 @@ namespace spin {
 
   class event_loop;
 
-  class __SPIN_EXPORT__ event : public list_node<event> {
+  class __SPIN_EXPORT__ event : public list_node<event>
+  {
   public:
     virtual ~event();
     virtual void callback();
   };
 
   class __SPIN_EXPORT__ timer_event : public event
-                                   , public set_node<timer_event> {
+                                    , public set_node<timer_event>
+  {
   public:
     timer_event();
     virtual ~timer_event();
@@ -56,12 +58,14 @@ namespace spin {
   };
 
   class __SPIN_EXPORT__ io_event : public event
-                                 , public list_node<io_event> {
+                                 , public list_node<io_event>
+  {
   };
 
 
 
-  class __SPIN_EXPORT__ poller_thread {
+  class __SPIN_EXPORT__ poller_thread
+  {
   public:
     ~poller_thread();
 
@@ -86,7 +90,8 @@ namespace spin {
     std::thread m_tid;
   };
 
-  class __SPIN_EXPORT__ event_loop {
+  class __SPIN_EXPORT__ event_loop
+  {
   public:
     event_loop();
     ~event_loop();
