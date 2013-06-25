@@ -41,8 +41,12 @@ namespace spin {
                                     , public set_node<timer_event>
   {
   public:
-    timer_event();
+    timer_event(const time_point &tp);
+    timer_event(time_point &&tp);
     virtual ~timer_event();
+
+    void cancel()
+    { set_node<timer_event>::unlink(); }
 
     friend bool operator < (const timer_event &lhs, const timer_event &rhs)
     { return lhs.m_tp < rhs.m_tp; }
@@ -96,6 +100,9 @@ namespace spin {
     event_loop();
     ~event_loop();
     void run ();
+
+    void post(timer_event &tv)
+    { m_timer_event_set.insert(tv); }
 
   private:
 

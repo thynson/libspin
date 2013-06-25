@@ -51,12 +51,14 @@ namespace spin {
 
   template<typename Tag>
     using set_node
-    = boost::intrusive::set_base_hook<boost::intrusive::tag<Tag>>;
+    = boost::intrusive::set_base_hook<boost::intrusive::tag<Tag>
+    , boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
   template<typename Type, typename Tag=Type>
     using multiset
     = boost::intrusive::multiset<Type
-    , boost::intrusive::base_hook<set_node<Tag>>>;
+    , boost::intrusive::base_hook<set_node<Tag>>
+    , boost::intrusive::constant_time_size<false>>;
 
   using time_point = std::chrono::time_point<std::chrono::steady_clock>;
   using time_duration = std::chrono::duration<long, std::nano>;
