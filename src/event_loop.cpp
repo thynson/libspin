@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2013 LAN Xingcan
+ * All right reserved
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
 
 #include "spin/event_loop.hpp"
 #include <sys/epoll.h>
@@ -11,28 +27,42 @@
 
 namespace spin {
 
-  //
+  // @brief singleton I/O poller for all event loop
   class event_loop::poller
   {
   public:
     ~poller();
 
+    // @brief singleton instance getter
     static std::shared_ptr<poller> get_instance();
 
+    // @breif Creation timestamp
     const time_point base_timestamp;
+
+    // @brief epoll file descripter
     const int epollfd;
 
+    // @brief poller lock
     static std::mutex s_lock;
+
+    // @brief poller condition variable for notifying I/O event
     static std::condition_variable s_condition_variable;
 
   private:
+    // @brief Constructor
+    // @note Private constructor that will only be called by get_instance()
+    // with a ::unique_lock that hold the #s_mutex as argument
     poller(unique_lock &uq);
+
     poller(const poller &) = delete;
     poller(poller &&) = delete;
     poller &operator = (const poller &) = delete;
     poller &operator = (poller &&) = delete;
 
+    // @brief poller thread routine
     static void routine();
+
+    // @brief Weak reference to poller instance
     static std::weak_ptr<poller> s_instance;
 
     // @brief a pair of pipe, close write-end to notify poller thread to exit
@@ -67,6 +97,8 @@ namespace spin {
       // Wait for initialization of poller and get epollfd and pipe
       // notifier
       unique_lock guard(s_lock);
+
+      // Notify poller that we are ready
       s_condition_variable.notify_all();
       auto p = s_instance.lock();
       if (!p)
@@ -123,6 +155,10 @@ namespace spin {
         throw std::exception();
       }
 
+
+      // Register EPOLLIN for read-end of m_exit_notifier, so that when
+      // write-end be closed, the poller will be noticed and know it's time to
+      // exit
       epoll_event ev;
       ev.events = EPOLLIN | EPOLLET;
       ev.data.ptr = nullptr;
@@ -131,6 +167,7 @@ namespace spin {
       if (ret == -1)
         throw std::exception();
 
+      // Wait till poller thread is ready
       s_condition_variable.wait(uq);
     } catch (...) {
       // Clean up resouces that won't be automatically done by compiler
@@ -152,9 +189,14 @@ namespace spin {
   //
   event_loop::poller::~poller()
   {
-    //std::lock_guard<std::mutex> lock(s_lock);
+    // Close the write-end of this pipe to trigger an EPOLLIN event to notify
+    // the thread to exit
     close(m_exit_notifier[1]);
+
+    // Now wait the poler thread to join
     m_tid.join();
+
+    // Finally close all the other resources
     close(m_exit_notifier[0]);
     close(epollfd);
   }
@@ -190,6 +232,10 @@ namespace spin {
   {
   }
 
+  // @brief Wait for events
+  // @return list of event
+  // This function will block if there are any event would be fired, or return
+  // a empty list immediately to if the are no event would be fired any more
   list<event> event_loop::wait_for_events()
   {
     list<event> tasks;
