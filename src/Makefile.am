@@ -17,6 +17,11 @@
 AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 
+libspin_ladir=$(includedir)/spin
 lib_LTLIBRARIES=libspin.la
+libspin_la_HEADERS=spin/spin.hpp\
+									 spin/utils.hpp\
+									 spin/event_loop.hpp
+
 libspin_la_SOURCES=event_loop.cpp\
 									 poller_thread.cpp
