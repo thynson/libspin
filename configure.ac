@@ -15,21 +15,28 @@
 #
 
 AC_PREREQ([2.67])
-AC_INIT([libspin++], [0.0.1])
+AC_INIT([libspin], [0.0.1])
 
 AC_CONFIG_MACRO_DIR([build-aux/m4])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([1.11 dist-xz])
+
+AC_PROG_CXX
 AM_PROG_LIBTOOL
 LT_INIT
 AM_SILENT_RULES([yes])
+
 
 API_VERSION="0:0:0"
 AM_CPPFLAGS="-Wall -Werror -D_GNU_SOURCE=1 -fvisibility=hidden"
 AM_CFLAGS="-std=c99"
 AM_CXXFLAGS="-std=c++11"
 AM_LDFLAGS="-Xlinker --no-undefined -lpthread"
+
+AC_LANG([C++])
+AC_CHECK_HEADER("boost/intrusive/list.hpp")
+AC_CHECK_HEADER("boost/intrusive/set.hpp")
 
 AC_SUBST(API_VERSION)
 AC_SUBST(AM_CPPFLAGS)
@@ -43,6 +50,7 @@ AC_PROG_CXX([clang++ g++])
 
 AC_SUBST(VERSION)
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([test/Makefile])
 AC_OUTPUT
 
 
