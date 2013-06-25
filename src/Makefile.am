@@ -17,5 +17,6 @@
 AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 
-SUBDIRS=src test
-
+lib_LTLIBRARIES=libspin.la
+libspin_la_SOURCES=event_loop.cpp\
+									 poller_thread.cpp
