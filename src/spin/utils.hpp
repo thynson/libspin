@@ -60,7 +60,7 @@ namespace spin {
 
   using time_point = std::chrono::time_point<std::chrono::steady_clock>;
   using time_duration = std::chrono::duration<long, std::nano>;
-  using lock_guard = std::lock_guard<std::unique_lock<std::mutex>>;
+  using unique_lock = std::unique_lock<std::mutex>;
 
 
   template<typename Tag>

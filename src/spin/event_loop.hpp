@@ -74,7 +74,7 @@ namespace spin {
     static std::condition_variable s_condition_variable;
 
   private:
-    poller_thread(std::unique_lock<std::mutex> &uq);
+    poller_thread(unique_lock &uq);
     poller_thread(const poller_thread &) = delete;
     poller_thread(poller_thread &&) = delete;
     poller_thread &operator = (const poller_thread &) = delete;

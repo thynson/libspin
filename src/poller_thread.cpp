@@ -1,7 +1,7 @@
-#include "spin/spin.hpp"
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include "spin/event_loop.hpp"
 
 namespace spin {
 
@@ -23,8 +23,7 @@ namespace spin {
     {
       // Wait for initialization of poller_thread and get epollfd and pipe
       // notifier
-      std::unique_lock<std::mutex> uq(s_lock, std::defer_lock);
-      lock_guard guard(uq);
+      unique_lock guard(s_lock);
       s_condition_variable.notify_all();
       auto p = s_instance.lock();
       if (!p)
@@ -63,7 +62,7 @@ namespace spin {
   // from poller_thread::get_instance() and poller_thread::s_lock should be
   // ensure locked.
   //
-  poller_thread::poller_thread(std::unique_lock<std::mutex> &uq)
+  poller_thread::poller_thread(unique_lock &uq)
     try
     : base_timestamp(std::chrono::steady_clock::now())
     , epollfd(epoll_create1(O_CLOEXEC))
@@ -126,12 +125,11 @@ namespace spin {
   {
     auto ret = s_instance.lock();
     if (!ret) {
-      std::unique_lock<std::mutex> uq(s_lock, std::defer_lock);
-      lock_guard lock(uq);
+      unique_lock lock(s_lock);
       std::atomic_thread_fence(std::memory_order_acquire);
       ret = s_instance.lock();
       if (!ret) {
-        std::shared_ptr<poller_thread> p(new poller_thread(uq));
+        std::shared_ptr<poller_thread> p(new poller_thread(lock));
         s_instance = p;
         std::atomic_thread_fence(std::memory_order_release);
         return p;

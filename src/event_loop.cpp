@@ -21,25 +21,23 @@ namespace spin {
     tasks.swap(m_pending_event_list);
 
     if (m_timer_event_set.empty()) {
-      std::unique_lock<std::mutex> uq(poller_thread::s_lock, std::defer_lock);
-      lock_guard lock(uq);
+      unique_lock guard(poller_thread::s_lock);
       if (m_notified_event_list.empty()) {
         if (tasks.size() == 0 && m_io_event_list.size() != 0) {
           do
-            poller_thread::s_condition_variable.wait(uq);
+            poller_thread::s_condition_variable.wait(guard);
           while (m_notified_event_list.empty());
           tasks.swap(m_notified_event_list);
         }
       }
     } else {
       auto &tp = m_timer_event_set.begin()->get_time_point();
-      std::unique_lock<std::mutex> uq(poller_thread::s_lock, std::defer_lock);
-      lock_guard lock(uq);
+      unique_lock guard(poller_thread::s_lock);
       if (m_notified_event_list.empty()) {
         if (tasks.size() == 0 && m_io_event_list.size() != 0) {
           do {
             std::cv_status status
-              = poller_thread::s_condition_variable.wait_until(uq, tp);
+              = poller_thread::s_condition_variable.wait_until(guard, tp);
             if (status == std::cv_status::timeout) {
               tasks.push_back(*m_timer_event_set.begin());
               m_timer_event_set.erase(m_timer_event_set.begin());
