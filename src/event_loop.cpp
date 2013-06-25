@@ -11,12 +11,13 @@
 
 namespace spin {
 
-  class event_loop::poller_thread
+  //
+  class event_loop::poller
   {
   public:
-    ~poller_thread();
+    ~poller();
 
-    static std::shared_ptr<poller_thread> get_instance();
+    static std::shared_ptr<poller> get_instance();
 
     const time_point base_timestamp;
     const int epollfd;
@@ -25,27 +26,31 @@ namespace spin {
     static std::condition_variable s_condition_variable;
 
   private:
-    poller_thread(unique_lock &uq);
-    poller_thread(const poller_thread &) = delete;
-    poller_thread(poller_thread &&) = delete;
-    poller_thread &operator = (const poller_thread &) = delete;
-    poller_thread &operator = (poller_thread &&) = delete;
+    poller(unique_lock &uq);
+    poller(const poller &) = delete;
+    poller(poller &&) = delete;
+    poller &operator = (const poller &) = delete;
+    poller &operator = (poller &&) = delete;
 
-    static void poller();
-    static std::weak_ptr<poller_thread> s_instance;
-    int m_pipe[2];
+    static void routine();
+    static std::weak_ptr<poller> s_instance;
+
+    // @brief a pair of pipe, close write-end to notify poller thread to exit
+    int m_exit_notifier[2];
+
+    // @brief thread id
     std::thread m_tid;
   };
 
 
-  std::weak_ptr<event_loop::poller_thread>
-    event_loop::poller_thread::s_instance;
+  std::weak_ptr<event_loop::poller>
+    event_loop::poller::s_instance;
 
   std::mutex
-    event_loop::poller_thread::s_lock;
+    event_loop::poller::s_lock;
 
   std::condition_variable
-    event_loop::poller_thread::s_condition_variable;
+    event_loop::poller::s_condition_variable;
 
   //
   // Poller thread routine
@@ -53,13 +58,13 @@ namespace spin {
   // This routine polls all epoll events and dispatch them to corresponding
   // evnet loop until this thread be notified to exit.
   //
-  void event_loop::poller_thread::poller()
+  void event_loop::poller::routine()
   {
     int epollfd;
     int pipe_read_end;
 
     {
-      // Wait for initialization of poller_thread and get epollfd and pipe
+      // Wait for initialization of poller and get epollfd and pipe
       // notifier
       unique_lock guard(s_lock);
       s_condition_variable.notify_all();
@@ -67,7 +72,7 @@ namespace spin {
       if (!p)
         return;
       epollfd = p->epollfd;
-      pipe_read_end = p->m_pipe[0];
+      pipe_read_end = p->m_exit_notifier[0];
     }
 
     bool will_exit = false;
@@ -94,17 +99,17 @@ namespace spin {
   }
 
   //
-  // Constructor of poller_thread
+  // Constructor of poller
   //
   // @note This constructor is declared as private, it should only be called
-  // from poller_thread::get_instance() and poller_thread::s_lock should be
+  // from poller::get_instance() and poller::s_lock should be
   // ensure locked.
   //
-  event_loop::poller_thread::poller_thread(unique_lock &uq)
+  event_loop::poller::poller(unique_lock &uq)
     try
     : base_timestamp(std::chrono::steady_clock::now())
     , epollfd(epoll_create1(O_CLOEXEC))
-    , m_tid(poller)
+    , m_tid(routine)
     {
       if (!uq.owns_lock())
         throw std::exception();
@@ -113,7 +118,7 @@ namespace spin {
         // FIXME:
         throw std::exception();
       }
-      int ret = pipe2(m_pipe, O_CLOEXEC | O_NONBLOCK);
+      int ret = pipe2(m_exit_notifier, O_CLOEXEC | O_NONBLOCK);
       if (ret == -1) {
         throw std::exception();
       }
@@ -122,7 +127,7 @@ namespace spin {
       ev.events = EPOLLIN | EPOLLET;
       ev.data.ptr = nullptr;
 
-      ret = epoll_ctl (epollfd, EPOLL_CTL_ADD, m_pipe[0], &ev);
+      ret = epoll_ctl (epollfd, EPOLL_CTL_ADD, m_exit_notifier[0], &ev);
       if (ret == -1)
         throw std::exception();
 
@@ -132,35 +137,35 @@ namespace spin {
       if (epollfd != 0) {
         close (epollfd);
       }
-      if (m_pipe[0] > 0)
-        close (m_pipe[0]);
+      if (m_exit_notifier[0] > 0)
+        close (m_exit_notifier[0]);
 
-      if (m_pipe[1] > 0)
-        close (m_pipe[1]);
+      if (m_exit_notifier[1] > 0)
+        close (m_exit_notifier[1]);
       throw;
     }
 
   //
-  // Destructor of poller_thread
+  // Destructor of poller
   //
-  // will notify the poller_thread to exit and then join it
+  // will notify the poller to exit and then join it
   //
-  event_loop::poller_thread::~poller_thread()
+  event_loop::poller::~poller()
   {
     //std::lock_guard<std::mutex> lock(s_lock);
-    close(m_pipe[1]);
+    close(m_exit_notifier[1]);
     m_tid.join();
-    close(m_pipe[0]);
+    close(m_exit_notifier[0]);
     close(epollfd);
   }
 
   //
-  // Get instance of poller_thread
+  // Get instance of poller
   //
   // This function is a double-checked singleton helper function
   //
-  std::shared_ptr<event_loop::poller_thread>
-    event_loop::poller_thread::get_instance()
+  std::shared_ptr<event_loop::poller>
+    event_loop::poller::get_instance()
     {
       auto ret = s_instance.lock();
       if (!ret) {
@@ -168,7 +173,7 @@ namespace spin {
         std::atomic_thread_fence(std::memory_order_acquire);
         ret = s_instance.lock();
         if (!ret) {
-          std::shared_ptr<poller_thread> p(new poller_thread(lock));
+          std::shared_ptr<poller> p(new poller(lock));
           s_instance = p;
           std::atomic_thread_fence(std::memory_order_release);
           return p;
@@ -178,7 +183,7 @@ namespace spin {
     }
 
   event_loop::event_loop()
-    : m_poller_thread(poller_thread::get_instance())
+    : m_poller(poller::get_instance())
   { }
 
   event_loop::~event_loop()
@@ -191,12 +196,12 @@ namespace spin {
     tasks.swap(m_pending_event_list);
 
     if (m_timer_event_set.empty()) {
-      unique_lock guard(poller_thread::s_lock);
+      unique_lock guard(poller::s_lock);
       if (m_notified_event_list.empty()) {
         if (tasks.empty() && !m_io_event_list.empty()) {
           // No timer, just wait for other event
           do
-            poller_thread::s_condition_variable.wait(guard);
+            poller::s_condition_variable.wait(guard);
           while (m_notified_event_list.empty());
           //tasks.swap(m_notified_event_list);
         }
@@ -204,13 +209,13 @@ namespace spin {
       tasks.splice(tasks.end(), m_notified_event_list);
     } else {
       auto &tp = m_timer_event_set.begin()->get_time_point();
-      unique_lock guard(poller_thread::s_lock);
+      unique_lock guard(poller::s_lock);
       if (m_notified_event_list.empty()) {
         if (tasks.empty()) {
           // There are times, wait until the latest expire time point
           do {
             std::cv_status status
-              = poller_thread::s_condition_variable.wait_until(guard, tp);
+              = poller::s_condition_variable.wait_until(guard, tp);
             if (status == std::cv_status::timeout) {
               tasks.push_back(*m_timer_event_set.begin());
               m_timer_event_set.erase(m_timer_event_set.begin());

@@ -71,7 +71,7 @@ namespace spin {
 
   class __SPIN_EXPORT__ event_loop
   {
-    class poller_thread;
+    class poller;
   public:
     event_loop();
     ~event_loop();
@@ -93,7 +93,7 @@ namespace spin {
     list<event> m_notified_event_list;
     list<io_event> m_io_event_list;
     multiset<timer_event> m_timer_event_set;
-    std::shared_ptr<poller_thread> m_poller_thread;
+    std::shared_ptr<poller> m_poller;
 
   };
 
