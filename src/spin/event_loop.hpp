@@ -33,17 +33,18 @@ namespace spin {
   class __SPIN_EXPORT__ event : public list_node<event>
   {
   public:
-    virtual ~event();
-    virtual void callback();
+    virtual ~event() {}
+    virtual void callback() = 0;
   };
 
   class __SPIN_EXPORT__ timer_event : public event
                                     , public set_node<timer_event>
   {
   public:
-    timer_event(const time_point &tp);
-    timer_event(time_point &&tp);
-    virtual ~timer_event();
+    timer_event(const time_point &tp) : m_tp(tp) {}
+
+    timer_event(time_point &&tp) : m_tp(tp) {}
+    virtual ~timer_event() {}
 
     void cancel()
     { set_node<timer_event>::unlink(); }

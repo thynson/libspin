@@ -23,19 +23,20 @@ namespace spin {
     if (m_timer_event_set.empty()) {
       unique_lock guard(poller_thread::s_lock);
       if (m_notified_event_list.empty()) {
-        if (tasks.size() == 0 && m_io_event_list.size() != 0) {
+        if (tasks.empty() && !m_io_event_list.empty()) {
           // No timer, just wait for other event
           do
             poller_thread::s_condition_variable.wait(guard);
           while (m_notified_event_list.empty());
-          tasks.swap(m_notified_event_list);
+          //tasks.swap(m_notified_event_list);
         }
       }
+      tasks.splice(tasks.end(), m_notified_event_list);
     } else {
       auto &tp = m_timer_event_set.begin()->get_time_point();
       unique_lock guard(poller_thread::s_lock);
       if (m_notified_event_list.empty()) {
-        if (tasks.size() == 0 && m_io_event_list.size() != 0) {
+        if (tasks.empty()) {
           // There are times, wait until the latest expire time point
           do {
             std::cv_status status
@@ -48,6 +49,7 @@ namespace spin {
           } while (m_notified_event_list.empty());
         }
       }
+      tasks.splice(tasks.end(), m_notified_event_list);
     }
     return tasks;
   }
