@@ -28,7 +28,7 @@
 namespace spin {
 
   // @brief singleton I/O poller for all event loop
-  class event_loop::poller
+  class __SPIN_INTERNAL__ event_loop::poller
   {
   public:
     ~poller();

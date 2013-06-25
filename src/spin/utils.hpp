@@ -27,13 +27,15 @@
 #include <boost/intrusive/set.hpp>
 
 #ifdef __unix__
-#   ifdef PIC
-#       if defined(__GNUC__) || defined(__clang__)
-#           define __SPIN_EXPORT__ __attribute__((visibility("default")))
-#       endif
-#   else
-#       define __SPIN_EXPORT__
+# if defined(PIC) && defined(__BUILD_SPIN__)
+#   if defined(__GNUC__) || defined(__clang__)
+#     define __SPIN_EXPORT__ __attribute__((visibility("default")))
+#     define __SPIN_INTERNAL__ __attribute__((visibility("hidden")))
 #   endif
+# else
+#   define __SPIN_EXPORT__
+#   define __SPIN_INTERNAL__
+# endif
 #endif
 
 namespace spin {

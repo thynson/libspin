@@ -71,7 +71,7 @@ namespace spin {
 
   class __SPIN_EXPORT__ event_loop
   {
-    class poller;
+    class __SPIN_INTERNAL__ poller;
   public:
     event_loop();
     ~event_loop();
@@ -87,7 +87,7 @@ namespace spin {
     event_loop(event_loop &&) = delete;
     event_loop &operator = (event_loop &&) = delete;
 
-    list<event> wait_for_events();
+    list<event> __SPIN_INTERNAL__ wait_for_events();
 
     list<event> m_pending_event_list;
     list<event> m_notified_event_list;

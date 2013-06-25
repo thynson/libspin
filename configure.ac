@@ -29,7 +29,7 @@ AM_SILENT_RULES([yes])
 
 
 API_VERSION="0:0:0"
-AM_CPPFLAGS="-Wall -Werror -D_GNU_SOURCE=1 -fvisibility=hidden"
+AM_CPPFLAGS="-Wall -Werror -fvisibility=hidden -D__BUILD_SPIN__=1"
 AM_CFLAGS="-std=c99"
 AM_CXXFLAGS="-std=c++11"
 AM_LDFLAGS="-Xlinker --no-undefined -lpthread"
