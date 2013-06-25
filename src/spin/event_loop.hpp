@@ -69,34 +69,9 @@ namespace spin {
 
 
 
-  class __SPIN_EXPORT__ poller_thread
-  {
-  public:
-    ~poller_thread();
-
-    static std::shared_ptr<poller_thread> get_instance();
-
-    const time_point base_timestamp;
-    const int epollfd;
-
-    static std::mutex s_lock;
-    static std::condition_variable s_condition_variable;
-
-  private:
-    poller_thread(unique_lock &uq);
-    poller_thread(const poller_thread &) = delete;
-    poller_thread(poller_thread &&) = delete;
-    poller_thread &operator = (const poller_thread &) = delete;
-    poller_thread &operator = (poller_thread &&) = delete;
-
-    static void poller();
-    static std::weak_ptr<poller_thread> s_instance;
-    int m_pipe[2];
-    std::thread m_tid;
-  };
-
   class __SPIN_EXPORT__ event_loop
   {
+    class poller_thread;
   public:
     event_loop();
     ~event_loop();

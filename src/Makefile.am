@@ -23,5 +23,4 @@ libspin_la_HEADERS=spin/spin.hpp\
 									 spin/utils.hpp\
 									 spin/event_loop.hpp
 
-libspin_la_SOURCES=event_loop.cpp\
-									 poller_thread.cpp
+libspin_la_SOURCES=event_loop.cpp
