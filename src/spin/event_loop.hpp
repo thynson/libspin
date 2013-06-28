@@ -24,49 +24,9 @@
 #include <memory>
 #include <chrono>
 #include "utils.hpp"
+#include "event.hpp"
 
 namespace spin {
-
-  class event_loop;
-
-  class __SPIN_EXPORT__ event : public list_node<event>
-  {
-  public:
-    virtual ~event() {}
-    virtual void callback() = 0;
-  };
-
-  class __SPIN_EXPORT__ timer_event : public event
-                                    , public set_node<timer_event>
-  {
-  public:
-    timer_event(const time_point &tp) : m_tp(tp) {}
-
-    timer_event(time_point &&tp) : m_tp(tp) {}
-    virtual ~timer_event() {}
-
-    void cancel()
-    { set_node<timer_event>::unlink(); }
-
-    friend bool operator < (const timer_event &lhs, const timer_event &rhs)
-    { return lhs.m_tp < rhs.m_tp; }
-
-    friend bool operator > (const timer_event &lhs, const timer_event &rhs)
-    { return lhs.m_tp > rhs.m_tp; }
-
-    const time_point &get_time_point()
-    { return m_tp; }
-
-  private:
-    time_point m_tp;
-  };
-
-  class __SPIN_EXPORT__ io_event : public event
-                                 , public list_node<io_event>
-  {
-  };
-
-
 
   class __SPIN_EXPORT__ event_loop
   {
