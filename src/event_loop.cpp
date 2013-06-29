@@ -41,11 +41,8 @@ namespace spin {
     // @brief epoll file descripter
     const int epollfd;
 
-    // @brief poller lock
-    std::mutex m_lock_poller;
-
-    // @brief poller condition variable for notifying I/O event
-    std::condition_variable m_condition_variable;
+    // @brief poll
+    list<event> poll(event_loop &loop);
 
   private:
     // @brief Constructor
@@ -69,6 +66,12 @@ namespace spin {
 
     // @brief a pair of pipe, close write-end to notify poller thread to exit
     int m_exit_notifier[2];
+
+    // @brief poller lock
+    std::mutex m_lock_poller;
+
+    // @brief poller condition variable for notifying I/O event
+    std::condition_variable m_condition_variable;
 
     // @brief thread id
     std::thread m_tid;
@@ -222,6 +225,55 @@ namespace spin {
       return ret;
     }
 
+  // @brief Poll event for an event loop
+  // @param loop The event loop
+  //
+  // This function will block until an event is fired or return an empty list
+  // immediately if there is no event will be fired
+  list<event> event_loop::poller::poll(event_loop &loop)
+  {
+    list<event> tasks;
+    tasks.swap(loop.m_pending_event_list);
+
+    if (loop.m_timer_event_set.empty()) {
+      unique_lock guard(m_lock_poller);
+      if (loop.m_notified_event_list.empty()) {
+        if (tasks.empty() && !loop.m_io_event_list.empty()) {
+          // No timer, just wait for other event
+          do
+            m_condition_variable.wait(guard);
+          while (loop.m_notified_event_list.empty());
+          //tasks.swap(m_notified_event_list);
+        }
+      }
+      tasks.splice(tasks.end(), loop.m_notified_event_list);
+    } else {
+      auto &tp = loop.m_timer_event_set.begin()->get_time_point();
+      unique_lock guard(loop.m_poller->m_lock_poller);
+      if (loop.m_notified_event_list.empty()) {
+        if (tasks.empty()) {
+          // There are times, wait until the latest expire time point
+          do {
+            std::cv_status status = m_condition_variable.wait_until(guard, tp);
+            if (status == std::cv_status::timeout) {
+              // Insert all timer event that have same time point with tp
+              auto t = loop.m_timer_event_set.begin();
+              do {
+                tasks.push_back(*t);
+                t->set_node<timer_event>::unlink();
+                if (loop.m_timer_event_set.empty())
+                  break;
+                t = loop.m_timer_event_set.begin();
+              } while(t->get_time_point() == tp);
+              return tasks;
+            }
+          } while (loop.m_notified_event_list.empty());
+        }
+      }
+    }
+    return tasks;
+  }
+
   event_loop::event_loop()
     : m_poller(poller::get_instance())
   { }
@@ -230,59 +282,9 @@ namespace spin {
   {
   }
 
-  // @brief Wait for events
-  // @return list of event
-  // This function will block if there are any event would be fired, or return
-  // a empty list immediately to if the are no event would be fired any more
-  list<event> event_loop::wait_for_events()
-  {
-    list<event> tasks;
-    tasks.swap(m_pending_event_list);
-
-    if (m_timer_event_set.empty()) {
-      unique_lock guard(m_poller->m_lock_poller);
-      if (m_notified_event_list.empty()) {
-        if (tasks.empty() && !m_io_event_list.empty()) {
-          // No timer, just wait for other event
-          do
-            m_poller->m_condition_variable.wait(guard);
-          while (m_notified_event_list.empty());
-          //tasks.swap(m_notified_event_list);
-        }
-      }
-      tasks.splice(tasks.end(), m_notified_event_list);
-    } else {
-      auto &tp = m_timer_event_set.begin()->get_time_point();
-      unique_lock guard(m_poller->m_lock_poller);
-      if (m_notified_event_list.empty()) {
-        if (tasks.empty()) {
-          // There are times, wait until the latest expire time point
-          do {
-            std::cv_status status
-              = m_poller->m_condition_variable.wait_until(guard, tp);
-            if (status == std::cv_status::timeout) {
-              // Insert all timer event that have same time point with tp
-              auto t = m_timer_event_set.begin();
-              do {
-                tasks.push_back(*t);
-                t->set_node<timer_event>::unlink();
-                if (m_timer_event_set.empty())
-                  break;
-                t = m_timer_event_set.begin();
-              } while(t->get_time_point() == tp);
-              return tasks;
-            }
-          } while (m_notified_event_list.empty());
-        }
-      }
-      tasks.splice(tasks.end(), m_notified_event_list);
-    }
-    return tasks;
-  }
-
   void event_loop::run() {
     for ( ; ; ) {
-      list<event> tasks = wait_for_events();
+      list<event> tasks = m_poller->poll(*this);
       if (tasks.empty())
         return;
       while (!tasks.empty()) {

@@ -46,8 +46,6 @@ namespace spin {
     event_loop(event_loop &&) = delete;
     event_loop &operator = (event_loop &&) = delete;
 
-    list<event> __SPIN_INTERNAL__ wait_for_events();
-
     list<event> m_pending_event_list;
     list<event> m_notified_event_list;
     list<io_event> m_io_event_list;
