@@ -22,7 +22,6 @@
 #include "spin/event_loop.hpp"
 #include <mutex>
 #include <condition_variable>
-#include <atomic>
 #include <memory>
 
 namespace spin {
@@ -43,10 +42,10 @@ namespace spin {
     const int epollfd;
 
     // @brief poller lock
-    static std::mutex s_lock;
+    std::mutex m_lock_poller;
 
     // @brief poller condition variable for notifying I/O event
-    static std::condition_variable s_condition_variable;
+    std::condition_variable m_condition_variable;
 
   private:
     // @brief Constructor
@@ -60,7 +59,10 @@ namespace spin {
     poller &operator = (poller &&) = delete;
 
     // @brief poller thread routine
-    static void routine();
+    static void routine(poller &p);
+
+    // @brief singleton lock
+    static std::mutex s_lock_singleton;
 
     // @brief Weak reference to poller instance
     static std::weak_ptr<poller> s_instance;
@@ -70,6 +72,7 @@ namespace spin {
 
     // @brief thread id
     std::thread m_tid;
+
   };
 
 
@@ -77,10 +80,7 @@ namespace spin {
     event_loop::poller::s_instance;
 
   std::mutex
-    event_loop::poller::s_lock;
-
-  std::condition_variable
-    event_loop::poller::s_condition_variable;
+    event_loop::poller::s_lock_singleton;
 
   //
   // Poller thread routine
@@ -88,7 +88,7 @@ namespace spin {
   // This routine polls all epoll events and dispatch them to corresponding
   // evnet loop until this thread be notified to exit.
   //
-  void event_loop::poller::routine()
+  void event_loop::poller::routine(poller &p)
   {
     int epollfd;
     int pipe_read_end;
@@ -96,15 +96,12 @@ namespace spin {
     {
       // Wait for initialization of poller and get epollfd and pipe
       // notifier
-      unique_lock guard(s_lock);
+      unique_lock guard(p.m_lock_poller);
 
       // Notify poller that we are ready
-      s_condition_variable.notify_all();
-      auto p = s_instance.lock();
-      if (!p)
-        return;
-      epollfd = p->epollfd;
-      pipe_read_end = p->m_exit_notifier[0];
+      p.m_condition_variable.notify_all();
+      epollfd = p.epollfd;
+      pipe_read_end = p.m_exit_notifier[0];
     }
 
     bool will_exit = false;
@@ -134,14 +131,16 @@ namespace spin {
   // Constructor of poller
   //
   // @note This constructor is declared as private, it should only be called
-  // from poller::get_instance() and poller::s_lock should be
+  // from poller::get_instance() and poller::s_lock_singleton should be
   // ensure locked.
   //
   event_loop::poller::poller(unique_lock &uq)
     try
     : base_timestamp(std::chrono::steady_clock::now())
     , epollfd(epoll_create1(O_CLOEXEC))
-    , m_tid(routine)
+    , m_lock_poller()
+    , m_condition_variable()
+    , m_tid()
     {
       if (!uq.owns_lock())
         throw std::exception();
@@ -155,6 +154,8 @@ namespace spin {
         throw std::exception();
       }
 
+      unique_lock guard(m_lock_poller);
+      m_tid = std::thread(routine, std::ref(*this));
 
       // Register EPOLLIN for read-end of m_exit_notifier, so that when
       // write-end be closed, the poller will be noticed and know it's time to
@@ -168,7 +169,7 @@ namespace spin {
         throw std::exception();
 
       // Wait till poller thread is ready
-      s_condition_variable.wait(uq);
+      m_condition_variable.wait(guard);
     } catch (...) {
       // Clean up resouces that won't be automatically done by compiler
       if (epollfd != 0) {
@@ -211,14 +212,11 @@ namespace spin {
     {
       auto ret = s_instance.lock();
       if (!ret) {
-        unique_lock lock(s_lock);
-        std::atomic_thread_fence(std::memory_order_acquire);
-        ret = s_instance.lock();
+        unique_lock lock(s_lock_singleton);
         if (!ret) {
-          std::shared_ptr<poller> p(new poller(lock));
-          s_instance = p;
-          std::atomic_thread_fence(std::memory_order_release);
-          return p;
+          ret.reset(new poller(lock));
+          s_instance = ret;
+          return ret;
         }
       }
       return ret;
@@ -242,12 +240,12 @@ namespace spin {
     tasks.swap(m_pending_event_list);
 
     if (m_timer_event_set.empty()) {
-      unique_lock guard(poller::s_lock);
+      unique_lock guard(m_poller->m_lock_poller);
       if (m_notified_event_list.empty()) {
         if (tasks.empty() && !m_io_event_list.empty()) {
           // No timer, just wait for other event
           do
-            poller::s_condition_variable.wait(guard);
+            m_poller->m_condition_variable.wait(guard);
           while (m_notified_event_list.empty());
           //tasks.swap(m_notified_event_list);
         }
@@ -255,13 +253,13 @@ namespace spin {
       tasks.splice(tasks.end(), m_notified_event_list);
     } else {
       auto &tp = m_timer_event_set.begin()->get_time_point();
-      unique_lock guard(poller::s_lock);
+      unique_lock guard(m_poller->m_lock_poller);
       if (m_notified_event_list.empty()) {
         if (tasks.empty()) {
           // There are times, wait until the latest expire time point
           do {
             std::cv_status status
-              = poller::s_condition_variable.wait_until(guard, tp);
+              = m_poller->m_condition_variable.wait_until(guard, tp);
             if (status == std::cv_status::timeout) {
               // Insert all timer event that have same time point with tp
               auto t = m_timer_event_set.begin();
