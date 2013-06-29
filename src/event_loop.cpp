@@ -45,6 +45,9 @@ namespace spin {
     list<event> poll(event_loop &loop);
 
   private:
+
+    constexpr static size_t EVENT_BUFFER_SIZE = 128;
+
     // @brief Constructor
     // @note Private constructor that will only be called by get_instance()
     // with a ::unique_lock that hold the #s_mutex as argument
@@ -109,7 +112,6 @@ namespace spin {
 
     bool will_exit = false;
     while (!will_exit) {
-      enum {EVENT_BUFFER_SIZE = 128};
       epoll_event events[EVENT_BUFFER_SIZE];
       int ret = epoll_wait (epollfd, events, EVENT_BUFFER_SIZE, -1);
 
@@ -246,7 +248,6 @@ namespace spin {
           //tasks.swap(m_notified_event_list);
         }
       }
-      tasks.splice(tasks.end(), loop.m_notified_event_list);
     } else {
       auto &tp = loop.m_timer_event_set.begin()->get_time_point();
       unique_lock guard(loop.m_poller->m_lock_poller);
@@ -256,21 +257,19 @@ namespace spin {
           do {
             std::cv_status status = m_condition_variable.wait_until(guard, tp);
             if (status == std::cv_status::timeout) {
-              // Insert all timer event that have same time point with tp
-              auto t = loop.m_timer_event_set.begin();
-              do {
-                tasks.push_back(*t);
-                t->set_node<timer_event>::unlink();
-                if (loop.m_timer_event_set.empty())
-                  break;
-                t = loop.m_timer_event_set.begin();
-              } while(t->get_time_point() == tp);
+              // Insert all timer event that have same time point with tp and
+              // remove them from loop.m_timer_event_set
+              auto f = loop.m_timer_event_set.begin();
+              auto e = loop.m_timer_event_set.upper_bound(*f);
+              tasks.insert(tasks.end(), f, e);
+              loop.m_timer_event_set.erase(f, e);
               return tasks;
             }
           } while (loop.m_notified_event_list.empty());
         }
       }
     }
+    tasks.splice(tasks.end(), loop.m_notified_event_list);
     return tasks;
   }
 
@@ -282,15 +281,15 @@ namespace spin {
   {
   }
 
-  void event_loop::run() {
+  void event_loop::run()
+  {
     for ( ; ; ) {
       list<event> tasks = m_poller->poll(*this);
       if (tasks.empty())
         return;
       while (!tasks.empty()) {
-        auto &x = *tasks.begin();
+        tasks.begin()->callback();
         tasks.pop_front();
-        x.callback();
       }
     }
   }
