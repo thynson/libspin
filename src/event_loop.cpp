@@ -252,7 +252,7 @@ namespace spin {
       unique_lock guard(loop.m_poller->m_lock_poller);
       if (loop.m_notified_event_list.empty()) {
         if (tasks.empty()) {
-          // There are times, wait until the latest expire time point
+          // There are timers, wait until the first expire time point
           do {
             std::cv_status status = m_condition_variable.wait_until(guard, tp);
             if (status == std::cv_status::timeout) {
