@@ -20,10 +20,14 @@ ACLOCAL_AMFLAGS=-I build-aux/m4
 AM_CPPFLAGS=@AM_CPPFLAGS@ -I$(top_srcdir)/src
 AM_LDFLAGS=@AM_LDFLAGS@ $(top_srcdir)/src/libspin.la
 
-check_PROGRAMS=test_loop_01 test_timer_01
+check_PROGRAMS=test_loop_01 \
+							 test_loop_02 \
+							 test_timer_01
+
 
 TESTS=$(check_PROGRAMS)
 
 test_loop_01_SOURCES=loop_01.cpp
+test_loop_02_SOURCES=loop_02.cpp
 test_timer_01_SOURCES=timer_01.cpp
 
