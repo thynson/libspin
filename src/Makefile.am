@@ -22,6 +22,9 @@ lib_LTLIBRARIES=libspin.la
 libspin_la_HEADERS=spin/spin.hpp\
 									 spin/utils.hpp\
 									 spin/callable.hpp\
-									 spin/event_loop.hpp
+									 spin/event_loop.hpp\
+									 spin/poll_target.hpp\
+									 spin/spinlock.hpp
 
-libspin_la_SOURCES=event_loop.cpp
+libspin_la_SOURCES=event_loop.cpp\
+									 poll_target.cpp
