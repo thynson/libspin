@@ -1,13 +1,5 @@
-
-set ts=2
-set st=2
-set sw=2
-set et
-
-
-
 fun! s:license_for_source()
-let license = [
+	let license = [
 \ "\/*",
 \ " * Copyright (C) ",
 \ " * All right reserved",
@@ -26,10 +18,32 @@ let license = [
 \ " *\/"]
 	call append(0, license)
 	call cursor(2, col("."))
+	" Write year
 	let text = getline(".") . strftime("%Y")
 	call setline(".", text)
+	" Left cursor at the end of this line for name of copyright holder
 	call cursor(line("."), col("$"))
 endfun!
 
+fun! s:c_style()
+	set ts=2
+	set st=2
+	set sw=2
+	set et
+endfun!
+
+fun! s:makefile_style()
+	setlocal ts=4
+	setlocal st=4
+	setlocal sw=4
+	setlocal noet
+endfun!
+
+
+autocmd FileType c call s:c_style()
+autocmd FileType cpp call s:c_style()
 autocmd BufNewFile *.cpp call s:license_for_source()
 autocmd BufNewFile *.hpp call s:license_for_source()
+autocmd FileType make call s:makefile_style()
+autocmd FileType automake call s:makefile_style()
+
