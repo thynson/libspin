@@ -21,7 +21,7 @@ libspin_ladir=$(includedir)/spin
 lib_LTLIBRARIES=libspin.la
 libspin_la_HEADERS=spin/spin.hpp\
 									 spin/utils.hpp\
-									 spin/event.hpp\
+									 spin/callable.hpp\
 									 spin/event_loop.hpp
 
 libspin_la_SOURCES=event_loop.cpp

@@ -42,7 +42,7 @@ namespace spin {
     const int epollfd;
 
     // @brief poll
-    list<event> poll(event_loop &loop);
+    list<callable> poll(event_loop &loop);
 
   private:
 
@@ -80,6 +80,47 @@ namespace spin {
     std::thread m_tid;
 
   };
+
+  class __SPIN_INTERNAL__ event_loop::delayed_callback
+    : public set_node<delayed_callback> {
+  public:
+    delayed_callback(callable &c, const time_point &tp) noexcept
+      : m_callable(c)
+      , m_time_point(tp)
+    { }
+
+    delayed_callback(callable &c, time_point &&tp) noexcept
+      : m_callable(c)
+      , m_time_point(std::move(tp))
+    { }
+
+    virtual ~delayed_callback() noexcept
+    { }
+
+    callable &get_callback () noexcept
+    { return m_callable; }
+
+    const time_point &get_time_point() const noexcept
+    { return m_time_point; }
+
+    friend bool operator < (const delayed_callback &lhs,
+                            const delayed_callback &rhs) noexcept
+    { return lhs.m_time_point < rhs.m_time_point; }
+
+    friend bool operator > (const delayed_callback &lhs,
+                            const delayed_callback &rhs) noexcept
+    { return lhs.m_time_point > rhs.m_time_point; }
+
+  private:
+    delayed_callback(const delayed_callback &) = delete;
+    delayed_callback(delayed_callback &&) = delete;
+    delayed_callback &operator = (const delayed_callback &) = delete;
+    delayed_callback &operator = (delayed_callback &&) = delete;
+
+    callable &m_callable;
+    time_point m_time_point;
+  };
+
 
 
   std::weak_ptr<event_loop::poller>
@@ -232,26 +273,26 @@ namespace spin {
   //
   // This function will block until an event is fired or return an empty list
   // immediately if there is no event will be fired
-  list<event> event_loop::poller::poll(event_loop &loop)
+  list<callable> event_loop::poller::poll(event_loop &loop)
   {
-    list<event> tasks;
-    tasks.swap(loop.m_pending_event_list);
+    list<callable> tasks;
+    tasks.swap(loop.m_pending_callback_list);
 
-    if (loop.m_timer_event_set.empty()) {
+    if (loop.m_delayed_callback_list.empty()) {
       unique_lock guard(m_lock_poller);
-      if (loop.m_notified_event_list.empty()) {
+      if (loop.m_notified_callback_list.empty()) {
         if (tasks.empty() && !loop.m_io_event_list.empty()) {
           // No timer, just wait for other event
           do
             m_condition_variable.wait(guard);
-          while (loop.m_notified_event_list.empty());
+          while (loop.m_notified_callback_list.empty());
           //tasks.swap(m_notified_event_list);
         }
       }
     } else {
-      auto &tp = loop.m_timer_event_set.begin()->get_time_point();
+      auto &tp = loop.m_delayed_callback_list.begin()->get_time_point();
       unique_lock guard(loop.m_poller->m_lock_poller);
-      if (loop.m_notified_event_list.empty()) {
+      if (loop.m_notified_callback_list.empty()) {
         if (tasks.empty()) {
           // There are timers, wait until the first expire time point
           do {
@@ -259,17 +300,20 @@ namespace spin {
             if (status == std::cv_status::timeout) {
               // Insert all timer event that have same time point with tp and
               // remove them from loop.m_timer_event_set
-              auto f = loop.m_timer_event_set.begin();
-              auto e = loop.m_timer_event_set.upper_bound(*f);
-              tasks.insert(tasks.end(), f, e);
-              loop.m_timer_event_set.erase(f, e);
+              auto f = loop.m_delayed_callback_list.begin();
+              auto e = loop.m_delayed_callback_list.upper_bound(*f);
+              for (auto i = f; i != e; ++i)
+                tasks.push_back(i->get_callback());
+              // XXX: Avoid using new/delete
+              loop.m_delayed_callback_list.erase_and_dispose(f, e,
+                  [](delayed_callback *x){ delete x; });
               return tasks;
             }
-          } while (loop.m_notified_event_list.empty());
+          } while (loop.m_delayed_callback_list.empty());
         }
       }
     }
-    tasks.splice(tasks.end(), loop.m_notified_event_list);
+    tasks.splice(tasks.end(), loop.m_notified_callback_list);
     return tasks;
   }
 
@@ -284,13 +328,38 @@ namespace spin {
   void event_loop::run()
   {
     for ( ; ; ) {
-      list<event> tasks = m_poller->poll(*this);
+      list<callable> tasks = m_poller->poll(*this);
       if (tasks.empty())
         return;
       while (!tasks.empty()) {
-        tasks.begin()->callback();
+        (*tasks.begin())();
         tasks.pop_front();
       }
+    }
+  }
+
+  void event_loop::post(callable &c)
+  { m_pending_callback_list.push_back(c); }
+
+  void event_loop::post_delayed(callable &c, const time_point &tp)
+  {
+    if (tp < m_poller->base_timestamp)
+      m_pending_callback_list.push_back(c);
+    else {
+      // XXX: Avoid using new/delete
+      auto ptr = new delayed_callback(c, tp);
+      m_delayed_callback_list.push_back(*ptr);
+    }
+  }
+
+  void event_loop::post_delayed(callable &c, time_point &&tp)
+  {
+    if (tp < m_poller->base_timestamp)
+      m_pending_callback_list.push_back(c);
+    else {
+      // XXX: Avoid using new/delete
+      auto ptr = new delayed_callback(c, std::move(tp));
+      m_delayed_callback_list.push_back(*ptr);
     }
   }
 

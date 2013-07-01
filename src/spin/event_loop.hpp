@@ -24,20 +24,21 @@
 #include <memory>
 #include <chrono>
 #include "utils.hpp"
-#include "event.hpp"
+#include "callable.hpp"
 
 namespace spin {
 
   class __SPIN_EXPORT__ event_loop
   {
     class __SPIN_INTERNAL__ poller;
+    class __SPIN_INTERNAL__ delayed_callback;
   public:
     event_loop();
     ~event_loop();
-    void run ();
-
-    void post(timer_event &tv)
-    { m_timer_event_set.insert(tv); }
+    void run();
+    void post(callable &c);
+    void post_delayed(callable &c, const time_point &tp);
+    void post_delayed(callable &c, time_point &&tp);
 
   private:
 
@@ -46,10 +47,10 @@ namespace spin {
     event_loop(event_loop &&) = delete;
     event_loop &operator = (event_loop &&) = delete;
 
-    list<event> m_pending_event_list;
-    list<event> m_notified_event_list;
-    list<io_event> m_io_event_list;
-    multiset<timer_event> m_timer_event_set;
+    multiset<delayed_callback> m_delayed_callback_list;
+    list<callable> m_pending_callback_list;
+    list<callable> m_notified_callback_list;
+    list<callable> m_io_event_list; //TODO:
     std::shared_ptr<poller> m_poller;
 
   };
