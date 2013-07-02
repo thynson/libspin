@@ -18,7 +18,7 @@ AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 
 AM_CPPFLAGS=@AM_CPPFLAGS@ -I$(top_srcdir)/src
-AM_LDFLAGS=@AM_LDFLAGS@ $(top_srcdir)/src/libspin.la
+AM_LDFLAGS=@AM_LDFLAGS@ ../src/libspin.la
 
 check_PROGRAMS=test_loop_01 \
 			   test_loop_02 \
