@@ -26,7 +26,7 @@ namespace spin {
   class __SPIN_EXPORT__ spinlock
   {
   private:
-    std::atomic_bool m_lock;
+    std::atomic<bool> m_lock;
 
   public:
     spinlock(bool locked = false) noexcept
@@ -43,14 +43,14 @@ namespace spin {
     void lock() noexcept
     {
       bool expected = false;
-      while (m_lock.compare_exchange_weak(expected, true,
-          std::memory_order_release,
-          std::memory_order_relaxed));
+      while (!std::atomic_compare_exchange_weak_explicit(&m_lock,
+            &expected, true, std::memory_order_release,
+            std::memory_order_relaxed));
     }
 
     void unlock() noexcept
     {
-      m_lock.store(false);
+      std::atomic_store_explicit(&m_lock, false, std::memory_order_acquire);
     }
   };
 }
