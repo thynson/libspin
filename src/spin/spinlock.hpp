@@ -43,14 +43,12 @@ namespace spin {
     void lock() noexcept
     {
       bool expected = false;
-      while (!std::atomic_compare_exchange_weak_explicit(&m_lock,
-            &expected, true, std::memory_order_release,
-            std::memory_order_relaxed));
+      while (!std::atomic_compare_exchange_weak(&m_lock, &expected, true));
     }
 
     void unlock() noexcept
     {
-      std::atomic_store_explicit(&m_lock, false, std::memory_order_acquire);
+      std::atomic_store(&m_lock, false);
     }
   };
 }

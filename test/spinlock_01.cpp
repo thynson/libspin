@@ -37,7 +37,7 @@ constexpr long EXPECTED = N_THREAD * N_ITERATION;
 
 void sync()
 {
-  unique_lock<mutex> uq(guard);
+  std::unique_lock<mutex> uq(guard);
 }
 
 void routine()
@@ -45,14 +45,14 @@ void routine()
   sync();
   for (int i = 0; i < N_ITERATION; i++)
   {
-    unique_lock<mutex> uq(guard);
+    std::unique_lock<mutex> uq(guard);
     counter++;
   }
 }
 
 vector<thread> start_threads()
 {
-  unique_lock<mutex> uq(guard);
+  std::unique_lock<mutex> uq(guard);
   vector<thread> vt;
   for (int i = 0; i < N_THREAD; i++)
     vt.push_back(thread(routine));

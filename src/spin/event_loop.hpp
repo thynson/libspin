@@ -20,7 +20,6 @@
 
 #include <thread>
 #include <condition_variable>
-#include <atomic>
 #include <memory>
 #include <chrono>
 #include "utils.hpp"
