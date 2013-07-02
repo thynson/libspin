@@ -86,7 +86,8 @@ namespace spin {
   {
   public:
 
-    virtual ~delayed_procedure();
+    virtual ~delayed_procedure()
+    { }
 
     const time_point &get_time_point() const
     { return m_time_point; }
