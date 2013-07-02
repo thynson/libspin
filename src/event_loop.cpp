@@ -42,7 +42,7 @@ namespace spin {
     const int epollfd;
 
     // @brief poll
-    list<callable> poll(event_loop &loop);
+    list<async_procedure> poll(event_loop &loop);
 
   private:
 
@@ -80,47 +80,6 @@ namespace spin {
     std::thread m_tid;
 
   };
-
-  class __SPIN_INTERNAL__ event_loop::delayed_callback
-    : public set_node<delayed_callback> {
-  public:
-    delayed_callback(callable &c, const time_point &tp) noexcept
-      : m_callable(c)
-      , m_time_point(tp)
-    { }
-
-    delayed_callback(callable &c, time_point &&tp) noexcept
-      : m_callable(c)
-      , m_time_point(std::move(tp))
-    { }
-
-    virtual ~delayed_callback() noexcept
-    { }
-
-    callable &get_callback () noexcept
-    { return m_callable; }
-
-    const time_point &get_time_point() const noexcept
-    { return m_time_point; }
-
-    friend bool operator < (const delayed_callback &lhs,
-                            const delayed_callback &rhs) noexcept
-    { return lhs.m_time_point < rhs.m_time_point; }
-
-    friend bool operator > (const delayed_callback &lhs,
-                            const delayed_callback &rhs) noexcept
-    { return lhs.m_time_point > rhs.m_time_point; }
-
-  private:
-    delayed_callback(const delayed_callback &) = delete;
-    delayed_callback(delayed_callback &&) = delete;
-    delayed_callback &operator = (const delayed_callback &) = delete;
-    delayed_callback &operator = (delayed_callback &&) = delete;
-
-    callable &m_callable;
-    time_point m_time_point;
-  };
-
 
 
   std::weak_ptr<event_loop::poller>
@@ -273,9 +232,9 @@ namespace spin {
   //
   // This function will block until an event is fired or return an empty list
   // immediately if there is no event will be fired
-  list<callable> event_loop::poller::poll(event_loop &loop)
+  list<async_procedure> event_loop::poller::poll(event_loop &loop)
   {
-    list<callable> tasks;
+    list<async_procedure> tasks;
     tasks.swap(loop.m_pending_callback_list);
 
     if (loop.m_delayed_callback_list.empty()) {
@@ -302,11 +261,8 @@ namespace spin {
               // remove them from loop.m_timer_event_set
               auto f = loop.m_delayed_callback_list.begin();
               auto e = loop.m_delayed_callback_list.upper_bound(*f);
-              for (auto i = f; i != e; ++i)
-                tasks.push_back(i->get_callback());
-              // XXX: Avoid using new/delete
-              loop.m_delayed_callback_list.erase_and_dispose(f, e,
-                  [](delayed_callback *x){ delete x; });
+              tasks.insert(tasks.end(), f, e);
+              loop.m_delayed_callback_list.erase(f, e);
               return tasks;
             }
           } while (loop.m_delayed_callback_list.empty());
@@ -328,7 +284,7 @@ namespace spin {
   void event_loop::run()
   {
     for ( ; ; ) {
-      list<callable> tasks = m_poller->poll(*this);
+      list<async_procedure> tasks = m_poller->poll(*this);
       if (tasks.empty())
         return;
       while (!tasks.empty()) {
@@ -338,29 +294,10 @@ namespace spin {
     }
   }
 
-  void event_loop::post(callable &c)
-  { m_pending_callback_list.push_back(c); }
+  void event_loop::post(async_procedure &ap)
+  { m_pending_callback_list.push_back(ap); }
 
-  void event_loop::post_delayed(callable &c, const time_point &tp)
-  {
-    if (tp < m_poller->base_timestamp)
-      m_pending_callback_list.push_back(c);
-    else {
-      // XXX: Avoid using new/delete
-      auto ptr = new delayed_callback(c, tp);
-      m_delayed_callback_list.push_back(*ptr);
-    }
-  }
-
-  void event_loop::post_delayed(callable &c, time_point &&tp)
-  {
-    if (tp < m_poller->base_timestamp)
-      m_pending_callback_list.push_back(c);
-    else {
-      // XXX: Avoid using new/delete
-      auto ptr = new delayed_callback(c, std::move(tp));
-      m_delayed_callback_list.push_back(*ptr);
-    }
-  }
+  void event_loop::post(delayed_procedure &dp)
+  { m_delayed_callback_list.push_back(dp); }
 
 }

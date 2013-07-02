@@ -45,14 +45,14 @@ namespace spin {
   private:
     virtual bitset callback(bitset event) = 0;
 
-    struct __SPIN_INTERNAL__ event_dispatcher : public callable {
+    struct __SPIN_INTERNAL__ event_dispatcher : public async_procedure {
       event_dispatcher(poll_target &pt);
       virtual ~event_dispatcher() = default;
       virtual void callback();
       poll_target &m_poll_target;
     };
 
-    struct __SPIN_INTERNAL__ event_receiver : public callable {
+    struct __SPIN_INTERNAL__ event_receiver : public async_procedure {
       event_receiver(poll_target &pt);
       virtual ~event_receiver() = default;
       virtual void callback();
