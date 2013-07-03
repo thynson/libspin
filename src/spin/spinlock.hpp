@@ -19,6 +19,7 @@
 #define __SPIN_SPINLOCK_HPP_INCLUDED__
 
 #include <atomic>
+#include "config.hpp"
 
 namespace spin {
 
