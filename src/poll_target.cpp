@@ -26,12 +26,8 @@ namespace spin {
   void poll_target::event_dispatcher::callback()
   {
     bitset result = m_poll_target.callback(m_poll_target.m_state);
-    bool need_dispatch;
-    {
-      std::unique_lock<spinlock> lock_guard(m_poll_target.m_lock);
-      need_dispatch = !m_poll_target.m_state.any();
-      m_poll_target.m_state |= result;
-    }
+    bool need_dispatch = result.any();;
+    m_poll_target.m_state = result;
     if (need_dispatch)
       m_poll_target.m_loop.post(m_poll_target.m_dispatcher);
   }
