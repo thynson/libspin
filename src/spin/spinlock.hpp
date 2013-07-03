@@ -19,7 +19,6 @@
 #define __SPIN_SPINLOCK_HPP_INCLUDED__
 
 #include <atomic>
-#include "utils.hpp"
 
 namespace spin {
 
@@ -40,16 +39,20 @@ namespace spin {
 
     spinlock(spinlock &&tmp) = delete;
 
-    void lock() noexcept
+    bool try_lock() noexcept
     {
       bool expected = false;
-      while (!std::atomic_compare_exchange_weak(&m_lock, &expected, true));
+      return std::atomic_compare_exchange_weak(&m_lock, &expected, true);
     }
 
+    void lock() noexcept
+    { while (!try_lock()); }
+
+    bool is_locked() noexcept
+    { return m_lock; }
+
     void unlock() noexcept
-    {
-      std::atomic_store(&m_lock, false);
-    }
+    { std::atomic_store(&m_lock, false); }
   };
 }
 

@@ -24,6 +24,7 @@
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>
 #include "config.hpp"
+#include "spinlock.hpp"
 
 namespace spin {
 
