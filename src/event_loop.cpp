@@ -288,8 +288,9 @@ namespace spin {
       if (tasks.empty())
         return;
       while (!tasks.empty()) {
-        (*tasks.begin())();
-        tasks.pop_front();
+        auto &x = (*tasks.begin());
+        tasks.erase(tasks.begin());
+        x();
       }
     }
   }
