@@ -28,26 +28,23 @@
 
 namespace spin {
 
-  template<typename Tag>
-    using list_node
-    = boost::intrusive::list_base_hook<boost::intrusive::tag<Tag>
-    , boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
+  using list_node
+    = boost::intrusive::list_member_hook<
+    boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
-  template<typename Type, typename Tag=Type>
-    using list
-    = boost::intrusive::list<Type
-    , boost::intrusive::base_hook<list_node<Tag>>
+  template<typename Type, list_node Type::* PointerToMember>
+    using list = boost::intrusive::list<Type
+    , boost::intrusive::member_hook<Type, list_node, PointerToMember>
     , boost::intrusive::constant_time_size<false>>;
 
-  template<typename Tag>
-    using set_node
-    = boost::intrusive::set_base_hook<boost::intrusive::tag<Tag>
-    , boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
+  using set_node
+    = boost::intrusive::set_member_hook<
+    boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
-  template<typename Type, typename Tag=Type>
+  template<typename Type, set_node Type::* PointerToMember>
     using multiset
     = boost::intrusive::multiset<Type
-    , boost::intrusive::base_hook<set_node<Tag>>
+    , boost::intrusive::member_hook<Type, set_node, PointerToMember>
     , boost::intrusive::constant_time_size<false>>;
 
   using time_point = std::chrono::time_point<std::chrono::steady_clock>;
@@ -55,11 +52,6 @@ namespace spin {
   using unique_lock = std::unique_lock<std::mutex>;
 
 
-  template<typename Tag>
-    void list_node_unlink (list_node<Tag> &node)
-    {
-      node.::spin::list_node<Tag>::unlink();
-    }
 
 
 

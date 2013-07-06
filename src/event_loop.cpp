@@ -42,7 +42,7 @@ namespace spin {
     const int epollfd;
 
     // @brief poll
-    list<async_procedure> poll(event_loop &loop);
+    callback_list poll(event_loop &loop);
 
   private:
 
@@ -232,26 +232,26 @@ namespace spin {
   //
   // This function will block until an event is fired or return an empty list
   // immediately if there is no event will be fired
-  list<async_procedure> event_loop::poller::poll(event_loop &loop)
+  event_loop::callback_list event_loop::poller::poll(event_loop &loop)
   {
-    list<async_procedure> tasks;
-    tasks.swap(loop.m_pending_callback_list);
+    callback_list tasks;
+    tasks.swap(loop.m_upcoming_callbacks);
 
-    if (loop.m_delayed_callback_list.empty()) {
+    if (loop.m_timed_callbacks.empty()) {
       unique_lock guard(m_lock_poller);
-      if (loop.m_notified_callback_list.empty()) {
+      if (loop.m_notified_callbacks.empty()) {
         if (tasks.empty() && !loop.m_io_event_list.empty()) {
           // No timer, just wait for other event
           do
             m_condition_variable.wait(guard);
-          while (loop.m_notified_callback_list.empty());
+          while (loop.m_notified_callbacks.empty());
           //tasks.swap(m_notified_event_list);
         }
       }
     } else {
-      auto &tp = loop.m_delayed_callback_list.begin()->get_time_point();
+      auto tp = loop.m_timed_callbacks.begin()->m_time_point;
       unique_lock guard(loop.m_poller->m_lock_poller);
-      if (loop.m_notified_callback_list.empty()) {
+      if (loop.m_notified_callbacks.empty()) {
         if (tasks.empty()) {
           // There are timers, wait until the first expire time point
           do {
@@ -259,18 +259,36 @@ namespace spin {
             if (status == std::cv_status::timeout) {
               // Insert all timer event that have same time point with tp and
               // remove them from loop.m_timer_event_set
-              auto f = loop.m_delayed_callback_list.begin();
-              auto e = loop.m_delayed_callback_list.upper_bound(*f);
+              auto f = loop.m_timed_callbacks.begin();
+              auto e = loop.m_timed_callbacks.upper_bound(*f);
               tasks.insert(tasks.end(), f, e);
-              loop.m_delayed_callback_list.erase(f, e);
+              loop.m_timed_callbacks.erase(f, e);
               return tasks;
             }
-          } while (loop.m_delayed_callback_list.empty());
+          } while (loop.m_timed_callbacks.empty());
         }
       }
     }
-    tasks.splice(tasks.end(), loop.m_notified_callback_list);
+    tasks.splice(tasks.end(), loop.m_notified_callbacks);
     return tasks;
+  }
+
+  bool event_loop::cancel(callback &cb)
+  {
+    bool result = cb.m_node.is_linked();
+    if (result)
+      cb.m_node.unlink();
+    return result;
+  }
+
+  bool event_loop::cancel(timed_callback &cb)
+  {
+    bool result = cb.m_node.is_linked();
+    if (result) {
+      cb.m_node.unlink();
+      return result;
+    }
+    return cancel(static_cast<callback&>(cb));
   }
 
   event_loop::event_loop()
@@ -284,21 +302,21 @@ namespace spin {
   void event_loop::run()
   {
     for ( ; ; ) {
-      list<async_procedure> tasks = m_poller->poll(*this);
+      callback_list tasks = m_poller->poll(*this);
       if (tasks.empty())
         return;
       while (!tasks.empty()) {
-        auto &x = (*tasks.begin());
-        tasks.erase(tasks.begin());
-        x();
+        auto x = tasks.begin();
+        tasks.erase(x);
+        x->m_func();
       }
     }
   }
 
-  void event_loop::post(async_procedure &ap)
-  { m_pending_callback_list.push_back(ap); }
+  void event_loop::post(callback &ap)
+  { m_upcoming_callbacks.push_back(ap); }
 
-  void event_loop::post(delayed_procedure &dp)
-  { m_delayed_callback_list.push_back(dp); }
+  void event_loop::post(timed_callback &dp)
+  { m_timed_callbacks.push_back(dp); }
 
 }

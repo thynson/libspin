@@ -25,7 +25,7 @@
 
 namespace spin {
 
-  class __SPIN_EXPORT__ poll_target : public list_node<poll_target> {
+  class __SPIN_EXPORT__ poll_target {
   public:
     enum {
       POLL_IN,
@@ -43,25 +43,10 @@ namespace spin {
     void notify(bitset bitset);
 
   private:
-    virtual bitset callback(bitset event) = 0;
-
-    struct __SPIN_INTERNAL__ event_dispatcher : public async_procedure {
-      event_dispatcher(poll_target &pt);
-      virtual ~event_dispatcher() = default;
-      virtual void callback();
-      poll_target &m_poll_target;
-    };
-
-    struct __SPIN_INTERNAL__ event_receiver : public async_procedure {
-      event_receiver(poll_target &pt);
-      virtual ~event_receiver() = default;
-      virtual void callback();
-      poll_target &m_poll_target;
-    };
-
+    virtual bitset on_state_changed(bitset event) = 0;
     event_loop &m_loop;
-    event_dispatcher m_dispatcher;
-    event_receiver m_receiver;
+    callback m_dispatcher;
+    callback m_receiver;
     spinlock m_lock;
     bitset m_state;
     bitset m_pending;

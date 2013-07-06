@@ -23,19 +23,81 @@
 #include <memory>
 #include <chrono>
 #include "utils.hpp"
-#include "async_procedure.hpp"
 
 namespace spin {
+
+    class callback
+    {
+      friend class event_loop;
+    public:
+
+      callback()
+        : m_node()
+        , m_func()
+      { }
+
+      template<typename ...Args>
+      callback(Args ...args)
+        : m_node()
+        , m_func(std::forward<Args>(args)...)
+      { }
+
+    private:
+      list_node m_node;
+      std::function<void()> m_func;
+    };
+
+    class timed_callback : public callback
+    {
+      friend class event_loop;
+    public:
+
+      timed_callback(time_point tp)
+        : callback()
+        , m_node()
+        , m_time_point(tp)
+      { }
+
+      template<typename ...Args>
+      timed_callback(time_point tp, Args ...args)
+        : callback(std::forward<Args>(args)...)
+        , m_node()
+        , m_time_point(tp)
+      { }
+
+      friend bool operator < (const timed_callback &lhs,
+                              const timed_callback &rhs)
+      { return lhs.m_time_point < rhs.m_time_point; }
+
+      friend bool operator > (const timed_callback &lhs,
+                              const timed_callback &rhs)
+      { return lhs.m_time_point > rhs.m_time_point; }
+
+    private:
+      set_node m_node;
+      time_point m_time_point;
+    };
 
   class __SPIN_EXPORT__ event_loop
   {
     class __SPIN_INTERNAL__ poller;
   public:
+
+
+    typedef list<callback, &callback::m_node> callback_list;
+    typedef multiset<timed_callback, &timed_callback::m_node>
+      timed_callback_set;
+
+    static bool cancel(callback &cb);
+    static bool cancel(timed_callback &cb);
+
     event_loop();
     ~event_loop();
     void run();
-    void post(async_procedure &ap);
-    void post(delayed_procedure &dp);
+
+    void post(callback &cb);
+    void post(timed_callback &cb);
+
 
   private:
 
@@ -44,10 +106,11 @@ namespace spin {
     event_loop(event_loop &&) = delete;
     event_loop &operator = (event_loop &&) = delete;
 
-    multiset<delayed_procedure> m_delayed_callback_list;
-    list<async_procedure> m_pending_callback_list;
-    list<async_procedure> m_notified_callback_list;
-    list<async_procedure> m_io_event_list; //TODO:
+    timed_callback_set m_timed_callbacks;
+    callback_list m_upcoming_callbacks;
+    callback_list m_notified_callbacks;
+    callback_list m_io_event_list;
+
     std::shared_ptr<poller> m_poller;
 
   };

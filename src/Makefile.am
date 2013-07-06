@@ -22,7 +22,6 @@ lib_LTLIBRARIES=libspin.la
 libspin_la_HEADERS=spin/spin.hpp\
 				   spin/utils.hpp\
 				   spin/config.hpp\
-				   spin/async_procedure.hpp\
 				   spin/event_loop.hpp\
 				   spin/poll_target.hpp\
 				   spin/spinlock.hpp

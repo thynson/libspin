@@ -19,41 +19,30 @@
 
 namespace spin {
 
-  poll_target::event_dispatcher::event_dispatcher(poll_target &pt)
-    : m_poll_target(pt)
-  { }
-
-  void poll_target::event_dispatcher::callback()
-  {
-    bitset result = m_poll_target.callback(m_poll_target.m_state);
-    bool need_dispatch = result.any();;
-    m_poll_target.m_state = result;
-    if (need_dispatch)
-      m_poll_target.m_loop.post(m_poll_target.m_dispatcher);
-  }
-
-  poll_target::event_receiver::event_receiver(poll_target &pt)
-    : m_poll_target(pt)
-  { }
-
-
-  void poll_target::event_receiver::callback()
-  {
-    bool need_dispatch;
-    {
-      std::unique_lock<spinlock> lock_guard(m_poll_target.m_lock);
-      need_dispatch = !m_poll_target.m_state.any();
-      m_poll_target.m_state |= m_poll_target.m_pending;
-      m_poll_target.m_pending.reset();
-    }
-    if (need_dispatch)
-      m_poll_target.m_loop.post(m_poll_target.m_dispatcher);
-  }
-
   poll_target::poll_target(event_loop &loop)
     : m_loop(loop)
-    , m_dispatcher(*this)
-    , m_receiver(*this)
+    , m_dispatcher([this]()
+        {
+          bitset result = on_state_changed(m_state);
+          bool need_dispatch = result.any();;
+          m_state = result;
+          if (need_dispatch)
+            m_loop.post(m_dispatcher);
+
+        })
+    , m_receiver([this]()
+        {
+          bool need_dispatch;
+          {
+            std::unique_lock<spinlock> lock_guard(m_lock);
+            need_dispatch = !m_state.any();
+            m_state |= m_pending;
+            m_pending.reset();
+          }
+          if (need_dispatch)
+            m_loop.post(m_dispatcher);
+
+        })
     , m_lock()
     , m_state()
   { }
