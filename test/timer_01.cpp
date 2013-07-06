@@ -21,18 +21,21 @@ int counter = 0;
 
 using namespace spin;
 
-class my_timer : public spin::delayed_procedure
+class my_timer : public spin::timed_callback
 {
 private:
 	int i;
 public:
 	my_timer(int i)
-		: delayed_procedure(std::chrono::steady_clock::now()
-				+ std::chrono::duration_cast<time_duration>(std::chrono::seconds(i)))
+		: timed_callback(std::chrono::steady_clock::now()
+				+ std::chrono::duration_cast<time_duration>(std::chrono::seconds(i))
+      , [this](){
+          callback();
+      })
 		, i(i)
 	{  }
 
-	virtual void callback()
+	void callback()
 	{
 		counter = i;
 	}

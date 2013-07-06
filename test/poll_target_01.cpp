@@ -28,7 +28,7 @@ public:
     , n(10000)
   {}
 
-  virtual bitset callback(bitset event) {
+  virtual bitset on_state_changed(bitset event) {
     std::this_thread::sleep_for(std::chrono::nanoseconds(1000));
     if (n--) {
       assert(event.any());
