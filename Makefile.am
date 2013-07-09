@@ -17,5 +17,5 @@
 AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 
-SUBDIRS=src test
+SUBDIRS=src test docs
 
