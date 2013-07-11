@@ -15,19 +15,45 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/timer.hpp>
-#include <iostream>
+#include <spin/spin.hpp>
 
+int counter = 0;
 
-int main() {
-  spin::event_loop loop;
-  int i = 0;
-  spin::timer t(loop, spin::time_duration(10000), [&]()
-    {
-      spin::time_point tp = spin::time_point::clock::now();
-      std::cout << tp.time_since_epoch().count() << std::endl;
-      if (i++ > 100)
-        t.stop();
-    });
-  loop.run();
+using namespace spin;
+
+class my_timer : public spin::timed_callback
+{
+private:
+	int i;
+public:
+	my_timer(int i)
+		: timed_callback(std::chrono::steady_clock::now()
+				+ std::chrono::duration_cast<time_duration>(std::chrono::seconds(i))
+      , [this](){
+          callback();
+      })
+		, i(i)
+	{  }
+
+	void callback()
+	{
+		counter = i;
+	}
+};
+
+int main()
+{
+	event_loop l;
+	time_point tp = std::chrono::steady_clock::now();
+	my_timer t1(1), t2(2), t3(3);
+	l.post(t3);
+	l.post(t2);
+	l.post(t1);
+	l.run();
+	time_duration duration = std::chrono::steady_clock::now() - tp;
+	if (duration < std::chrono::seconds(3))
+		return 1;
+	return 0;
 }
+
+

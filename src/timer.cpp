@@ -15,19 +15,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/timer.hpp>
-#include <iostream>
+#include "spin/timer.hpp"
 
+namespace spin {
 
-int main() {
-  spin::event_loop loop;
-  int i = 0;
-  spin::timer t(loop, spin::time_duration(10000), [&]()
-    {
-      spin::time_point tp = spin::time_point::clock::now();
-      std::cout << tp.time_since_epoch().count() << std::endl;
-      if (i++ > 100)
-        t.stop();
-    });
-  loop.run();
+  timer::~timer()
+  { }
+
 }

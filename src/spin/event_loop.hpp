@@ -59,6 +59,16 @@ namespace spin {
         return tmp;
       }
 
+      bool cancel()
+      {
+        if (m_node.is_linked())
+        {
+          m_node.unlink();
+          return true;
+        }
+        return false;
+      }
+
     private:
       list_node m_node;
       std::function<void()> m_handler;
@@ -87,6 +97,14 @@ namespace spin {
         , m_time_point(tp)
       { }
 
+      timed_callback(timed_callback &&t)
+        : callback(std::move(static_cast<callback&>(t)))
+        , m_node()
+        , m_time_point(std::move(t.m_time_point))
+      { m_node.swap_nodes(t.m_node); }
+
+      timed_callback(const timed_callback &) = delete;
+
       friend bool operator < (const timed_callback &lhs,
                               const timed_callback &rhs)
       { return lhs.m_time_point < rhs.m_time_point; }
@@ -94,6 +112,27 @@ namespace spin {
       friend bool operator > (const timed_callback &lhs,
                               const timed_callback &rhs)
       { return lhs.m_time_point > rhs.m_time_point; }
+
+      const time_point &get_time_point() const
+      { return m_time_point; }
+
+      time_point reset_time_point(const time_point &tp)
+      {
+        time_point ret = m_time_point;
+        m_node.unlink();
+        m_time_point = tp;
+        return ret;
+      }
+
+      bool cancel()
+      {
+        if (m_node.is_linked())
+        {
+          m_node.unlink();
+          return true;
+        } else
+          return callback::cancel();
+      }
 
     private:
       set_node m_node;
