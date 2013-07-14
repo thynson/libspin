@@ -308,7 +308,7 @@ namespace spin {
       while (!tasks.empty()) {
         auto x = tasks.begin();
         tasks.erase(x);
-        x->m_func();
+        x->m_handler();
       }
     }
   }

@@ -33,18 +33,35 @@ namespace spin {
 
       callback()
         : m_node()
-        , m_func()
+        , m_handler()
       { }
 
-      template<typename ...Args>
-      callback(Args ...args)
+      callback(const std::function<void()> &handler)
         : m_node()
-        , m_func(std::forward<Args>(args)...)
+        , m_handler(handler)
       { }
+
+      callback(std::function<void()> &&handler)
+        : m_node()
+        , m_handler(std::move(handler))
+      { }
+
+      callback(callback &&c)
+        : callback(std::move(c.m_handler))
+      { m_node.swap_nodes(c.m_node); }
+
+      callback(const callback &) = delete;
+
+      std::function<void()> set_handler (const std::function<void()> &handler)
+      {
+        std::function<void()> tmp(std::move(m_handler));
+        m_handler = handler;
+        return tmp;
+      }
 
     private:
       list_node m_node;
-      std::function<void()> m_func;
+      std::function<void()> m_handler;
     };
 
     class timed_callback : public callback
@@ -58,9 +75,14 @@ namespace spin {
         , m_time_point(tp)
       { }
 
-      template<typename ...Args>
-      timed_callback(time_point tp, Args ...args)
-        : callback(std::forward<Args>(args)...)
+      timed_callback(time_point tp, std::function<void()> &&handler)
+        : callback(std::forward<std::function<void()>>(handler))
+        , m_node()
+        , m_time_point(tp)
+      { }
+
+      timed_callback(time_point tp, const std::function<void()> &handler)
+        : callback(handler)
         , m_node()
         , m_time_point(tp)
       { }
