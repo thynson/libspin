@@ -21,6 +21,7 @@
 #include <ratio>
 #include <chrono>
 #include <mutex>
+#include <cstdint>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>
 #include "config.hpp"
@@ -48,7 +49,7 @@ namespace spin {
     , boost::intrusive::constant_time_size<false>>;
 
   using time_point = std::chrono::time_point<std::chrono::steady_clock>;
-  using time_duration = std::chrono::duration<long, std::nano>;
+  using time_duration = std::chrono::duration<std::uint64_t, std::micro>;
   using unique_lock = std::unique_lock<std::mutex>;
 
 
