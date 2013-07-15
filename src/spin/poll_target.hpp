@@ -25,9 +25,11 @@
 
 namespace spin {
 
-  class __SPIN_EXPORT__ poll_target {
+  class __SPIN_EXPORT__ poll_target
+  {
   public:
-    enum {
+    enum
+    {
       POLL_IN,
       POLL_OUT,
       POLL_ERROR,

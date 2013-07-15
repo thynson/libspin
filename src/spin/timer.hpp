@@ -119,7 +119,8 @@ namespace spin {
 
     static inline void on_timed_out(timer *t)
     {
-      if (t->m_interval != time_duration::zero()) {
+      if (t->m_interval != time_duration::zero())
+      {
         auto tp = t->m_callback.get_time_point() + t->m_interval;
         t->m_callback.reset_time_point(tp);
         t->m_event_loop.post(t->m_callback);

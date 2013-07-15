@@ -61,5 +61,4 @@ namespace spin {
     if (need_dispatch)
       m_loop.post(m_receiver);
   }
-
 }

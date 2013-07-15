@@ -111,7 +111,8 @@ namespace spin {
     }
 
     bool will_exit = false;
-    while (!will_exit) {
+    while (!will_exit)
+    {
       epoll_event events[EVENT_BUFFER_SIZE];
       int ret = epoll_wait (epollfd, events, EVENT_BUFFER_SIZE, -1);
 
@@ -119,13 +120,17 @@ namespace spin {
         /* XXX: What to do*/
         continue;
 
-      for (int i = 0; i < ret; i++) {
-        if (events[i].data.ptr == nullptr) {
+      for (int i = 0; i < ret; i++)
+      {
+        if (events[i].data.ptr == nullptr)
+        {
           char dummy;
           if (read (pipe_read_end, &dummy, sizeof(dummy)) <= 0)
             // We've been notified to exit
             will_exit = true;
-        } else {
+        }
+        else
+        {
           // TODO: Dispatch event to its event loop
         }
       }
@@ -150,14 +155,13 @@ namespace spin {
       if (!uq.owns_lock())
         throw std::exception();
 
-      if (epollfd == -1) {
+      if (epollfd == -1)
         // FIXME:
         throw std::exception();
-      }
+
       int ret = pipe2(m_exit_notifier, O_CLOEXEC | O_NONBLOCK);
-      if (ret == -1) {
+      if (ret == -1)
         throw std::exception();
-      }
 
       unique_lock guard(m_lock_poller);
       m_tid = std::thread(routine, std::ref(*this));
@@ -175,18 +179,20 @@ namespace spin {
 
       // Wait till poller thread is ready
       m_condition_variable.wait(guard);
-    } catch (...) {
-      // Clean up resouces that won't be automatically done by compiler
-      if (epollfd != 0) {
-        close (epollfd);
-      }
-      if (m_exit_notifier[0] > 0)
-        close (m_exit_notifier[0]);
-
-      if (m_exit_notifier[1] > 0)
-        close (m_exit_notifier[1]);
-      throw;
     }
+  catch (...)
+  {
+    // Clean up resouces that won't be automatically done by compiler
+    if (epollfd != 0)
+      close (epollfd);
+
+    if (m_exit_notifier[0] > 0)
+      close (m_exit_notifier[0]);
+
+    if (m_exit_notifier[1] > 0)
+      close (m_exit_notifier[1]);
+    throw;
+  }
 
   //
   // Destructor of poller
@@ -212,20 +218,19 @@ namespace spin {
   //
   // This function is a double-checked singleton helper function
   //
-  std::shared_ptr<event_loop::poller>
-    event_loop::poller::get_instance()
-    {
-      auto ret = s_instance.lock();
+  std::shared_ptr<event_loop::poller> event_loop::poller::get_instance()
+  {
+    auto ret = s_instance.lock();
+    if (!ret) {
+      unique_lock lock(s_lock_singleton);
       if (!ret) {
-        unique_lock lock(s_lock_singleton);
-        if (!ret) {
-          ret.reset(new poller(lock));
-          s_instance = ret;
-          return ret;
-        }
+        ret.reset(new poller(lock));
+        s_instance = ret;
+        return ret;
       }
-      return ret;
     }
+    return ret;
+  }
 
   // @brief Poll event for an event loop
   // @param loop The event loop
@@ -284,7 +289,8 @@ namespace spin {
   bool event_loop::cancel(timed_callback &cb)
   {
     bool result = cb.m_node.is_linked();
-    if (result) {
+    if (result)
+    {
       cb.m_node.unlink();
       return result;
     }
@@ -296,16 +302,17 @@ namespace spin {
   { }
 
   event_loop::~event_loop()
-  {
-  }
+  { }
 
   void event_loop::run()
   {
-    for ( ; ; ) {
+    for ( ; ; )
+    {
       callback_list tasks = m_poller->poll(*this);
       if (tasks.empty())
         return;
-      while (!tasks.empty()) {
+      while (!tasks.empty())
+      {
         auto x = tasks.begin();
         tasks.erase(x);
         x->m_handler();
