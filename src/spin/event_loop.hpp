@@ -171,7 +171,8 @@ namespace spin {
     callback_list m_upcoming_callbacks;
     callback_list m_notified_callbacks;
     callback_list m_io_event_list;
-
+    std::mutex m_notifier_lock;
+    std::condition_variable m_condition_variable;
     std::shared_ptr<poller> m_poller;
 
   };
