@@ -44,7 +44,11 @@ namespace spin {
 
     void notify(bitset bitset);
 
+    event_loop &get_event_loop() const
+    { return m_loop; }
+
   private:
+    friend class event_loop;
     virtual bitset on_state_changed(bitset event) = 0;
     event_loop &m_loop;
     callback m_dispatcher;

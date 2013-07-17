@@ -16,10 +16,11 @@
  */
 
 #include "spin/event_loop.hpp"
+#include "spin/poll_target.hpp"
+#include <boost/iterator/transform_iterator.hpp>
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "spin/event_loop.hpp"
 #include <mutex>
 #include <condition_variable>
 #include <memory>
@@ -30,6 +31,7 @@ namespace spin {
   class __SPIN_INTERNAL__ event_loop::poller
   {
   public:
+    // @brief Destructor
     ~poller();
 
     // @brief singleton instance getter
@@ -46,6 +48,7 @@ namespace spin {
 
   private:
 
+    // @brief specify the size of epoll_event array to epoll_wait
     constexpr static size_t EVENT_BUFFER_SIZE = 128;
 
     // @brief Constructor
@@ -57,6 +60,8 @@ namespace spin {
     poller(poller &&) = delete;
     poller &operator = (const poller &) = delete;
     poller &operator = (poller &&) = delete;
+
+    static void dispatch(epoll_event *events, size_t size);
 
     // @brief poller thread routine
     static void routine(poller &p);
@@ -70,10 +75,8 @@ namespace spin {
     // @brief a pair of pipe, close write-end to notify poller thread to exit
     int m_exit_notifier[2];
 
-    // @brief poller lock
     std::mutex m_lock_poller;
 
-    // @brief poller condition variable for notifying I/O event
     std::condition_variable m_condition_variable;
 
     // @brief thread id
@@ -89,8 +92,60 @@ namespace spin {
     event_loop::poller::s_lock_singleton;
 
   //
-  // Poller thread routine
+  // @brief Dispatch each events to corresponding event loop
+  // @param events array of events
+  // @param size sizeof events
   //
+  void event_loop::poller::dispatch(epoll_event *events, size_t size)
+  {
+    // Helper function that cast  epoll_event to reference of poll_target
+    static auto caster = [](const epoll_event &x) -> poll_target &
+    { return *static_cast<poll_target*>(x.data.ptr); };
+
+    // Helper function that compare the event_loop instance of poll_targets
+    // that stored in each epoll_event for sorting
+    static auto cmper = [&](const epoll_event &lhs, const epoll_event &rhs)
+    {
+      return &caster(lhs).get_event_loop()
+        < &caster(rhs).get_event_loop();
+    };
+
+    size_t begin = 0;
+    size_t end = size;
+
+    std::sort(events, events + end, cmper);
+
+    while (begin < end)
+    {
+      event_loop &loop = caster(events[begin]).get_event_loop();
+
+      // The upper bound of events that belong to same event_loop with
+      // events[begin]
+      size_t bound = std::upper_bound(events + begin, events + end,
+          events[begin], cmper) - events;
+
+      static auto callback_caster = [&] (epoll_event &p) -> callback &
+      { return caster(p).m_receiver; };
+
+      typedef boost::transform_iterator<decltype(callback_caster),
+              epoll_event*> transform_iterator;
+
+      transform_iterator from(events + begin, callback_caster);
+      transform_iterator to(events + bound, callback_caster);
+
+      begin = bound;
+      unique_lock guard(loop.m_notifier_lock);
+      if (loop.m_notified_callbacks.empty())
+        loop.m_condition_variable.notify_one();
+
+      // Dispatch the events
+      loop.m_notified_callbacks.insert(loop.m_notified_callbacks.begin(),
+          from, to);
+    }
+  }
+
+  //
+  // @brief Poller thread routine
   // This routine polls all epoll events and dispatch them to corresponding
   // evnet loop until this thread be notified to exit.
   //
@@ -125,14 +180,12 @@ namespace spin {
         if (events[i].data.ptr == nullptr)
         {
           char dummy;
-          if (read (pipe_read_end, &dummy, sizeof(dummy)) <= 0)
+          if (read(pipe_read_end, &dummy, sizeof(dummy)) <= 0)
             // We've been notified to exit
             will_exit = true;
         }
         else
-        {
-          // TODO: Dispatch event to its event loop
-        }
+          dispatch(events, ret);
       }
     }
   }
@@ -146,7 +199,7 @@ namespace spin {
   //
   event_loop::poller::poller(unique_lock &uq)
     try
-    : base_timestamp(std::chrono::steady_clock::now())
+    : base_timestamp(time_point::clock::now())
     , epollfd(epoll_create1(O_CLOEXEC))
     , m_lock_poller()
     , m_condition_variable()
