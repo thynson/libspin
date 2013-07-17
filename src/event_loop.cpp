@@ -298,7 +298,7 @@ namespace spin {
     if (loop.m_timed_callbacks.empty()) {
       unique_lock guard(m_lock_poller);
       if (loop.m_notified_callbacks.empty()) {
-        if (tasks.empty() && !loop.m_io_event_list.empty()) {
+        if (tasks.empty() && loop.m_ref_counter != 0) {
           // No timer, just wait for other event
           do
             m_condition_variable.wait(guard);
@@ -319,13 +319,13 @@ namespace spin {
               { return t.m_callback; };
 
               typedef boost::transform_iterator<decltype(get_callback),
-                      decltype(loop.m_timed_callbacks.begin())> iterator;
+                    decltype(loop.m_timed_callbacks.begin())> tranform_iterator;
               // Insert all timer event that have same time point with tp and
               // remove them from loop.m_timer_event_set
               auto tf = loop.m_timed_callbacks.begin();
               auto te = loop.m_timed_callbacks.upper_bound(*tf);
-              iterator f(tf, get_callback);
-              iterator e(te, get_callback);
+              tranform_iterator f(tf, get_callback);
+              tranform_iterator e(tf, get_callback);
               tasks.insert(tasks.end(), f, e);
               loop.m_timed_callbacks.erase(tf, te);
               return tasks;
