@@ -26,118 +26,118 @@
 
 namespace spin {
 
-    class callback
+  class callback
+  {
+    friend class event_loop;
+  public:
+
+    callback()
+      : m_node()
+      , m_handler()
+    { }
+
+    callback(const std::function<void()> &handler)
+      : m_node()
+      , m_handler(handler)
+    { }
+
+    callback(std::function<void()> &&handler)
+      : m_node()
+      , m_handler(std::move(handler))
+    { }
+
+    callback(callback &&c)
+      : callback(std::move(c.m_handler))
+    { m_node.swap_nodes(c.m_node); }
+
+    callback(const callback &) = delete;
+
+    std::function<void()> set_handler (const std::function<void()> &handler)
     {
-      friend class event_loop;
-    public:
+      std::function<void()> tmp(std::move(m_handler));
+      m_handler = handler;
+      return tmp;
+    }
 
-      callback()
-        : m_node()
-        , m_handler()
-      { }
-
-      callback(const std::function<void()> &handler)
-        : m_node()
-        , m_handler(handler)
-      { }
-
-      callback(std::function<void()> &&handler)
-        : m_node()
-        , m_handler(std::move(handler))
-      { }
-
-      callback(callback &&c)
-        : callback(std::move(c.m_handler))
-      { m_node.swap_nodes(c.m_node); }
-
-      callback(const callback &) = delete;
-
-      std::function<void()> set_handler (const std::function<void()> &handler)
-      {
-        std::function<void()> tmp(std::move(m_handler));
-        m_handler = handler;
-        return tmp;
-      }
-
-      bool cancel()
-      {
-        if (m_node.is_linked())
-        {
-          m_node.unlink();
-          return true;
-        }
-        return false;
-      }
-
-    private:
-      list_node m_node;
-      std::function<void()> m_handler;
-    };
-
-    class timed_callback : public callback
+    bool cancel()
     {
-      friend class event_loop;
-    public:
-
-      timed_callback(time_point tp)
-        : callback()
-        , m_node()
-        , m_time_point(tp)
-      { }
-
-      timed_callback(time_point tp, std::function<void()> &&handler)
-        : callback(std::forward<std::function<void()>>(handler))
-        , m_node()
-        , m_time_point(tp)
-      { }
-
-      timed_callback(time_point tp, const std::function<void()> &handler)
-        : callback(handler)
-        , m_node()
-        , m_time_point(tp)
-      { }
-
-      timed_callback(timed_callback &&t)
-        : callback(std::move(static_cast<callback&>(t)))
-        , m_node()
-        , m_time_point(std::move(t.m_time_point))
-      { m_node.swap_nodes(t.m_node); }
-
-      timed_callback(const timed_callback &) = delete;
-
-      friend bool operator < (const timed_callback &lhs,
-                              const timed_callback &rhs)
-      { return lhs.m_time_point < rhs.m_time_point; }
-
-      friend bool operator > (const timed_callback &lhs,
-                              const timed_callback &rhs)
-      { return lhs.m_time_point > rhs.m_time_point; }
-
-      const time_point &get_time_point() const
-      { return m_time_point; }
-
-      time_point reset_time_point(const time_point &tp)
+      if (m_node.is_linked())
       {
-        time_point ret = m_time_point;
         m_node.unlink();
-        m_time_point = tp;
-        return ret;
+        return true;
       }
+      return false;
+    }
 
-      bool cancel()
+  private:
+    list_node m_node;
+    std::function<void()> m_handler;
+  };
+
+  class timed_callback : public callback
+  {
+    friend class event_loop;
+  public:
+
+    timed_callback(time_point tp)
+      : callback()
+      , m_node()
+      , m_time_point(tp)
+    { }
+
+    timed_callback(time_point tp, std::function<void()> &&handler)
+      : callback(std::forward<std::function<void()>>(handler))
+      , m_node()
+      , m_time_point(tp)
+    { }
+
+    timed_callback(time_point tp, const std::function<void()> &handler)
+      : callback(handler)
+      , m_node()
+      , m_time_point(tp)
+    { }
+
+    timed_callback(timed_callback &&t)
+      : callback(std::move(static_cast<callback&>(t)))
+      , m_node()
+      , m_time_point(std::move(t.m_time_point))
+    { m_node.swap_nodes(t.m_node); }
+
+    timed_callback(const timed_callback &) = delete;
+
+    friend bool operator < (const timed_callback &lhs,
+                            const timed_callback &rhs)
+    { return lhs.m_time_point < rhs.m_time_point; }
+
+    friend bool operator > (const timed_callback &lhs,
+                            const timed_callback &rhs)
+    { return lhs.m_time_point > rhs.m_time_point; }
+
+    const time_point &get_time_point() const
+    { return m_time_point; }
+
+    time_point reset_time_point(const time_point &tp)
+    {
+      time_point ret = m_time_point;
+      m_node.unlink();
+      m_time_point = tp;
+      return ret;
+    }
+
+    bool cancel()
+    {
+      if (m_node.is_linked())
       {
-        if (m_node.is_linked())
-        {
-          m_node.unlink();
-          return true;
-        } else
-          return callback::cancel();
-      }
+        m_node.unlink();
+        return true;
+      } else
+        return callback::cancel();
+    }
 
-    private:
-      set_node m_node;
-      time_point m_time_point;
-    };
+  private:
+    set_node m_node;
+    time_point m_time_point;
+  };
 
   class __SPIN_EXPORT__ event_loop
   {
