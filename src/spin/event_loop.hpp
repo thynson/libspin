@@ -74,31 +74,31 @@ namespace spin {
     std::function<void()> m_handler;
   };
 
-  class timed_callback : public callback
+  class timed_callback
   {
     friend class event_loop;
   public:
 
     timed_callback(time_point tp)
-      : callback()
+      : m_callback()
       , m_node()
       , m_time_point(tp)
     { }
 
     timed_callback(time_point tp, std::function<void()> &&handler)
-      : callback(std::forward<std::function<void()>>(handler))
+      : m_callback(std::move(handler))
       , m_node()
       , m_time_point(tp)
     { }
 
     timed_callback(time_point tp, const std::function<void()> &handler)
-      : callback(handler)
+      : m_callback(handler)
       , m_node()
       , m_time_point(tp)
     { }
 
     timed_callback(timed_callback &&t)
-      : callback(std::move(static_cast<callback&>(t)))
+      : m_callback(std::move(t.m_callback))
       , m_node()
       , m_time_point(std::move(t.m_time_point))
     { m_node.swap_nodes(t.m_node); }
@@ -131,10 +131,11 @@ namespace spin {
         m_node.unlink();
         return true;
       } else
-        return callback::cancel();
+        return m_callback.cancel();
     }
 
   private:
+    callback m_callback;
     set_node m_node;
     time_point m_time_point;
   };
@@ -148,9 +149,6 @@ namespace spin {
     typedef list<callback, &callback::m_node> callback_list;
     typedef multiset<timed_callback, &timed_callback::m_node>
       timed_callback_set;
-
-    static bool cancel(callback &cb);
-    static bool cancel(timed_callback &cb);
 
     event_loop();
     ~event_loop();

@@ -315,12 +315,19 @@ namespace spin {
           do {
             std::cv_status status = m_condition_variable.wait_until(guard, tp);
             if (status == std::cv_status::timeout) {
+              auto get_callback = [](timed_callback &t)->callback&
+              { return t.m_callback; };
+
+              typedef boost::transform_iterator<decltype(get_callback),
+                      decltype(loop.m_timed_callbacks.begin())> iterator;
               // Insert all timer event that have same time point with tp and
               // remove them from loop.m_timer_event_set
-              auto f = loop.m_timed_callbacks.begin();
-              auto e = loop.m_timed_callbacks.upper_bound(*f);
+              auto tf = loop.m_timed_callbacks.begin();
+              auto te = loop.m_timed_callbacks.upper_bound(*tf);
+              iterator f(tf, get_callback);
+              iterator e(te, get_callback);
               tasks.insert(tasks.end(), f, e);
-              loop.m_timed_callbacks.erase(f, e);
+              loop.m_timed_callbacks.erase(tf, te);
               return tasks;
             }
           } while (loop.m_timed_callbacks.empty());
@@ -329,25 +336,6 @@ namespace spin {
     }
     tasks.splice(tasks.end(), loop.m_notified_callbacks);
     return tasks;
-  }
-
-  bool event_loop::cancel(callback &cb)
-  {
-    bool result = cb.m_node.is_linked();
-    if (result)
-      cb.m_node.unlink();
-    return result;
-  }
-
-  bool event_loop::cancel(timed_callback &cb)
-  {
-    bool result = cb.m_node.is_linked();
-    if (result)
-    {
-      cb.m_node.unlink();
-      return result;
-    }
-    return cancel(static_cast<callback&>(cb));
   }
 
   event_loop::event_loop()
