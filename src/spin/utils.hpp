@@ -48,8 +48,8 @@ namespace spin {
     , boost::intrusive::member_hook<Type, set_node, PointerToMember>
     , boost::intrusive::constant_time_size<false>>;
 
+  using time_duration = std::chrono::steady_clock::duration;
   using time_point = std::chrono::time_point<std::chrono::steady_clock>;
-  using time_duration = std::chrono::duration<std::uint64_t, std::micro>;
   using unique_lock = std::unique_lock<std::mutex>;
 
 
