@@ -235,7 +235,12 @@ namespace spin {
 
     void dispatch(callback &cb);
     void dispatch(timed_callback &cb);
+    void dispatch(callback_list &cblist);
+    void dispatch(callback_list &&cblist);
 
+    void post(callback &cb);
+    void post(callback_list &cblist);
+    void post(callback_list &&cblist);
 
   private:
 

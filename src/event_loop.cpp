@@ -132,15 +132,8 @@ namespace spin {
 
       transform_iterator from(events + begin, callback_caster);
       transform_iterator to(events + bound, callback_caster);
-
       begin = bound;
-      unique_lock guard(loop.m_notifier_lock);
-      if (loop.m_notified_callbacks.empty())
-        loop.m_condition_variable.notify_one();
-
-      // Dispatch the events
-      loop.m_notified_callbacks.insert(loop.m_notified_callbacks.begin(),
-          from, to);
+      loop.post(callback_list(from, to));
     }
   }
 
@@ -339,7 +332,13 @@ namespace spin {
   }
 
   event_loop::event_loop()
-    : m_poller(poller::get_instance())
+    : m_timed_callbacks()
+    , m_upcoming_callbacks()
+    , m_notified_callbacks()
+    , m_ref_counter(0)
+    , m_notifier_lock()
+    , m_condition_variable()
+    , m_poller(poller::get_instance())
   { }
 
   event_loop::~event_loop()
@@ -366,5 +365,30 @@ namespace spin {
 
   void event_loop::dispatch(timed_callback &dp)
   { m_timed_callbacks.push_back(dp); }
+
+  void event_loop::dispatch(callback_list &cblist)
+  { cblist.splice(cblist.end(), m_upcoming_callbacks); }
+
+  void event_loop::dispatch(callback_list &&cblist)
+  { dispatch(cblist); }
+
+  void event_loop::post(callback &cb)
+  {
+    unique_lock guard(m_notifier_lock);
+    if (m_notified_callbacks.empty())
+      m_condition_variable.notify_one();
+    m_notified_callbacks.push_back(cb);
+  }
+
+  void event_loop::post(callback_list &cb)
+  {
+    unique_lock guard(m_notifier_lock);
+    if (m_notified_callbacks.empty())
+      m_condition_variable.notify_one();
+    cb.splice(cb.end(), m_notified_callbacks);
+  }
+
+  void event_loop::post(callback_list &&cb)
+  { post(cb); }
 
 }
