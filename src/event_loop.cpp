@@ -361,10 +361,10 @@ namespace spin {
     }
   }
 
-  void event_loop::post(callback &ap)
+  void event_loop::dispatch(callback &ap)
   { m_upcoming_callbacks.push_back(ap); }
 
-  void event_loop::post(timed_callback &dp)
+  void event_loop::dispatch(timed_callback &dp)
   { m_timed_callbacks.push_back(dp); }
 
 }

@@ -15,45 +15,26 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/spin.hpp>
+#include <spin/event_loop.hpp>
+#include <spin/timer.hpp>
+#include <list>
 
-int counter = 0;
-
-using namespace spin;
-
-class my_timer : public spin::timed_callback
+struct my_timer : public spin::timer
 {
-private:
-	int i;
-public:
-	my_timer(int i)
-		: timed_callback(std::chrono::steady_clock::now()
-				+ std::chrono::duration_cast<time_duration>(std::chrono::seconds(i))
-      , [this](){
-          callback();
-      })
-		, i(i)
-	{  }
-
-	void callback()
-	{
-		counter = i;
-	}
+  my_timer(spin::event_loop &loop, const spin::time_duration &interval)
+    : timer(loop, interval, [this]() { })
+  {
+  }
 };
 
 int main()
 {
-	event_loop l;
-	time_point tp = std::chrono::steady_clock::now();
-	my_timer t1(1), t2(2), t3(3);
-	l.dispatch(t3);
-	l.dispatch(t2);
-	l.dispatch(t1);
-	l.run();
-	time_duration span = time_point::clock::now() - tp;
-	if (span < std::chrono::seconds(3))
-		return 1;
-	return 0;
+  spin::event_loop loop;
+  std::list<my_timer> lt;
+
+  for (int i = 0; i < 100000; i++)
+    lt.emplace_back(loop, spin::time_duration(1000000));
+
+  loop.run();
+
 }
-
-

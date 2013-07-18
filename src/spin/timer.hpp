@@ -37,7 +37,7 @@ namespace spin {
       , m_started(started)
     {
       if (m_started)
-        m_event_loop.post(m_callback);
+        m_event_loop.dispatch(m_callback);
     }
 
     timer(event_loop &loop, const time_duration &interval,
@@ -66,7 +66,7 @@ namespace spin {
       bool actual_started = !m_started;
       m_started = true;
       if (actual_started)
-        m_event_loop.post(m_callback);
+        m_event_loop.dispatch(m_callback);
       return actual_started;
     }
 
@@ -123,7 +123,7 @@ namespace spin {
       {
         auto tp = t->m_callback.get_time_point() + t->m_interval;
         t->m_callback.reset_time_point(tp);
-        t->m_event_loop.post(t->m_callback);
+        t->m_event_loop.dispatch(t->m_callback);
       }
       t->m_callback_aux();
     }

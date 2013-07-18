@@ -27,7 +27,7 @@ namespace spin {
           bool need_dispatch = result.any();;
           m_state = result;
           if (need_dispatch)
-            m_loop.post(m_dispatcher);
+            m_loop.dispatch(m_dispatcher);
 
         })
     , m_receiver([this]()
@@ -40,7 +40,7 @@ namespace spin {
             m_pending.reset();
           }
           if (need_dispatch)
-            m_loop.post(m_dispatcher);
+            m_loop.dispatch(m_dispatcher);
 
         })
     , m_lock()
@@ -59,6 +59,6 @@ namespace spin {
       m_pending |= bitset;
     }
     if (need_dispatch)
-      m_loop.post(m_receiver);
+      m_loop.dispatch(m_receiver);
   }
 }

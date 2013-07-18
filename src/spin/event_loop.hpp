@@ -233,8 +233,8 @@ namespace spin {
     ~event_loop();
     void run();
 
-    void post(callback &cb);
-    void post(timed_callback &cb);
+    void dispatch(callback &cb);
+    void dispatch(timed_callback &cb);
 
 
   private:
