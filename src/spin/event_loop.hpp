@@ -244,6 +244,8 @@ namespace spin {
 
   private:
 
+    callback_list wait_for_events();
+
     event_loop(const event_loop &) = delete;
     event_loop &operator = (const event_loop &) = delete;
     event_loop(event_loop &&) = delete;
@@ -255,7 +257,6 @@ namespace spin {
     std::atomic_size_t m_ref_counter;
     std::mutex m_notifier_lock;
     std::condition_variable m_condition_variable;
-    std::shared_ptr<poller> m_poller;
 
   };
 

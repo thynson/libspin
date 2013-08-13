@@ -28,7 +28,7 @@
 namespace spin {
 
   // @brief singleton I/O poller for all event loop
-  class __SPIN_INTERNAL__ event_loop::poller
+  class __SPIN_INTERNAL__ poller
   {
   public:
     // @brief Destructor
@@ -44,7 +44,7 @@ namespace spin {
     const int epollfd;
 
     // @brief poll
-    callback_list poll(event_loop &loop);
+    event_loop::callback_list poll(event_loop &loop);
 
   private:
 
@@ -85,18 +85,16 @@ namespace spin {
   };
 
 
-  std::weak_ptr<event_loop::poller>
-    event_loop::poller::s_instance;
+  std::weak_ptr<poller> poller::s_instance;
 
-  std::mutex
-    event_loop::poller::s_lock_singleton;
+  std::mutex poller::s_lock_singleton;
 
   //
   // @brief Dispatch each events to corresponding event loop
   // @param events array of events
   // @param size sizeof events
   //
-  void event_loop::poller::dispatch(epoll_event *events, size_t size)
+  void poller::dispatch(epoll_event *events, size_t size)
   {
     // Helper function that cast  epoll_event to reference of poll_target
     static auto caster = [](const epoll_event &x) -> poll_target &
@@ -133,7 +131,7 @@ namespace spin {
       transform_iterator from(events + begin, callback_caster);
       transform_iterator to(events + bound, callback_caster);
       begin = bound;
-      loop.post(callback_list(from, to));
+      loop.post(event_loop::callback_list(from, to));
     }
   }
 
@@ -142,7 +140,7 @@ namespace spin {
   // This routine polls all epoll events and dispatch them to corresponding
   // evnet loop until this thread be notified to exit.
   //
-  void event_loop::poller::routine(poller &p)
+  void poller::routine(poller &p)
   {
     int epollfd;
     int pipe_read_end;
@@ -190,7 +188,7 @@ namespace spin {
   // from poller::get_instance() and poller::s_lock_singleton should be
   // ensure locked.
   //
-  event_loop::poller::poller(unique_lock &uq)
+  poller::poller(unique_lock &uq)
     try
     : base_timestamp(time_point::clock::now())
     , epollfd(epoll_create1(O_CLOEXEC))
@@ -245,7 +243,7 @@ namespace spin {
   //
   // will notify the poller to exit and then join it
   //
-  event_loop::poller::~poller()
+  poller::~poller()
   {
     // Close the write-end of this pipe to trigger an EPOLLIN event to notify
     // the thread to exit
@@ -264,7 +262,7 @@ namespace spin {
   //
   // This function is a double-checked singleton helper function
   //
-  std::shared_ptr<event_loop::poller> event_loop::poller::get_instance()
+  std::shared_ptr<poller> poller::get_instance()
   {
     auto ret = s_instance.lock();
     if (!ret) {
@@ -283,51 +281,51 @@ namespace spin {
   //
   // This function will block until an event is fired or return an empty list
   // immediately if there is no event will be fired
-  event_loop::callback_list event_loop::poller::poll(event_loop &loop)
+  event_loop::callback_list poller::poll(event_loop &loop)
   {
-    callback_list tasks;
-    tasks.swap(loop.m_upcoming_callbacks);
-
-    if (loop.m_timed_callbacks.empty()) {
-      unique_lock guard(m_lock_poller);
-      if (loop.m_notified_callbacks.empty()) {
-        if (tasks.empty() && loop.m_ref_counter != 0) {
-          // No timer, just wait for other event
-          do
-            m_condition_variable.wait(guard);
-          while (loop.m_notified_callbacks.empty());
-          //tasks.swap(m_notified_event_list);
-        }
-      }
-    } else {
-      auto tp = loop.m_timed_callbacks.begin()->m_time_point;
-      unique_lock guard(loop.m_poller->m_lock_poller);
-      if (loop.m_notified_callbacks.empty()) {
-        if (tasks.empty()) {
-          // There are timers, wait until the first expire time point
-          do {
-            std::cv_status status = m_condition_variable.wait_until(guard, tp);
-            if (status == std::cv_status::timeout) {
-              auto get_callback = [](timed_callback &t)->callback&
-              { return t.m_callback; };
-
-              typedef boost::transform_iterator<decltype(get_callback),
-                    decltype(loop.m_timed_callbacks.begin())> tranform_iterator;
-              // Insert all timer event that have same time point with tp and
-              // remove them from loop.m_timer_event_set
-              auto tf = loop.m_timed_callbacks.begin();
-              auto te = loop.m_timed_callbacks.upper_bound(*tf);
-              tranform_iterator f(tf, get_callback);
-              tranform_iterator e(tf, get_callback);
-              tasks.insert(tasks.end(), f, e);
-              loop.m_timed_callbacks.erase(tf, te);
-              return tasks;
-            }
-          } while (loop.m_timed_callbacks.empty());
-        }
-      }
-    }
-    tasks.splice(tasks.end(), loop.m_notified_callbacks);
+    event_loop::callback_list tasks;
+//    tasks.swap(loop.m_upcoming_callbacks);
+//
+//    if (loop.m_timed_callbacks.empty()) {
+//      unique_lock guard(m_lock_poller);
+//      if (loop.m_notified_callbacks.empty()) {
+//        if (tasks.empty() && loop.m_ref_counter != 0) {
+//          // No timer, just wait for other event
+//          do
+//            m_condition_variable.wait(guard);
+//          while (loop.m_notified_callbacks.empty());
+//          //tasks.swap(m_notified_event_list);
+//        }
+//      }
+//    } else {
+//      auto tp = loop.m_timed_callbacks.begin()->m_time_point;
+//      unique_lock guard(loop.m_poller->m_lock_poller);
+//      if (loop.m_notified_callbacks.empty()) {
+//        if (tasks.empty()) {
+//          // There are timers, wait until the first expire time point
+//          do {
+//            std::cv_status status = m_condition_variable.wait_until(guard, tp);
+//            if (status == std::cv_status::timeout) {
+//              auto get_callback = [](timed_callback &t)->callback&
+//              { return t.m_callback; };
+//
+//              typedef boost::transform_iterator<decltype(get_callback),
+//                    decltype(loop.m_timed_callbacks.begin())> tranform_iterator;
+//              // Insert all timer event that have same time point with tp and
+//              // remove them from loop.m_timer_event_set
+//              auto tf = loop.m_timed_callbacks.begin();
+//              auto te = loop.m_timed_callbacks.upper_bound(*tf);
+//              tranform_iterator f(tf, get_callback);
+//              tranform_iterator e(tf, get_callback);
+//              tasks.insert(tasks.end(), f, e);
+//              loop.m_timed_callbacks.erase(tf, te);
+//              return tasks;
+//            }
+//          } while (loop.m_timed_callbacks.empty());
+//        }
+//      }
+//    }
+//    tasks.splice(tasks.end(), loop.m_notified_callbacks);
     return tasks;
   }
 
@@ -338,17 +336,64 @@ namespace spin {
     , m_ref_counter(0)
     , m_notifier_lock()
     , m_condition_variable()
-    , m_poller(poller::get_instance())
+    //, m_poller(poller::get_instance())
   { }
 
   event_loop::~event_loop()
   { }
 
+  event_loop::callback_list event_loop::wait_for_events()
+  {
+    event_loop::callback_list tasks;
+    tasks.swap(m_upcoming_callbacks);
+
+    if (m_timed_callbacks.empty()) {
+      unique_lock guard(m_notifier_lock);
+      if (m_notified_callbacks.empty()) {
+        if (tasks.empty() && m_ref_counter != 0) {
+          // No timer, just wait for other event
+          do
+            m_condition_variable.wait(guard);
+          while (m_notified_callbacks.empty());
+        }
+      }
+    } else {
+      auto tp = m_timed_callbacks.begin()->m_time_point;
+      unique_lock guard(m_notifier_lock);
+      if (m_notified_callbacks.empty()) {
+        if (tasks.empty()) {
+          // There are timers, wait until the first expire time point
+          do {
+            std::cv_status status = m_condition_variable.wait_until(guard, tp);
+            if (status == std::cv_status::timeout) {
+              auto get_callback = [](timed_callback &t)->callback&
+              { return t.m_callback; };
+
+              typedef boost::transform_iterator<decltype(get_callback),
+                    decltype(m_timed_callbacks.begin())> tranform_iterator;
+              // Insert all timer event that have same time point with tp and
+              // remove them from loop.m_timer_event_set
+              auto tf = m_timed_callbacks.begin();
+              auto te = m_timed_callbacks.upper_bound(*tf);
+              tranform_iterator f(tf, get_callback);
+              tranform_iterator e(tf, get_callback);
+              tasks.insert(tasks.end(), f, e);
+              m_timed_callbacks.erase(tf, te);
+              return tasks;
+            }
+          } while (m_timed_callbacks.empty());
+        }
+      }
+    }
+    tasks.splice(tasks.end(), m_notified_callbacks);
+    return tasks;
+  }
+
   void event_loop::run()
   {
     for ( ; ; )
     {
-      callback_list tasks = m_poller->poll(*this);
+      callback_list tasks = wait_for_events();
       if (tasks.empty())
         return;
       while (!tasks.empty())

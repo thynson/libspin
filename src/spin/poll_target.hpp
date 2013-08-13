@@ -48,7 +48,7 @@ namespace spin {
     { return m_loop; }
 
   private:
-    friend class event_loop;
+    friend class poller;
     virtual bitset on_state_changed(bitset event) = 0;
     event_loop &m_loop;
     callback m_dispatcher;
