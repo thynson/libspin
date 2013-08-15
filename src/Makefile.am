@@ -27,5 +27,4 @@ libspin_la_HEADERS=spin/spin.hpp\
 				   spin/spinlock.hpp\
 				   spin/timer.hpp
 libspin_la_SOURCES=event_loop.cpp\
-				   poll_target.cpp\
 				   timer.cpp

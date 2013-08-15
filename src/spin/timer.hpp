@@ -131,7 +131,7 @@ namespace spin {
     event_loop &m_event_loop;
     time_duration m_interval;
     std::function<void()> m_callback_aux;
-    timed_callback m_callback;
+    event_loop::timed_callback m_callback;
     bool m_started;
   };
 }
