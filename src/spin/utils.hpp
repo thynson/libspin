@@ -21,6 +21,7 @@
 #include <ratio>
 #include <chrono>
 #include <mutex>
+#include <condition_variable>
 #include <cstdint>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>
