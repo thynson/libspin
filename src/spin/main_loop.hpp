@@ -15,15 +15,21 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __SPIN_ACTOR_HPP__
-#define __SPIN_ACTOR_HPP__
+#ifndef __SPIN_LOOP_HPP_INCLUDED__
+#define __SPIN_LOOP_HPP_INCLUDED__
 
-#include <spin/utils.hpp>
-#include <functional>
+#include <thread>
+#include <condition_variable>
+#include <memory>
+#include <chrono>
+#include <bitset>
+#include "utils.hpp"
 
-namespace spin
-{
-  class __SPIN_EXPORT__ actor
+namespace spin {
+
+
+
+  class __SPIN_EXPORT__ main_loop
   {
   public:
 
@@ -33,7 +39,7 @@ namespace spin
      */
     class callback
     {
-      friend class actor;
+      friend class main_loop;
     public:
 
       /**
@@ -90,7 +96,7 @@ namespace spin
 
       /**
        * @brief Cancel this callback, if the callback have not been posted to an
-       * actor, or the handler've already been called, this function does
+       * main_loop, or the handler've already been called, this function does
        * nothing
        * @retval true Actually cancel a posted callback
        * @retval false Nothing has been done
@@ -111,13 +117,13 @@ namespace spin
     };
 
     /**
-     * @brief timed callback object that can be post to an actor and its
+     * @brief timed callback object that can be post to an main_loop and its
      * handler will be called in the future when specified time just come or the
      * future or will be called immediately if the specified time has passed.
      */
     class __SPIN_EXPORT__ timed_callback
     {
-      friend class actor;
+      friend class main_loop;
     public:
 
       /**
@@ -208,8 +214,9 @@ namespace spin
         {
           m_node.unlink();
           return true;
-        } else
-          return m_callback.cancel();
+        }
+        else
+        { return m_callback.cancel(); }
       }
 
     private:
@@ -218,91 +225,49 @@ namespace spin
       time_point m_time_point;
     };
 
-    class async_callback
-    {
-      friend class actor;
-    public:
-      async_callback(actor &e, const std::function<void()> &m_func)
-        : m_actor(e)
-        , m_deferer([this]()
-          { m_actor.post(m_async_notifier); })
-        , m_async_notifier(m_func)
-      {}
-    private:
-      actor &m_actor;
-      callback m_deferer;
-      callback m_async_notifier;
-    };
-
     typedef list<callback, &callback::m_node> callback_list;
     typedef multiset<timed_callback, &timed_callback::m_node>
       timed_callback_set;
 
-    actor();
-    virtual ~actor();
+    main_loop();
+    ~main_loop();
+
     void run();
 
     void defer(callback &cb)
     { m_defered_callbacks.push_back(cb); }
 
     void defer(timed_callback &cb)
-    { m_timed_callbacks.push_back(cb); }
+    { m_timed_callbacks.insert(cb); }
 
     void defer(callback_list &cblist)
     { cblist.splice(cblist.end(), m_defered_callbacks); }
 
     void defer(callback_list &&cblist)
-    { cblist.splice(cblist.end(), m_defered_callbacks); }
+    { defer(cblist); }
 
-    void post(callback &cb)
-    {
-      unique_lock holder(m_notifier_lock);
-      if (m_posted_callbacks.empty() && m_defered_callbacks.empty())
-        m_condition_variable.notify_one();
-      m_posted_callbacks.push_back(cb);
-    }
-
-    void post(callback_list &cblist)
-    {
-      unique_lock holder(m_notifier_lock);
-      if (m_posted_callbacks.empty() && m_defered_callbacks.empty())
-        m_condition_variable.notify_one();
-      cblist.splice(cblist.end(), m_posted_callbacks);
-    }
-
-    void post(callback_list &&cblist)
-    {
-      unique_lock holder(m_notifier_lock);
-      if (m_posted_callbacks.empty() && m_defered_callbacks.empty())
-        m_condition_variable.notify_one();
-      cblist.splice(cblist.end(), m_posted_callbacks);
-    }
-
-    void stop()
-    {
-      unique_lock holder(m_notifier_lock);
-      m_stop = true;
-      m_condition_variable.notify_one();
-    }
+    void post(callback &cb);
+    void post(callback_list &cblist);
+    void post(callback_list &&cblist);
 
   private:
 
     callback_list wait_for_events();
 
-    actor(const actor &) = delete;
-    actor &operator = (const actor &) = delete;
-    actor(actor &&) = delete;
-    actor &operator = (actor &&) = delete;
+    main_loop(const main_loop &) = delete;
+    main_loop &operator = (const main_loop &) = delete;
+    main_loop(main_loop &&) = delete;
+    main_loop &operator = (main_loop &&) = delete;
 
     timed_callback_set m_timed_callbacks;
-    callback_list m_defered_callbacks;
     callback_list m_posted_callbacks;
-    std::mutex m_notifier_lock;
-    std::condition_variable m_condition_variable;
-    bool m_stop;
-
+    callback_list m_defered_callbacks;
+    std::mutex m_lock;
+    std::condition_variable m_cond;
+    std::atomic_size_t m_ref_counter;
   };
 
-}
-#endif
 
+}
+
+#endif

@@ -17,5 +17,8 @@
 AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 
-SUBDIRS=src test docs
+AM_CPPFLAGS="-Wall -Werror -fvisibility=hidden -D__BUILD_SPIN__=1"
+AM_LDFLAGS="-Xlinker --no-undefined -lpthread"
+
+SUBDIRS=src docs
 

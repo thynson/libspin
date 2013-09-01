@@ -28,18 +28,15 @@ LT_INIT
 AM_SILENT_RULES([yes])
 
 
-API_VERSION="0:0:0"
-AM_CPPFLAGS="-Wall -Werror -fvisibility=hidden -D__BUILD_SPIN__=1"
-AM_CFLAGS="-std=c99"
-AM_CXXFLAGS="-std=c++11"
-AM_LDFLAGS="-Xlinker --no-undefined -lpthread"
-
 AC_SUBST(API_VERSION)
 AC_SUBST(AM_CPPFLAGS)
 AC_SUBST(AM_CXXFLAGS)
 AC_SUBST(AM_CFLAGS)
 AC_SUBST(AM_LDFLAGS)
 
+
+CFLAGS="$CFLAGS -std=c99"
+CXXFLAGS="$CXXFLAGS -std=c++11"
 
 AC_PROG_CC([clang gcc])
 AC_PROG_CXX([clang++ g++])

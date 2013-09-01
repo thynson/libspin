@@ -18,16 +18,15 @@
 #ifndef __SPIN_SPINLOCK_HPP_INCLUDED__
 #define __SPIN_SPINLOCK_HPP_INCLUDED__
 
-#include <atomic>
-#include "config.hpp"
+#include <spin/environment.hpp>
 
-namespace spin {
+#include <atomic>
+
+namespace spin
+{
 
   class __SPIN_EXPORT__ spinlock
   {
-  private:
-    std::atomic<bool> m_lock;
-
   public:
     spinlock(bool locked = false) noexcept
       : m_lock(locked)
@@ -54,6 +53,9 @@ namespace spin {
 
     void unlock() noexcept
     { std::atomic_store(&m_lock, false); }
+
+  private:
+    std::atomic<bool> m_lock;
   };
 }
 

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "spin/event_loop.hpp"
+#include "spin/main_loop.hpp"
 #include <boost/iterator/transform_iterator.hpp>
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -26,66 +26,81 @@
 
 namespace spin {
 
-  event_loop::event_loop()
+  main_loop::main_loop()
     : m_timed_callbacks()
-    , m_upcoming_callbacks()
-    , m_notified_callbacks()
-    , m_ref_counter(0)
-    , m_notifier_lock()
-    , m_condition_variable()
+    , m_defered_callbacks()
+    , m_posted_callbacks()
+    , m_lock()
+    , m_cond()
+    , m_ref_counter()
   { }
 
-  event_loop::~event_loop()
+  main_loop::~main_loop()
   { }
 
-  event_loop::callback_list event_loop::wait_for_events()
+  main_loop::callback_list main_loop::wait_for_events()
   {
-    event_loop::callback_list tasks;
-    tasks.swap(m_upcoming_callbacks);
+    main_loop::callback_list tasks;
+    tasks.swap(m_defered_callbacks);
 
-    if (m_timed_callbacks.empty()) {
-      unique_lock guard(m_notifier_lock);
-      if (m_notified_callbacks.empty()) {
-        if (tasks.empty() && m_ref_counter != 0) {
+    if (m_timed_callbacks.empty())
+    {
+      std::unique_lock<std::mutex> guard(m_lock);
+      if (m_posted_callbacks.empty())
+      {
+        if (tasks.empty() && m_ref_counter != 0)
+        {
           // No timer, just wait for other event
           do
-            m_condition_variable.wait(guard);
-          while (m_notified_callbacks.empty());
+            m_cond.wait(guard);
+          while (m_posted_callbacks.empty());
         }
       }
-    } else {
+    }
+    else
+    {
       auto tp = m_timed_callbacks.begin()->m_time_point;
-      unique_lock guard(m_notifier_lock);
-      if (m_notified_callbacks.empty()) {
-        if (tasks.empty()) {
+      std::unique_lock<std::mutex> guard(m_lock);
+
+      if (m_posted_callbacks.empty())
+      {
+        if (tasks.empty())
+        {
           // There are timers, wait until the first expire time point
-          do {
-            std::cv_status status = m_condition_variable.wait_until(guard, tp);
-            if (status == std::cv_status::timeout) {
+          do
+          {
+            std::cv_status status = m_cond.wait_until(guard, tp);
+            if (status == std::cv_status::timeout)
+            {
               auto get_callback = [](timed_callback &t)->callback&
               { return t.m_callback; };
 
               typedef boost::transform_iterator<decltype(get_callback),
                     decltype(m_timed_callbacks.begin())> tranform_iterator;
+
               // Insert all timer event that have same time point with tp and
               // remove them from loop.m_timer_event_set
               auto tf = m_timed_callbacks.begin();
               auto te = m_timed_callbacks.upper_bound(*tf);
+
               tranform_iterator f(tf, get_callback);
               tranform_iterator e(tf, get_callback);
+
               tasks.insert(tasks.end(), f, e);
               m_timed_callbacks.erase(tf, te);
+
               return tasks;
             }
-          } while (m_timed_callbacks.empty());
+          }
+          while (m_timed_callbacks.empty());
         }
       }
     }
-    tasks.splice(tasks.end(), m_notified_callbacks);
+    tasks.splice(tasks.end(), m_posted_callbacks);
     return tasks;
   }
 
-  void event_loop::run()
+  void main_loop::run()
   {
     for ( ; ; )
     {
@@ -101,35 +116,23 @@ namespace spin {
     }
   }
 
-  void event_loop::dispatch(callback &ap)
-  { m_upcoming_callbacks.push_back(ap); }
-
-  void event_loop::dispatch(timed_callback &dp)
-  { m_timed_callbacks.push_back(dp); }
-
-  void event_loop::dispatch(callback_list &cblist)
-  { cblist.splice(cblist.end(), m_upcoming_callbacks); }
-
-  void event_loop::dispatch(callback_list &&cblist)
-  { dispatch(cblist); }
-
-  void event_loop::post(callback &cb)
+  void main_loop::post(callback &cb)
   {
-    unique_lock guard(m_notifier_lock);
-    if (m_notified_callbacks.empty())
-      m_condition_variable.notify_one();
-    m_notified_callbacks.push_back(cb);
+    std::unique_lock<std::mutex> guard(m_lock);
+    if (m_posted_callbacks.empty())
+      m_cond.notify_one();
+    m_posted_callbacks.push_back(cb);
   }
 
-  void event_loop::post(callback_list &cb)
+  void main_loop::post(callback_list &cb)
   {
-    unique_lock guard(m_notifier_lock);
-    if (m_notified_callbacks.empty())
-      m_condition_variable.notify_one();
-    cb.splice(cb.end(), m_notified_callbacks);
+    std::unique_lock<std::mutex> guard(m_lock);
+    if (m_posted_callbacks.empty())
+      m_cond.notify_one();
+    cb.splice(cb.end(), m_posted_callbacks);
   }
 
-  void event_loop::post(callback_list &&cb)
+  void main_loop::post(callback_list &&cb)
   { post(cb); }
 
 }

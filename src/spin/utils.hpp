@@ -18,20 +18,22 @@
 #ifndef __SPIN_UTILS_HPP_INCLUDED__
 #define __SPIN_UTILS_HPP_INCLUDED__
 
+#include <spin/environment.hpp>
+#include <spin/spinlock.hpp>
+
+#include <boost/intrusive/list.hpp>
+#include <boost/intrusive/set.hpp>
+
 #include <ratio>
 #include <chrono>
 #include <mutex>
 #include <condition_variable>
 #include <cstdint>
-#include <boost/intrusive/list.hpp>
-#include <boost/intrusive/set.hpp>
-#include "config.hpp"
-#include "spinlock.hpp"
 
 namespace spin {
 
-  using list_node
-    = boost::intrusive::list_member_hook<
+  using list_node =
+    boost::intrusive::list_member_hook<
     boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
   template<typename Type, list_node Type::* PointerToMember>
@@ -39,24 +41,18 @@ namespace spin {
     , boost::intrusive::member_hook<Type, list_node, PointerToMember>
     , boost::intrusive::constant_time_size<false>>;
 
-  using set_node
-    = boost::intrusive::set_member_hook<
+  using set_node =
+    boost::intrusive::set_member_hook<
     boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
   template<typename Type, set_node Type::* PointerToMember>
-    using multiset
-    = boost::intrusive::multiset<Type
+    using multiset =
+    boost::intrusive::multiset<Type
     , boost::intrusive::member_hook<Type, set_node, PointerToMember>
     , boost::intrusive::constant_time_size<false>>;
 
   using time_duration = std::chrono::steady_clock::duration;
   using time_point = std::chrono::time_point<std::chrono::steady_clock>;
-  using unique_lock = std::unique_lock<std::mutex>;
-
-
-
-
-
 }
 
 #endif
