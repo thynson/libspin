@@ -124,6 +124,14 @@ namespace spin {
     m_posted_callbacks.push_back(cb);
   }
 
+  void main_loop::post(timed_callback &cb)
+  {
+    std::unique_lock<std::mutex> guard(m_lock);
+    if (m_timed_callbacks.empty())
+      m_cond.notify_one();
+    m_timed_callbacks.insert(cb);
+  }
+
   void main_loop::post(callback_list &cb)
   {
     std::unique_lock<std::mutex> guard(m_lock);

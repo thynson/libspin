@@ -250,6 +250,7 @@ namespace spin {
     { defer(cblist); }
 
     void post(callback &cb);
+    void post(timed_callback &cb);
     void post(callback_list &cblist);
     void post(callback_list &&cblist);
 
