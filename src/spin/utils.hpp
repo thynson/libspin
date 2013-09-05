@@ -19,7 +19,7 @@
 #define __SPIN_UTILS_HPP_INCLUDED__
 
 #include <spin/environment.hpp>
-#include <spin/spinlock.hpp>
+#include <spin/spin_lock.hpp>
 
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>

@@ -25,19 +25,19 @@
 namespace spin
 {
 
-  class __SPIN_EXPORT__ spinlock
+  class __SPIN_EXPORT__ spin_lock
   {
   public:
-    spinlock(bool locked = false) noexcept
+    spin_lock(bool locked = false) noexcept
       : m_lock(locked)
     { }
 
-    ~spinlock() noexcept
+    ~spin_lock() noexcept
     { }
 
-    spinlock(const spinlock &) = delete;
+    spin_lock(const spin_lock &) = delete;
 
-    spinlock(spinlock &&tmp) = delete;
+    spin_lock(spin_lock &&tmp) = delete;
 
     bool try_lock() noexcept
     {
