@@ -26,6 +26,8 @@
 
 namespace spin {
 
+  main_loop main_loop::default_instance;
+
   main_loop::main_loop()
     : m_timed_callbacks()
     , m_defered_callbacks()

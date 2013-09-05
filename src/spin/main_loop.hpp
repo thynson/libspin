@@ -263,6 +263,9 @@ namespace spin {
     main_loop(main_loop &&) = delete;
     main_loop &operator = (main_loop &&) = delete;
 
+    /** @brief Default instance */
+    static main_loop default_instance;
+
     timed_callback_set m_timed_callbacks;
     callback_list m_posted_callbacks;
     callback_list m_defered_callbacks;
