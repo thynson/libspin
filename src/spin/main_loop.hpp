@@ -37,7 +37,7 @@ namespace spin {
      * @brief callback object that can be post to event loop and its handler
      * will be called immediately
      */
-    class callback
+    class __SPIN_EXPORT__ callback
     {
       friend class main_loop;
     public:
