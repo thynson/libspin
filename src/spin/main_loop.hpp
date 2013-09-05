@@ -112,7 +112,7 @@ namespace spin {
       }
 
     private:
-      list_node m_node;
+      intrusive_list_node m_node;
       std::function<void()> m_handler;
     };
 
@@ -140,7 +140,7 @@ namespace spin {
        * @brief Constructor that specify the alarm time but left the callback
        * handler unspecified
        */
-      timed_callback(time_point tp)
+      timed_callback(time::steady_time_point tp)
         : m_callback()
         , m_node()
         , m_time_point(tp)
@@ -150,7 +150,8 @@ namespace spin {
        * @brief Constructor that specify the alarm time and specify the callback
        * handler with an rvalue of std::function<void()>
        */
-      timed_callback(time_point tp, std::function<void()> &&handler)
+      timed_callback(time::steady_time_point tp
+          , std::function<void()> &&handler)
         : m_callback(std::move(handler))
         , m_node()
         , m_time_point(tp)
@@ -160,7 +161,8 @@ namespace spin {
        * @brief Constructor that specify the alarm time and specify the callback
        * handler with an lvalue of std::function<void()>
        */
-      timed_callback(time_point tp, const std::function<void()> &handler)
+      timed_callback(time::steady_time_point tp
+          , const std::function<void()> &handler)
         : m_callback(handler)
         , m_node()
         , m_time_point(tp)
@@ -187,13 +189,14 @@ namespace spin {
       { return lhs.m_time_point > rhs.m_time_point; }
 
       /** @brief Get the alarm time */
-      const time_point &get_time_point() const
+      const time::steady_time_point &get_time_point() const
       { return m_time_point; }
 
       /** @brief Cancel this timed_callback and reset the alarm time */
-      time_point reset_time_point(const time_point &tp)
+      time::steady_time_point
+      reset_time_point(const time::steady_time_point &tp)
       {
-        time_point ret = m_time_point;
+        time::steady_time_point ret = m_time_point;
         cancel();
         m_time_point = tp;
         return ret;
@@ -221,12 +224,12 @@ namespace spin {
 
     private:
       callback m_callback;
-      set_node m_node;
-      time_point m_time_point;
+      intrusive_set_node m_node;
+      time::steady_time_point m_time_point;
     };
 
-    typedef list<callback, &callback::m_node> callback_list;
-    typedef multiset<timed_callback, &timed_callback::m_node>
+    typedef intrusive_list<callback, &callback::m_node> callback_list;
+    typedef intrusive_multiset<timed_callback, &timed_callback::m_node>
       timed_callback_set;
 
     main_loop();
