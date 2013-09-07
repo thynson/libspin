@@ -51,36 +51,28 @@ namespace spin {
       { }
 
       /**
-       * @brief Constuct callback object with the handler initialized with
-       * an lvalue of std::function<void()> object
+       * @brief Constuct callback object with the handler initialized with an
+       * lvalue of std::function<void()> object
        */
-      callback(const std::function<void()> &handler)
-        : m_node()
-        , m_handler(handler)
-      { }
-
-      /**
-       * @brief Constuct callback object with the handler initialized with
-       * an rvalue of std::function<void()> object
-       */
-      callback(std::function<void()> &&handler)
+      callback(std::function<void()> handler)
         : m_node()
         , m_handler(std::move(handler))
       { }
 
       /** @brief Move constructor */
       callback(callback &&c)
-        : callback(std::move(c.m_handler))
+        : m_node()
+        , m_handler(std::move(c.m_handler))
       { m_node.swap_nodes(c.m_node); }
 
       /** @brief Copy constructor is forbidden */
       callback(const callback &) = delete;
 
       /**
-       * @brief Provide a new handler, overload for rvalue
+       * @brief Provide a new handler
        * @return Return the old handler function
        */
-      std::function<void()> set_handler(std::function<void()> &&handler)
+      std::function<void()> set_handler(std::function<void()> handler)
       {
         std::function<void()> tmp(std::move(m_handler));
         m_handler = std::move(handler);
@@ -88,16 +80,9 @@ namespace spin {
       }
 
       /**
-       * @brief Provide a new handler, overload for lvalue
-       * @return Return the old handler function
-       */
-      std::function<void()> set_handler(const std::function<void()> &handler)
-      { return set_handler(std::function<void()>(handler)); }
-
-      /**
-       * @brief Cancel this callback, if the callback have not been posted to an
-       * main_loop, or the handler've already been called, this function does
-       * nothing
+       * @brief Cancel this callback, if the callback have not been posted to
+       * an main_loop, or the handler've already been called, this function
+       * does nothing.
        * @retval true Actually cancel a posted callback
        * @retval false Nothing has been done
        */
@@ -118,8 +103,9 @@ namespace spin {
 
     /**
      * @brief timed callback object that can be post to an main_loop and its
-     * handler will be called in the future when specified time just come or the
-     * future or will be called immediately if the specified time has passed.
+     * handler will be called in the future when specified time just come or
+     * the future or will be called immediately if the specified time has
+     * passed.
      */
     class __SPIN_EXPORT__ timed_callback
     {
@@ -143,29 +129,17 @@ namespace spin {
       timed_callback(time::steady_time_point tp)
         : m_callback()
         , m_node()
-        , m_time_point(tp)
+        , m_time_point(std::move(tp))
       { }
 
       /**
-       * @brief Constructor that specify the alarm time and specify the callback
-       * handler with an rvalue of std::function<void()>
+       * @brief Constructor that specify the alarm time and specify the
+       * callback handler
        */
-      timed_callback(time::steady_time_point tp
-          , std::function<void()> &&handler)
+      timed_callback(time::steady_time_point tp, std::function<void()> handler)
         : m_callback(std::move(handler))
         , m_node()
-        , m_time_point(tp)
-      { }
-
-      /**
-       * @brief Constructor that specify the alarm time and specify the callback
-       * handler with an lvalue of std::function<void()>
-       */
-      timed_callback(time::steady_time_point tp
-          , const std::function<void()> &handler)
-        : m_callback(handler)
-        , m_node()
-        , m_time_point(tp)
+        , m_time_point(std::move(tp))
       { }
 
       /** @brief Move constructor */
@@ -202,13 +176,9 @@ namespace spin {
         return ret;
       }
 
-      /** @brief Reset the handler, overload for rvalue */
-      std::function<void()> set_handler(std::function<void()> &&handler)
+      /** @brief Reset the handler */
+      std::function<void()> set_handler(std::function<void()> handler)
       { return m_callback.set_handler(std::move(handler)); }
-
-      /** @brief Reset the handler, overload for lvalue */
-      std::function<void()> set_handler(const std::function<void()> &handler)
-      { return m_callback.set_handler(handler); }
 
       /** @brief Cancel this timed_callback, see callback::cancel() */
       bool cancel()
