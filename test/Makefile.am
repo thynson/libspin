@@ -17,8 +17,12 @@
 AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 
-AM_CPPFLAGS="-Wall -Werror -fvisibility=hidden -D__BUILD_SPIN__=1"
-AM_LDFLAGS="-Xlinker --no-undefined -lpthread"
+AM_CPPFLAGS=@AM_CPPFLAGS@ -I$(top_srcdir)/src
+AM_LDFLAGS=@AM_LDFLAGS@ ../src/libspin.la -lpthread
 
-SUBDIRS=src docs test
+check_PROGRAMS=test_singleton_01
+
+TESTS=$(check_PROGRAMS)
+
+test_singleton_01_SOURCES=singleton-01.cpp
 
