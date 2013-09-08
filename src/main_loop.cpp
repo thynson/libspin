@@ -29,9 +29,9 @@ namespace spin {
   main_loop main_loop::default_instance;
 
   main_loop::main_loop()
-    : m_timed_callbacks()
-    , m_defered_callbacks()
-    , m_posted_callbacks()
+    : m_timed_task_queue()
+    , m_defered_tasks()
+    , m_posted_tasks()
     , m_lock()
     , m_cond()
     , m_ref_counter()
@@ -40,31 +40,31 @@ namespace spin {
   main_loop::~main_loop()
   { }
 
-  main_loop::callback_list main_loop::wait_for_events()
+  main_loop::task_list main_loop::wait_for_events()
   {
-    main_loop::callback_list tasks;
-    tasks.swap(m_defered_callbacks);
+    main_loop::task_list tasks;
+    tasks.swap(m_defered_tasks);
 
-    if (m_timed_callbacks.empty())
+    if (m_timed_task_queue.empty())
     {
       std::unique_lock<std::mutex> guard(m_lock);
-      if (m_posted_callbacks.empty())
+      if (m_posted_tasks.empty())
       {
         if (tasks.empty() && m_ref_counter != 0)
         {
           // No timer, just wait for other event
           do
             m_cond.wait(guard);
-          while (m_posted_callbacks.empty());
+          while (m_posted_tasks.empty());
         }
       }
     }
     else
     {
-      auto tp = m_timed_callbacks.begin()->m_time_point;
+      auto tp = m_timed_task_queue.begin()->m_time_point;
       std::unique_lock<std::mutex> guard(m_lock);
 
-      if (m_posted_callbacks.empty())
+      if (m_posted_tasks.empty())
       {
         if (tasks.empty())
         {
@@ -74,31 +74,31 @@ namespace spin {
             std::cv_status status = m_cond.wait_until(guard, tp);
             if (status == std::cv_status::timeout)
             {
-              auto get_callback = [](timed_callback &t)->callback&
-              { return t.m_callback; };
+              auto get_task = [](timed_task &t) -> task &
+              { return t.m_task; };
 
-              typedef boost::transform_iterator<decltype(get_callback),
-                    decltype(m_timed_callbacks.begin())> tranform_iterator;
+              typedef boost::transform_iterator<decltype(get_task),
+                    decltype(m_timed_task_queue.begin())> tranform_iterator;
 
               // Insert all timer event that have same time point with tp and
               // remove them from loop.m_timer_event_set
-              auto tf = m_timed_callbacks.begin();
-              auto te = m_timed_callbacks.upper_bound(*tf);
+              auto tf = m_timed_task_queue.begin();
+              auto te = m_timed_task_queue.upper_bound(*tf);
 
-              tranform_iterator f(tf, get_callback);
-              tranform_iterator e(tf, get_callback);
+              tranform_iterator f(tf, get_task);
+              tranform_iterator e(tf, get_task);
 
               tasks.insert(tasks.end(), f, e);
-              m_timed_callbacks.erase(tf, te);
+              m_timed_task_queue.erase(tf, te);
 
               return tasks;
             }
           }
-          while (m_timed_callbacks.empty());
+          while (m_timed_task_queue.empty());
         }
       }
     }
-    tasks.splice(tasks.end(), m_posted_callbacks);
+    tasks.splice(tasks.end(), m_posted_tasks);
     return tasks;
   }
 
@@ -106,7 +106,7 @@ namespace spin {
   {
     for ( ; ; )
     {
-      callback_list tasks = wait_for_events();
+      task_list tasks = wait_for_events();
       if (tasks.empty())
         return;
       while (!tasks.empty())
@@ -118,31 +118,19 @@ namespace spin {
     }
   }
 
-  void main_loop::post(callback &cb)
+  void main_loop::post(task &cb)
   {
     std::unique_lock<std::mutex> guard(m_lock);
-    if (m_posted_callbacks.empty())
+    if (m_posted_tasks.empty())
       m_cond.notify_one();
-    m_posted_callbacks.push_back(cb);
+    m_posted_tasks.push_back(cb);
   }
 
-  void main_loop::post(timed_callback &cb)
+  void main_loop::post(timed_task &cb)
   {
     std::unique_lock<std::mutex> guard(m_lock);
-    if (m_timed_callbacks.empty())
+    if (m_timed_task_queue.empty())
       m_cond.notify_one();
-    m_timed_callbacks.insert(cb);
+    m_timed_task_queue.insert(cb);
   }
-
-  void main_loop::post(callback_list &cb)
-  {
-    std::unique_lock<std::mutex> guard(m_lock);
-    if (m_posted_callbacks.empty())
-      m_cond.notify_one();
-    cb.splice(cb.end(), m_posted_callbacks);
-  }
-
-  void main_loop::post(callback_list &&cb)
-  { post(cb); }
-
 }
