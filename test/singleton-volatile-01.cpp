@@ -26,7 +26,8 @@
 #include <condition_variable>
 
 
-class weak : public spin::enable_singleton<weak, true>
+class volatile_singleton
+  : public spin::enable_singleton<volatile_singleton, true>
 {
 public:
   static std::atomic_long count_construct_times;
@@ -34,12 +35,12 @@ public:
 
   bool f() { return flag; }
 
-  ~weak()
+  ~volatile_singleton()
   {
     flag = false;
   }
 protected:
-  weak()
+  volatile_singleton()
     : flag(true)
   {
     count_construct_times++;
@@ -48,7 +49,7 @@ protected:
   std::atomic_bool flag;
 };
 
-std::atomic_long weak::count_construct_times{0};
+std::atomic_long volatile_singleton::count_construct_times{0};
 
 std::mutex lock;
 std::condition_variable cv;
@@ -61,7 +62,8 @@ void mt_access()
   while (std::chrono::steady_clock::now() < tp)
   {
     {
-      std::shared_ptr<weak> x = weak::get_instance();
+      std::shared_ptr<volatile_singleton> x
+        = volatile_singleton::get_instance();
       assert(x);
       assert(x->f());
       count_access_times++;
@@ -74,7 +76,7 @@ void mt_access()
 void mt_test(int n)
 {
   // Clear counter
-  weak::count_construct_times = 0;
+  volatile_singleton::count_construct_times = 0;
   count_access_times = 0;
 
   std::vector<std::thread> vt;
@@ -89,7 +91,8 @@ void mt_test(int n)
 
   std::cout << "Multi-threading test for " << n << "concurrent thread:"
     << std::endl
-    << " weak singlethon class was constructed " << weak::count_construct_times
+    << " volatile_singleton singlethon class was constructed "
+    << volatile_singleton::count_construct_times
     << " times" << std::endl
     << " while instance be accessed " << count_access_times
     << " times" << std::endl;
@@ -98,7 +101,7 @@ void mt_test(int n)
 int main ()
 {
   {
-    std::shared_ptr<weak> x = weak::get_instance();
+    std::shared_ptr<volatile_singleton> x = volatile_singleton::get_instance();
     assert (x); // assert x is not null
   }
 

@@ -20,9 +20,9 @@ ACLOCAL_AMFLAGS=-I build-aux/m4
 AM_CPPFLAGS=@AM_CPPFLAGS@ -I$(top_srcdir)/src
 AM_LDFLAGS=@AM_LDFLAGS@ ../src/libspin.la -lpthread
 
-check_PROGRAMS=test_singleton_01
+check_PROGRAMS=test_singleton_volatile_01
 
 TESTS=$(check_PROGRAMS)
 
-test_singleton_01_SOURCES=singleton-01.cpp
+test_singleton_volatile_01_SOURCES=singleton-volatile-01.cpp
 
