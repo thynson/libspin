@@ -33,7 +33,10 @@ public:
   static std::atomic_long count_construct_times;
   static singleton_factory get_instance;
 
-  bool f() { return flag; }
+  void f()
+  {
+    assert (flag);
+  }
 
   ~volatile_singleton()
   {
@@ -65,7 +68,7 @@ void mt_access()
       std::shared_ptr<volatile_singleton> x
         = volatile_singleton::get_instance();
       assert(x);
-      assert(x->f());
+      x->f();
       count_access_times++;
     }
     std::chrono::steady_clock::now();
