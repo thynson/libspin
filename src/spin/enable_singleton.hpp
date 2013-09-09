@@ -70,7 +70,7 @@ namespace spin
     // We hide the constructors, but child class need to access it
     friend Inheriant;
 
-    enable_singleton();
+    enable_singleton() {}
 
     enable_singleton(const enable_singleton &) = delete;
 
@@ -79,6 +79,7 @@ namespace spin
     enable_singleton &operator = (const enable_singleton &) = delete;
 
     enable_singleton &operator = (enable_singleton &&) = delete;
+
     static std::shared_ptr<Inheriant> instance;
     static std::mutex lock;
   };
@@ -132,8 +133,7 @@ namespace spin
     // We hide the constructors, but child class need to access it
     friend Inheriant;
 
-    enable_singleton()
-    {}
+    enable_singleton() {}
 
     enable_singleton(const enable_singleton &) = delete;
 
