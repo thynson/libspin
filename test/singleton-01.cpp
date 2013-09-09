@@ -29,28 +29,25 @@
 class weak : public spin::enable_singleton<weak, true>
 {
 public:
-  static std::atomic_bool flag;
   static std::atomic_long count_construct_times;
   static singleton_factory get_instance;
 
-  long f() { return count_construct_times; }
+  bool f() { return flag; }
 
   ~weak()
   {
-    assert (flag == true);
     flag = false;
   }
 protected:
   weak()
+    : flag(true)
   {
-    assert (flag == false);
-    flag = true;
     count_construct_times++;
   }
 
+  std::atomic_bool flag;
 };
 
-std::atomic_bool weak::flag{false};
 std::atomic_long weak::count_construct_times{0};
 
 std::mutex lock;
@@ -66,6 +63,7 @@ void mt_access()
     {
       std::shared_ptr<weak> x = weak::get_instance();
       assert(x);
+      assert(x->f());
       count_access_times++;
     }
     std::chrono::steady_clock::now();
