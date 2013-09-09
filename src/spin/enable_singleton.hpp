@@ -24,12 +24,29 @@
 namespace spin
 {
 
-  template<class Inheriant, bool Weak = false>
+  /**
+   * @brief Singleton auxiliary template class
+   * @tparam Inheriant the singleton class itself that use this template
+   * @tparam Volatile whether the singleton is volatile (not const-volatility
+   * type specifier of C++) that the instance is hold by a std::weak_ptr so
+   * once refernce counter become zero, it will be destroyed immediately
+   * @note We need the constructor/destructor of Inheriant be at least
+   * protected to access it
+   */
+  template<class Inheriant, bool Volatile = false>
   class enable_singleton
   {
   protected:
-    class singleton_factory {
+
+    /**
+     * @brief Singleton factory
+     */
+    class singleton_factory
+    {
     public:
+
+      /**
+       */
       std::shared_ptr<Inheriant> operator () ()
       {
         if (instance)
@@ -61,12 +78,14 @@ namespace spin
     enable_singleton &operator = (const enable_singleton &) = delete;
 
     enable_singleton &operator = (enable_singleton &&) = delete;
-
     static std::shared_ptr<Inheriant> instance;
     static std::mutex lock;
   };
 
 
+  /**
+   * @brief Partial specialization of enable_singleton
+   */
   template<class Inheriant>
   class enable_singleton<Inheriant, true>
   {
@@ -119,11 +138,11 @@ namespace spin
     static std::mutex lock;
   };
 
-  template<class Inheriant, bool Weak>
-    std::shared_ptr<Inheriant> enable_singleton<Inheriant, Weak>::instance;
+  template<class Inheriant, bool Volatile>
+    std::shared_ptr<Inheriant> enable_singleton<Inheriant, Volatile>::instance;
 
-  template<class Inheriant, bool Weak>
-    std::mutex enable_singleton<Inheriant, Weak>::lock;
+  template<class Inheriant, bool Volatile>
+    std::mutex enable_singleton<Inheriant, Volatile>::lock;
 
   template<class Inheriant>
     std::weak_ptr<Inheriant> enable_singleton<Inheriant, true>::instance;
