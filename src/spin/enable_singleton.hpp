@@ -46,6 +46,7 @@ namespace spin
     public:
 
       /**
+       * @brief Instantiate functor
        */
       std::shared_ptr<Inheriant> operator () ()
       {
@@ -85,14 +86,22 @@ namespace spin
 
   /**
    * @brief Partial specialization of enable_singleton
+   * @tparam Inheriant the singleton class itself that use this template
    */
   template<class Inheriant>
   class enable_singleton<Inheriant, true>
   {
   protected:
+    /**
+     * @brief Singleton factory
+     */
     class singleton_factory
     {
     public:
+
+      /**
+       * @brief Instansiate functor
+       */
       std::shared_ptr<Inheriant> operator () ()
       {
         std::shared_ptr<Inheriant> ret = instance.lock();

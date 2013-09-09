@@ -102,10 +102,10 @@ namespace spin {
     };
 
     /**
-     * @brief timed task object that can be post to an main_loop and its
-     * handler will be called in the future when specified time just come or
-     * the future or will be called immediately if the specified time has
-     * passed.
+     * @brief timed task object that can be posted to or defered with an
+     * main_loop and its handler will be called in the future when specified
+     * time just come or the future or will be called immediately if the
+     * specified time has passed.
      */
     class __SPIN_EXPORT__ timed_task
     {
