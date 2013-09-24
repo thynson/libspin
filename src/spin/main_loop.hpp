@@ -102,12 +102,12 @@ namespace spin {
     };
 
     /**
-     * @brief timed task object that can be posted to or defered with an
+     * @brief deadline timer can be posted to or defered with an
      * main_loop and its handler will be called in the future when specified
      * time just come or the future or will be called immediately if the
      * specified time has passed.
      */
-    class __SPIN_EXPORT__ timed_task
+    class __SPIN_EXPORT__ deadline_timer
     {
       friend class main_loop;
     public:
@@ -116,7 +116,7 @@ namespace spin {
        * @brief Default constructor that specify the alarm time to right now
        * and left the task handler unspecified
        */
-      timed_task() noexcept
+      deadline_timer() noexcept
         : m_task()
         , m_node()
         , m_time_point()
@@ -126,7 +126,7 @@ namespace spin {
        * @brief Constructor that specify the alarm time but left the task
        * handler unspecified
        */
-      timed_task(time::steady_time_point tp)
+      deadline_timer(time::steady_time_point tp) noexcept
         : m_task()
         , m_node()
         , m_time_point(std::move(tp))
@@ -136,37 +136,37 @@ namespace spin {
        * @brief Constructor that specify the alarm time and specify the
        * task handler
        */
-      timed_task(time::steady_time_point tp, std::function<void()> handler)
+      deadline_timer(time::steady_time_point tp, std::function<void()> handler)
         : m_task(std::move(handler))
         , m_node()
         , m_time_point(std::move(tp))
       { }
 
       /** @brief Move constructor */
-      timed_task(timed_task &&t) noexcept
+      deadline_timer(deadline_timer &&t) noexcept
         : m_task(std::move(t.m_task))
         , m_node()
         , m_time_point(std::move(t.m_time_point))
       { m_node.swap_nodes(t.m_node); }
 
       /** @brief Copy constructor is forbidden */
-      timed_task(const timed_task &) = delete;
+      deadline_timer(const deadline_timer &) = delete;
 
-      /** @brief Compare the specified alarm time of two timed_task */
-      friend bool operator < (const timed_task &lhs,
-                              const timed_task &rhs) noexcept
+      /** @brief Compare the specified alarm time of two deadline_timer */
+      friend bool operator < (const deadline_timer &lhs,
+                              const deadline_timer &rhs) noexcept
       { return lhs.m_time_point < rhs.m_time_point; }
 
-      /** @brief Compare the specified alarm time of two timed_task */
-      friend bool operator > (const timed_task &lhs,
-                              const timed_task &rhs) noexcept
+      /** @brief Compare the specified alarm time of two deadline_timer */
+      friend bool operator > (const deadline_timer &lhs,
+                              const deadline_timer &rhs) noexcept
       { return lhs.m_time_point > rhs.m_time_point; }
 
       /** @brief Get the alarm time */
       const time::steady_time_point &get_time_point() const noexcept
       { return m_time_point; }
 
-      /** @brief Cancel this timed_task and reset the alarm time */
+      /** @brief Cancel this deadline_timer and reset the alarm time */
       time::steady_time_point
       reset_time_point(const time::steady_time_point &tp) noexcept
       {
@@ -180,7 +180,7 @@ namespace spin {
       std::function<void()> set_handler(std::function<void()> handler) noexcept
       { return m_task.set_handler(std::move(handler)); }
 
-      /** @brief Cancel this timed_task, see task::cancel() */
+      /** @brief Cancel this deadline_timer, see task::cancel() */
       bool cancel() noexcept
       {
         if (m_node.is_linked())
@@ -201,10 +201,10 @@ namespace spin {
     /** @brief intrusive list container of task */
     typedef intrusive_list<task, &task::m_node> task_list;
 
-    /** @brief priority queue of timed_task that implemented by intrusive
+    /** @brief priority queue of deadline_timer that implemented by intrusive
      *   multiset */
-    typedef intrusive_multiset<timed_task, &timed_task::m_node>
-      timed_task_queue;
+    typedef intrusive_multiset<deadline_timer, &deadline_timer::m_node>
+      deadline_timer_queue;
 
     /** @brief constructor */
     main_loop() noexcept;
@@ -223,8 +223,8 @@ namespace spin {
     /** @brief defer a timed task to until its alarm time
      *  @note this function should not be used across thread
      *  @see #post */
-    void defer(timed_task &t) noexcept
-    { m_timed_task_queue.insert(t); }
+    void defer(deadline_timer &t) noexcept
+    { m_deadline_timer_queue.insert(t); }
 
     /** @brief post a task that will executed
      *  @note this function ensure cross thread safety
@@ -234,7 +234,7 @@ namespace spin {
     /** @brief post a timed task that will be executed at its specified time
      *  @note this function ensure cross thread safety
      *  @see #defer */
-    void post(timed_task &cb) noexcept;
+    void post(deadline_timer &cb) noexcept;
 
   private:
 
@@ -248,7 +248,7 @@ namespace spin {
     /** @brief Default instance */
     static main_loop default_instance;
 
-    timed_task_queue m_timed_task_queue;
+    deadline_timer_queue m_deadline_timer_queue;
     task_list m_posted_tasks;
     task_list m_defered_tasks;
     std::mutex m_lock;

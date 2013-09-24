@@ -29,7 +29,7 @@ namespace spin {
   main_loop main_loop::default_instance;
 
   main_loop::main_loop() noexcept
-    : m_timed_task_queue()
+    : m_deadline_timer_queue()
     , m_defered_tasks()
     , m_posted_tasks()
     , m_lock()
@@ -45,60 +45,49 @@ namespace spin {
     main_loop::task_list tasks;
     tasks.swap(m_defered_tasks);
 
-    if (m_timed_task_queue.empty())
+    if (m_deadline_timer_queue.empty())
     {
       std::unique_lock<std::mutex> guard(m_lock);
       if (m_posted_tasks.empty())
       {
         if (tasks.empty() && m_ref_counter != 0)
-        {
-          // No timer, just wait for other event
-          do
-            m_cond.wait(guard);
-          while (m_posted_tasks.empty());
-        }
+        { m_cond.wait(guard); }
       }
+      tasks.splice(tasks.end(), m_posted_tasks);
     }
     else
     {
-      auto tp = m_timed_task_queue.begin()->m_time_point;
+      auto tp = m_deadline_timer_queue.begin()->m_time_point;
       std::unique_lock<std::mutex> guard(m_lock);
 
-      if (m_posted_tasks.empty())
+      if (m_posted_tasks.empty() && tasks.empty())
       {
-        if (tasks.empty())
+        // There are timers, wait until the first expire time point
+        std::cv_status status = m_cond.wait_until(guard, tp);
+        if (status == std::cv_status::timeout)
         {
-          // There are timers, wait until the first expire time point
-          do
-          {
-            std::cv_status status = m_cond.wait_until(guard, tp);
-            if (status == std::cv_status::timeout)
-            {
-              auto get_task = [](timed_task &t) -> task &
-              { return t.m_task; };
+          auto get_task = [](deadline_timer &t) -> task &
+          { return t.m_task; };
 
-              typedef boost::transform_iterator<decltype(get_task),
-                    decltype(m_timed_task_queue.begin())> tranform_iterator;
+          typedef boost::transform_iterator<decltype(get_task),
+                decltype(m_deadline_timer_queue.begin())> tranform_iterator;
 
-              // Insert all timer event that have same time point with tp and
-              // remove them from loop.m_timer_event_set
-              auto tf = m_timed_task_queue.begin();
-              auto te = m_timed_task_queue.upper_bound(*tf);
+          // Insert all timer event that have same time point with tp and
+          // remove them from loop.m_timer_event_set
+          auto tf = m_deadline_timer_queue.begin();
+          auto te = m_deadline_timer_queue.upper_bound(*tf);
 
-              tranform_iterator f(tf, get_task);
-              tranform_iterator e(tf, get_task);
+          tranform_iterator f(tf, get_task);
+          tranform_iterator e(tf, get_task);
 
-              tasks.insert(tasks.end(), f, e);
-              m_timed_task_queue.erase(tf, te);
+          tasks.insert(tasks.end(), f, e);
+          m_deadline_timer_queue.erase(tf, te);
 
-              return tasks;
-            }
-          }
-          while (m_timed_task_queue.empty());
+          return tasks;
         }
       }
+      tasks.splice(tasks.end(), m_posted_tasks);
     }
-    tasks.splice(tasks.end(), m_posted_tasks);
     return tasks;
   }
 
@@ -126,11 +115,11 @@ namespace spin {
     m_posted_tasks.push_back(cb);
   }
 
-  void main_loop::post(timed_task &cb) noexcept
+  void main_loop::post(deadline_timer &cb) noexcept
   {
     std::unique_lock<std::mutex> guard(m_lock);
-    if (m_timed_task_queue.empty())
+    if (m_deadline_timer_queue.empty())
       m_cond.notify_one();
-    m_timed_task_queue.insert(cb);
+    m_deadline_timer_queue.insert(cb);
   }
 }
