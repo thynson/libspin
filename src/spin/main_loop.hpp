@@ -45,14 +45,14 @@ namespace spin {
       /**
        * @brief Default constructor, left the task handler unspcecified
        */
-      task()
+      task() noexcept
         : m_node()
         , m_handler()
       { }
 
       /**
        * @brief Constuct task object with the handler initialized with an
-       * lvalue of std::function<void()> object
+       * std::function<void()> object
        */
       task(std::function<void()> handler)
         : m_node()
@@ -60,7 +60,7 @@ namespace spin {
       { }
 
       /** @brief Move constructor */
-      task(task &&c)
+      task(task &&c) noexcept
         : m_node()
         , m_handler(std::move(c.m_handler))
       { m_node.swap_nodes(c.m_node); }
@@ -72,7 +72,7 @@ namespace spin {
        * @brief Provide a new handler
        * @return Return the old handler function
        */
-      std::function<void()> set_handler(std::function<void()> handler)
+      std::function<void()> set_handler(std::function<void()> handler) noexcept
       {
         std::function<void()> tmp(std::move(m_handler));
         m_handler = std::move(handler);
@@ -86,7 +86,7 @@ namespace spin {
        * @retval true Actually cancel a posted task
        * @retval false Nothing has been done
        */
-      bool cancel()
+      bool cancel() noexcept
       {
         if (m_node.is_linked())
         {
@@ -116,7 +116,7 @@ namespace spin {
        * @brief Default constructor that specify the alarm time to right now
        * and left the task handler unspecified
        */
-      timed_task()
+      timed_task() noexcept
         : m_task()
         , m_node()
         , m_time_point()
@@ -143,7 +143,7 @@ namespace spin {
       { }
 
       /** @brief Move constructor */
-      timed_task(timed_task &&t)
+      timed_task(timed_task &&t) noexcept
         : m_task(std::move(t.m_task))
         , m_node()
         , m_time_point(std::move(t.m_time_point))
@@ -154,21 +154,21 @@ namespace spin {
 
       /** @brief Compare the specified alarm time of two timed_task */
       friend bool operator < (const timed_task &lhs,
-                              const timed_task &rhs)
+                              const timed_task &rhs) noexcept
       { return lhs.m_time_point < rhs.m_time_point; }
 
       /** @brief Compare the specified alarm time of two timed_task */
       friend bool operator > (const timed_task &lhs,
-                              const timed_task &rhs)
+                              const timed_task &rhs) noexcept
       { return lhs.m_time_point > rhs.m_time_point; }
 
       /** @brief Get the alarm time */
-      const time::steady_time_point &get_time_point() const
+      const time::steady_time_point &get_time_point() const noexcept
       { return m_time_point; }
 
       /** @brief Cancel this timed_task and reset the alarm time */
       time::steady_time_point
-      reset_time_point(const time::steady_time_point &tp)
+      reset_time_point(const time::steady_time_point &tp) noexcept
       {
         time::steady_time_point ret = m_time_point;
         cancel();
@@ -177,11 +177,11 @@ namespace spin {
       }
 
       /** @brief Reset the handler */
-      std::function<void()> set_handler(std::function<void()> handler)
+      std::function<void()> set_handler(std::function<void()> handler) noexcept
       { return m_task.set_handler(std::move(handler)); }
 
       /** @brief Cancel this timed_task, see task::cancel() */
-      bool cancel()
+      bool cancel() noexcept
       {
         if (m_node.is_linked())
         {
@@ -207,34 +207,34 @@ namespace spin {
       timed_task_queue;
 
     /** @brief constructor */
-    main_loop();
+    main_loop() noexcept;
 
     /** @brief destructor */
-    ~main_loop();
+    ~main_loop() noexcept;
 
     void run();
 
     /** @brief defer a task to next round of loop
      *  @note this function should not be used across thread
      *  @see #post */
-    void defer(task &t)
+    void defer(task &t) noexcept
     { m_defered_tasks.push_back(t); }
 
     /** @brief defer a timed task to until its alarm time
      *  @note this function should not be used across thread
      *  @see #post */
-    void defer(timed_task &t)
+    void defer(timed_task &t) noexcept
     { m_timed_task_queue.insert(t); }
 
     /** @brief post a task that will executed
      *  @note this function ensure cross thread safety
      *  @see #defer */
-    void post(task &cb);
+    void post(task &cb) noexcept;
 
     /** @brief post a timed task that will be executed at its specified time
      *  @note this function ensure cross thread safety
      *  @see #defer */
-    void post(timed_task &cb);
+    void post(timed_task &cb) noexcept;
 
   private:
 

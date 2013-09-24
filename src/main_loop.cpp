@@ -28,7 +28,7 @@ namespace spin {
 
   main_loop main_loop::default_instance;
 
-  main_loop::main_loop()
+  main_loop::main_loop() noexcept
     : m_timed_task_queue()
     , m_defered_tasks()
     , m_posted_tasks()
@@ -37,7 +37,7 @@ namespace spin {
     , m_ref_counter()
   { }
 
-  main_loop::~main_loop()
+  main_loop::~main_loop() noexcept
   { }
 
   main_loop::task_list main_loop::wait_for_events()
@@ -118,7 +118,7 @@ namespace spin {
     }
   }
 
-  void main_loop::post(task &cb)
+  void main_loop::post(task &cb) noexcept
   {
     std::unique_lock<std::mutex> guard(m_lock);
     if (m_posted_tasks.empty())
@@ -126,7 +126,7 @@ namespace spin {
     m_posted_tasks.push_back(cb);
   }
 
-  void main_loop::post(timed_task &cb)
+  void main_loop::post(timed_task &cb) noexcept
   {
     std::unique_lock<std::mutex> guard(m_lock);
     if (m_timed_task_queue.empty())
