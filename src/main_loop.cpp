@@ -57,7 +57,7 @@ namespace spin {
     }
     else
     {
-      auto tp = m_deadline_timer_queue.begin()->m_time_point;
+      auto tp = m_deadline_timer_queue.begin()->m_deadline;
       std::unique_lock<std::mutex> guard(m_lock);
 
       if (m_posted_tasks.empty() && tasks.empty())
@@ -102,24 +102,20 @@ namespace spin {
       {
         auto x = tasks.begin();
         tasks.erase(x);
-        x->m_handler();
+        (*x)(); // Invoke it
       }
     }
   }
 
-  void main_loop::post(task &cb) noexcept
+  void main_loop::post(main_loop::task &t) noexcept
   {
     std::unique_lock<std::mutex> guard(m_lock);
-    if (m_posted_tasks.empty())
-      m_cond.notify_one();
-    m_posted_tasks.push_back(cb);
+    m_posted_tasks.push_back(t);
   }
 
-  void main_loop::post(deadline_timer &cb) noexcept
+  void main_loop::post(main_loop::task_list &tl) noexcept
   {
     std::unique_lock<std::mutex> guard(m_lock);
-    if (m_deadline_timer_queue.empty())
-      m_cond.notify_one();
-    m_deadline_timer_queue.insert(cb);
+    m_posted_tasks.splice(m_posted_tasks.end(), tl);
   }
 }

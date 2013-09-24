@@ -43,46 +43,65 @@ namespace spin {
     public:
 
       /**
-       * @brief Default constructor, left the task handler unspcecified
+       * @brief Default constructor
        */
       task() noexcept
         : m_node()
-        , m_handler()
+        , m_proc()
       { }
 
       /**
-       * @brief Constuct task object with the handler initialized with an
-       * std::function<void()> object
+       * @brief Constuct task object with the specified task procedure
+       * @param proc The procedure for this task
        */
-      task(std::function<void()> handler)
+      task(std::function<void()> proc) noexcept
         : m_node()
-        , m_handler(std::move(handler))
+        , m_proc(std::move(proc))
       { }
 
       /** @brief Move constructor */
       task(task &&c) noexcept
         : m_node()
-        , m_handler(std::move(c.m_handler))
+        , m_proc(std::move(c.m_proc))
       { m_node.swap_nodes(c.m_node); }
+
+      /** @brief Assign operator */
+      task &operator = (task &&rvalue) noexcept
+      {
+        m_node.swap_nodes(rvalue.m_node);
+        std::swap(m_proc, rvalue.m_proc);
+        return *this;
+      }
 
       /** @brief Copy constructor is forbidden */
       task(const task &) = delete;
+
+      /** @brief Copy by lvalue is forbidden */
+      task &operator = (const task &) = delete;
+
+      /** @brief Destructor */
+      ~task() = default;
 
       /**
        * @brief Provide a new handler
        * @return Return the old handler function
        */
-      std::function<void()> set_handler(std::function<void()> handler) noexcept
+      std::function<void()> set_handler(std::function<void()> proc) noexcept
       {
-        std::function<void()> tmp(std::move(m_handler));
-        m_handler = std::move(handler);
-        return tmp;
+        std::swap(proc, m_proc);
+        return proc;
+      }
+
+      /** @Brief Execute this task */
+      void operator () ()
+      {
+        if (m_proc)
+          m_proc();
       }
 
       /**
-       * @brief Cancel this task, if the task have not been posted to
-       * an main_loop, or the handler've already been called, this function
-       * does nothing.
+       * @brief Cancel this task, if the task have not been dispatched to a
+       * main_loop, or this task already finished, this function does nothing.
        * @retval true Actually cancel a posted task
        * @retval false Nothing has been done
        */
@@ -98,7 +117,7 @@ namespace spin {
 
     private:
       intrusive_list_node m_node;
-      std::function<void()> m_handler;
+      std::function<void()> m_proc;
     };
 
     /**
@@ -113,67 +132,72 @@ namespace spin {
     public:
 
       /**
-       * @brief Default constructor that specify the alarm time to right now
-       * and left the task handler unspecified
-       */
-      deadline_timer() noexcept
-        : m_task()
-        , m_node()
-        , m_time_point()
-      { }
-
-      /**
-       * @brief Constructor that specify the alarm time but left the task
-       * handler unspecified
-       */
-      deadline_timer(time::steady_time_point tp) noexcept
-        : m_task()
-        , m_node()
-        , m_time_point(std::move(tp))
-      { }
-
-      /**
        * @brief Constructor that specify the alarm time and specify the
        * task handler
+       * @param loop The main loop that this task attached to
+       * @param proc The procedure to be executed when deadline come
+       * @param deadline The deadline time point of this timer
+       * @param check_deadline Check if specified deadline has already expired
+       * and in that situation the proc will not be dispatch to execute
        */
-      deadline_timer(time::steady_time_point tp, std::function<void()> handler)
-        : m_task(std::move(handler))
+      deadline_timer(main_loop &loop, std::function<void()> proc,
+          time::steady_time_point tp, bool check_deadline = false) noexcept
+        : m_main_loop(&loop)
+        , m_task(std::move(proc))
         , m_node()
-        , m_time_point(std::move(tp))
-      { }
+        , m_deadline(std::move(tp))
+      {
+        if (!check_deadline || tp > decltype(tp)::clock::now())
+          m_main_loop->m_deadline_timer_queue.insert(*this);
+      }
 
       /** @brief Move constructor */
       deadline_timer(deadline_timer &&t) noexcept
         : m_task(std::move(t.m_task))
         , m_node()
-        , m_time_point(std::move(t.m_time_point))
+        , m_deadline(std::move(t.m_deadline))
       { m_node.swap_nodes(t.m_node); }
 
       /** @brief Copy constructor is forbidden */
       deadline_timer(const deadline_timer &) = delete;
 
+      /** @brief Destructor */
+      ~deadline_timer() = default;
+
       /** @brief Compare the specified alarm time of two deadline_timer */
       friend bool operator < (const deadline_timer &lhs,
                               const deadline_timer &rhs) noexcept
-      { return lhs.m_time_point < rhs.m_time_point; }
+      { return lhs.m_deadline < rhs.m_deadline; }
 
       /** @brief Compare the specified alarm time of two deadline_timer */
       friend bool operator > (const deadline_timer &lhs,
                               const deadline_timer &rhs) noexcept
-      { return lhs.m_time_point > rhs.m_time_point; }
+      { return lhs.m_deadline > rhs.m_deadline; }
 
       /** @brief Get the alarm time */
       const time::steady_time_point &get_time_point() const noexcept
-      { return m_time_point; }
+      { return m_deadline; }
 
-      /** @brief Cancel this deadline_timer and reset the alarm time */
-      time::steady_time_point
-      reset_time_point(const time::steady_time_point &tp) noexcept
+      /** @brief Get the main loop this timer attached to */
+      main_loop &get_main_loop() const noexcept
+      { return *m_main_loop; }
+
+      /**
+       * @brief Cancel this deadline_timer and reset the alarm time
+       * @param deadline The new deadline
+       * @param check_deadline Same effect with constructor
+       * @returns The original deadline
+       */
+      time::steady_time_point reset_deadline(time::steady_time_point deadline,
+          bool check_deadline = false) noexcept
       {
-        time::steady_time_point ret = m_time_point;
         cancel();
-        m_time_point = tp;
-        return ret;
+        std::swap(deadline, m_deadline);
+        auto &q = m_main_loop->m_deadline_timer_queue;
+        q.erase(q.iterator_to(*this));
+        if (m_deadline > decltype(m_deadline)::clock::now())
+          q.insert(*this);
+        return deadline;
       }
 
       /** @brief Reset the handler */
@@ -193,9 +217,10 @@ namespace spin {
       }
 
     private:
+      main_loop *m_main_loop;
       task m_task;
       intrusive_set_node m_node;
-      time::steady_time_point m_time_point;
+      time::steady_time_point m_deadline;
     };
 
     /** @brief intrusive list container of task */
@@ -214,27 +239,56 @@ namespace spin {
 
     void run();
 
-    /** @brief defer a task to next round of loop
-     *  @note this function should not be used across thread
-     *  @see #post */
-    void defer(task &t) noexcept
+    /**
+     * @brief Dispatch a task to this main loop and it will be executed at
+     * next round
+     * @note This function should not be used across thread, instead, use
+     * #post
+     * @see #post
+     */
+    void dispatch(task &t) noexcept
     { m_defered_tasks.push_back(t); }
 
-    /** @brief defer a timed task to until its alarm time
-     *  @note this function should not be used across thread
-     *  @see #post */
-    void defer(deadline_timer &t) noexcept
-    { m_deadline_timer_queue.insert(t); }
 
-    /** @brief post a task that will executed
-     *  @note this function ensure cross thread safety
-     *  @see #defer */
-    void post(task &cb) noexcept;
+    /**
+     * @brief Dispatch tasks batchly to this main loop and they will be
+     * executed at next round
+     * @note This function should not be used across thread, instead, use
+     * #post
+     * @see #post
+     */
+    void dispatch(task_list &tl) noexcept
+    { m_defered_tasks.splice(m_defered_tasks.end(), tl); }
 
-    /** @brief post a timed task that will be executed at its specified time
-     *  @note this function ensure cross thread safety
-     *  @see #defer */
-    void post(deadline_timer &cb) noexcept;
+    /**
+     * @brief Post a task to this main loop and it will be executed
+     * @note This function ensure cross-thread safety
+     * @see #dispatch
+     */
+    void post(task &t) noexcept;
+
+    /**
+     * @brief Post a task to this main loop and it will be executed
+     * @note This function ensure cross-thread safety
+     * @see #dispatch
+     */
+    void post(task_list &t) noexcept;
+
+    template<typename Proc>
+    task set_task(Proc &&proc) noexcept
+    {
+      task t(std::forward<Proc>(proc));
+      dispatch(t);
+      return t;
+    }
+
+    template<typename Proc>
+    deadline_timer set_deadline_timer(time::steady_time_point deadline,
+        Proc &&proc) noexcept
+    {
+      deadline_timer t(*this, deadline, std::forward<Proc>(proc));
+      return t;
+    }
 
   private:
 

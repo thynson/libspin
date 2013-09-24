@@ -28,29 +28,27 @@
 
 namespace spin {
 
-  using intrusive_list_node =
-    boost::intrusive::list_member_hook<
+  using intrusive_list_node = boost::intrusive::list_member_hook<
     boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
-  template<typename Type, intrusive_list_node Type::* PointerToMember>
+  template<typename Type, intrusive_list_node Type::* Node>
     using intrusive_list = boost::intrusive::list<Type
-    , boost::intrusive::member_hook<Type, intrusive_list_node, PointerToMember>
+    , boost::intrusive::member_hook<Type, intrusive_list_node, Node>
     , boost::intrusive::constant_time_size<false>>;
 
-  using intrusive_set_node =
-    boost::intrusive::set_member_hook<
+  using intrusive_set_node = boost::intrusive::set_member_hook<
     boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
-  template<typename Type, intrusive_set_node Type::* PointerToMember>
+  template<typename Type, intrusive_set_node Type::* Node>
     using intrusive_multiset =
     boost::intrusive::multiset<Type
-    , boost::intrusive::member_hook<Type, intrusive_set_node, PointerToMember>
+    , boost::intrusive::member_hook<Type, intrusive_set_node, Node>
     , boost::intrusive::constant_time_size<false>>;
 
-  template<typename Type, intrusive_set_node Type::* PointerToMember>
+  template<typename Type, intrusive_set_node Type::* Node>
     using intrusive_set =
     boost::intrusive::set<Type
-    , boost::intrusive::member_hook<Type, intrusive_set_node, PointerToMember>
+    , boost::intrusive::member_hook<Type, intrusive_set_node, Node>
     , boost::intrusive::constant_time_size<false>>;
 
 }
