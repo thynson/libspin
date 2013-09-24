@@ -26,8 +26,6 @@
 
 namespace spin {
 
-  main_loop main_loop::default_instance;
-
   main_loop::main_loop() noexcept
     : m_deadline_timer_queue()
     , m_defered_tasks()

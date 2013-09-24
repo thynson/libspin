@@ -299,9 +299,6 @@ namespace spin {
     main_loop(main_loop &&) = delete;
     main_loop &operator = (main_loop &&) = delete;
 
-    /** @brief Default instance */
-    static main_loop default_instance;
-
     deadline_timer_queue m_deadline_timer_queue;
     task_list m_posted_tasks;
     task_list m_defered_tasks;
