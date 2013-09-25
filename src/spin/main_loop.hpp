@@ -86,18 +86,15 @@ namespace spin {
        * @brief Provide a new handler
        * @return Return the old handler function
        */
-      std::function<void()> set_handler(std::function<void()> proc) noexcept
+      std::function<void()> set_proc(std::function<void()> proc) noexcept
       {
-        std::swap(proc, m_proc);
+        std::swap(m_proc, proc);
         return proc;
       }
 
       /** @Brief Execute this task */
       void operator () ()
-      {
-        if (m_proc)
-          m_proc();
-      }
+      { if (m_proc) m_proc(); }
 
       /**
        * @brief Cancel this task, if the task have not been dispatched to a
@@ -105,15 +102,7 @@ namespace spin {
        * @retval true Actually cancel a posted task
        * @retval false Nothing has been done
        */
-      bool cancel() noexcept
-      {
-        if (m_node.is_linked())
-        {
-          m_node.unlink();
-          return true;
-        }
-        return false;
-      }
+      bool cancel() noexcept;
 
     private:
       intrusive_list_node m_node;
@@ -141,22 +130,10 @@ namespace spin {
        * and in that situation the proc will not be dispatch to execute
        */
       deadline_timer(main_loop &loop, std::function<void()> proc,
-          time::steady_time_point tp, bool check_deadline = false) noexcept
-        : m_main_loop(&loop)
-        , m_task(std::move(proc))
-        , m_node()
-        , m_deadline(std::move(tp))
-      {
-        if (!check_deadline || tp > decltype(tp)::clock::now())
-          m_main_loop->m_deadline_timer_queue.insert(*this);
-      }
+          time::steady_time_point tp, bool check_deadline = false) noexcept;
 
       /** @brief Move constructor */
-      deadline_timer(deadline_timer &&t) noexcept
-        : m_task(std::move(t.m_task))
-        , m_node()
-        , m_deadline(std::move(t.m_deadline))
-      { m_node.swap_nodes(t.m_node); }
+      deadline_timer(deadline_timer &&t) noexcept;
 
       /** @brief Copy constructor is forbidden */
       deadline_timer(const deadline_timer &) = delete;
@@ -164,18 +141,18 @@ namespace spin {
       /** @brief Destructor */
       ~deadline_timer() = default;
 
-      /** @brief Compare the specified alarm time of two deadline_timer */
+      /** @brief Compare the specified deadline of two deadline_timer */
       friend bool operator < (const deadline_timer &lhs,
                               const deadline_timer &rhs) noexcept
       { return lhs.m_deadline < rhs.m_deadline; }
 
-      /** @brief Compare the specified alarm time of two deadline_timer */
+      /** @brief Compare the specified deadline of two deadline_timer */
       friend bool operator > (const deadline_timer &lhs,
                               const deadline_timer &rhs) noexcept
       { return lhs.m_deadline > rhs.m_deadline; }
 
       /** @brief Get the alarm time */
-      const time::steady_time_point &get_time_point() const noexcept
+      const time::steady_time_point &get_deadline() const noexcept
       { return m_deadline; }
 
       /** @brief Get the main loop this timer attached to */
@@ -183,38 +160,17 @@ namespace spin {
       { return *m_main_loop; }
 
       /**
-       * @brief Cancel this deadline_timer and reset the alarm time
+       * @brief Cancel this deadline_timer and reset the deadline time
        * @param deadline The new deadline
        * @param check_deadline Same effect with constructor
        * @returns The original deadline
        */
       time::steady_time_point reset_deadline(time::steady_time_point deadline,
-          bool check_deadline = false) noexcept
-      {
-        cancel();
-        std::swap(deadline, m_deadline);
-        auto &q = m_main_loop->m_deadline_timer_queue;
-        q.erase(q.iterator_to(*this));
-        if (m_deadline > decltype(m_deadline)::clock::now())
-          q.insert(*this);
-        return deadline;
-      }
+          bool check_deadline = false) noexcept;
 
       /** @brief Reset the handler */
-      std::function<void()> set_handler(std::function<void()> handler) noexcept
-      { return m_task.set_handler(std::move(handler)); }
-
-      /** @brief Cancel this deadline_timer, see task::cancel() */
-      bool cancel() noexcept
-      {
-        if (m_node.is_linked())
-        {
-          m_node.unlink();
-          return true;
-        }
-        else
-        { return m_task.cancel(); }
-      }
+      std::function<void()> set_proc(std::function<void()> proc) noexcept
+      { return m_task.set_proc(std::move(proc)); }
 
     private:
       main_loop *m_main_loop;

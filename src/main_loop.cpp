@@ -17,14 +17,52 @@
 
 #include "spin/main_loop.hpp"
 #include <boost/iterator/transform_iterator.hpp>
-#include <sys/epoll.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <mutex>
 #include <condition_variable>
-#include <memory>
 
-namespace spin {
+namespace spin
+{
+
+  bool main_loop::task::cancel() noexcept
+  {
+    if (m_node.is_linked())
+    {
+      m_node.unlink();
+      return true;
+    }
+    return false;
+  }
+
+  main_loop::deadline_timer::deadline_timer(main_loop &loop,
+      std::function<void()> proc, time::steady_time_point tp,
+      bool check_deadline) noexcept
+    : m_main_loop(&loop)
+    , m_task(std::move(proc))
+    , m_node()
+    , m_deadline(std::move(tp))
+  {
+    if (!check_deadline || tp > decltype(tp)::clock::now())
+      m_main_loop->m_deadline_timer_queue.insert(*this);
+  }
+
+  main_loop::deadline_timer::deadline_timer(
+      main_loop::deadline_timer &&t) noexcept
+    : m_task(std::move(t.m_task))
+    , m_node()
+    , m_deadline(std::move(t.m_deadline))
+  { m_node.swap_nodes(t.m_node); }
+
+  time::steady_time_point
+  main_loop::deadline_timer::reset_deadline(time::steady_time_point deadline,
+      bool check_deadline) noexcept
+  {
+    m_node.unlink();
+    auto &q = m_main_loop->m_deadline_timer_queue;
+    std::swap(deadline, m_deadline);
+    if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
+      q.insert(*this);
+    return deadline;
+  }
 
   main_loop::main_loop() noexcept
     : m_deadline_timer_queue()
