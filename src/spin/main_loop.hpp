@@ -96,6 +96,10 @@ namespace spin {
       void operator () ()
       { if (m_proc) m_proc(); }
 
+      /** @breif Test if this task is under dispatching */
+      bool is_dispatching() const noexcept
+      { return m_node.is_linked(); }
+
       /**
        * @brief Cancel this task, if the task have not been dispatched to a
        * main_loop, or this task already finished, this function does nothing.
@@ -158,6 +162,14 @@ namespace spin {
       /** @brief Get the main loop this timer attached to */
       main_loop &get_main_loop() const noexcept
       { return *m_main_loop; }
+
+      /** @brief Get the task object */
+      const task &get_task() const noexcept
+      { return m_task; }
+
+      /** @brief Test if this timer is expired */
+      const bool is_expired() const noexcept
+      { return !m_node.is_linked() && !m_task.is_dispatching(); }
 
       /**
        * @brief Cancel this deadline_timer and reset the deadline time
@@ -238,14 +250,6 @@ namespace spin {
       return t;
     }
 
-    template<typename Proc>
-    deadline_timer set_deadline_timer(time::steady_time_point deadline,
-        Proc &&proc) noexcept
-    {
-      deadline_timer t(*this, deadline, std::forward<Proc>(proc));
-      return t;
-    }
-
   private:
 
     task_list wait_for_events();
@@ -262,8 +266,6 @@ namespace spin {
     std::condition_variable m_cond;
     std::atomic_size_t m_ref_counter;
   };
-
-
 }
 
 #endif
