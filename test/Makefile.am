@@ -21,10 +21,16 @@ AM_CPPFLAGS=@AM_CPPFLAGS@ -I$(top_srcdir)/src
 AM_LDFLAGS=@AM_LDFLAGS@ ../src/libspin.la -lpthread
 
 check_PROGRAMS=test_singleton_01\
-			   test_singleton_volatile_01
+			   test_singleton_volatile_01\
+			   test_main_loop_01\
+			   test_main_loop_02\
+			   test_main_loop_03
 
 TESTS=$(check_PROGRAMS)
 
 test_singleton_volatile_01_SOURCES=singleton-volatile-01.cpp
 test_singleton_01_SOURCES=singleton-01.cpp
+test_main_loop_01_SOURCES=main_loop-01.cpp
+test_main_loop_02_SOURCES=main_loop-02.cpp
+test_main_loop_03_SOURCES=main_loop-03.cpp
 

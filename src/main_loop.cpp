@@ -34,14 +34,14 @@ namespace spin
   }
 
   main_loop::deadline_timer::deadline_timer(main_loop &loop,
-      std::function<void()> proc, time::steady_time_point tp,
+      std::function<void()> proc, time::steady_time_point deadline,
       bool check_deadline) noexcept
     : m_main_loop(&loop)
     , m_task(std::move(proc))
     , m_node()
-    , m_deadline(std::move(tp))
+    , m_deadline(std::move(deadline))
   {
-    if (!check_deadline || tp > decltype(tp)::clock::now())
+    if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
       m_main_loop->m_deadline_timer_queue.insert(*this);
   }
 
@@ -114,7 +114,7 @@ namespace spin
           auto te = m_deadline_timer_queue.upper_bound(*tf);
 
           tranform_iterator f(tf, get_task);
-          tranform_iterator e(tf, get_task);
+          tranform_iterator e(te, get_task);
 
           tasks.insert(tasks.end(), f, e);
           m_deadline_timer_queue.erase(tf, te);

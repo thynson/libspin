@@ -15,20 +15,40 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/enable_singleton.hpp>
+#include <spin/main_loop.hpp>
+#include <iostream>
 #include <cassert>
 
-class singleton : public spin::enable_singleton<singleton>
-{
-public:
-  static singleton_factory get_instance;
-};
 
-singleton::singleton_factory singleton::get_instance;
+void check_create_task()
+{
+  spin::main_loop loop;
+  bool flag = false;
+  auto x = loop.set_task([&flag]{ flag = true; });
+
+  loop.run();
+
+  assert (flag);
+}
+
+
+void check_create_timer()
+{
+  using namespace spin::time;
+  using namespace std::chrono;
+  steady_time_point now = decltype(now)::clock::now();
+  auto deadline = now + duration_cast<decltype(now)::duration>(seconds(1));
+  spin::main_loop loop;
+  bool flag = false;
+  spin::main_loop::deadline_timer x(loop, [&] { flag = true; },
+      std::move(deadline));
+  loop.run();
+  assert (flag);
+}
 
 int main()
 {
-  std::shared_ptr<singleton> x = singleton::get_instance();
-  assert(x);
-  return 0;
+  check_create_task();
+  check_create_timer();
 }
+

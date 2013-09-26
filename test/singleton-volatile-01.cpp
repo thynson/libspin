@@ -53,6 +53,7 @@ protected:
 };
 
 std::atomic_long volatile_singleton::count_construct_times{0};
+volatile_singleton::singleton_factory volatile_singleton::get_instance;
 
 std::mutex lock;
 std::condition_variable cv;
@@ -85,7 +86,7 @@ void mt_test(int n)
   std::vector<std::thread> vt;
 
 
-  tp = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+  tp = std::chrono::steady_clock::now() + std::chrono::seconds(5);
   for (int i = 0; i < n; i++)
   { vt.emplace_back(mt_access); }
 
