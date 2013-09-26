@@ -22,8 +22,10 @@ lib_LTLIBRARIES=libspin.la
 libspin_la_HEADERS=spin/utils.hpp\
 				   spin/environment.hpp\
 				   spin/spin_lock.hpp\
-				   spin/main_loop.hpp
+				   spin/main_loop.hpp\
+				   spin/handle.hpp
 
-libspin_la_SOURCES=main_loop.cpp
+libspin_la_SOURCES=main_loop.cpp\
+				   handle.cpp
 
 
