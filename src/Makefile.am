@@ -23,9 +23,11 @@ libspin_la_HEADERS=spin/utils.hpp\
 				   spin/environment.hpp\
 				   spin/spin_lock.hpp\
 				   spin/main_loop.hpp\
-				   spin/handle.hpp
+				   spin/handle.hpp\
+				   spin/poller.hpp
 
 libspin_la_SOURCES=main_loop.cpp\
-				   handle.cpp
+				   handle.cpp\
+				   poller.cpp
 
 
