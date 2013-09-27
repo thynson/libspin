@@ -19,6 +19,8 @@
 #define __SPIN_HANDLE_HPP_INCLUDED__
 
 #include <utility>
+#include <stdexcept>
+
 // For handle_t
 #ifdef __unix__
 typedef int handle_t;
@@ -33,7 +35,22 @@ namespace spin
   /** @brief RAAI Wrapper for handle_t */
   class handle
   {
+
   public:
+
+    /**
+     * @brief Helper function for construct_aux
+     * @todo Move to spin/error.hpp
+     */
+    static void throw_for_last_system_error();
+
+    /** @brief Delegate constructor */
+    template<typename Callable, typename ...Types>
+    handle(Callable &&callable, Types &&...args)
+      : handle(construct_aux(std::forward<Callable>(callable),
+            std::forward<Types>(args)...))
+    {}
+
     /** @brief Constructor */
     handle(handle_t) noexcept;
 
@@ -59,6 +76,33 @@ namespace spin
     { return m_handle; }
 
   private:
+    /**
+     * @brief Helper function for delegation template constructor
+     * @tparam Callable The handle constructor type
+     * @tparam Types Parameters' type pack
+     * @param callable The handle constructor
+     * @param args Arguments for callable
+     * @throws std::runtime_error if callable return an invalid handle type
+     * (e.g. incase of -1 is returned for UNIX system, std::runtime_error with
+     * error message retrieved from strerror_r will be throw)
+     */
+    template<typename Callable, typename ...Types>
+    static handle_t construct_aux(Callable &&callable, Types &&...args)
+    {
+      handle_t x = std::forward<Callable>(callable)(
+          std::forward<Types>(args)...);
+#ifdef __unix__
+      if (x <= 0)
+      {
+        if (x != -1)
+          throw std::runtime_error("Unexpected value is returned, shoud either "
+                                   "be -1 or postive integer for UNIX system");
+        else
+          throw_for_last_system_error();
+      }
+      return x;
+#endif
+    }
     handle_t m_handle;
   };
 
