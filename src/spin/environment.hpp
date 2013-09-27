@@ -15,9 +15,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __SPIN_CONFIG_HPP_INCLUDED__
-#define __SPIN_CONFIG_HPP_INCLUDED__
+#ifndef __SPIN_ENVIRONMENT_HPP_INCLUDED__
+#define __SPIN_ENVIRONMENT_HPP_INCLUDED__
 
+namespace spin
+{
+
+// For __SPIN_EXPORT__ && __SPIN_INTERNAL__
 #ifdef __unix__
 # if defined(PIC) && defined(__BUILD_SPIN__)
 #   if defined(__GNUC__) || defined(__clang__)
@@ -29,5 +33,7 @@
 #   define __SPIN_INTERNAL__
 # endif
 #endif
+
+}
 
 #endif
