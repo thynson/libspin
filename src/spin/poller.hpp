@@ -50,7 +50,7 @@ namespace spin
 
       virtual void poll_state_changed(poll_state ps) = 0;
 
-      void change_poll_state(poll_state ps);
+      void change_poll_state(poll_state ps) noexcept;
 
       main_loop &get_main_loop() const noexcept
       { return m_main_loop; }

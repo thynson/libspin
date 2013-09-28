@@ -69,8 +69,15 @@ namespace spin
     : m_poller(epoll_create1, O_CLOEXEC)
     , m_exit_notifier(setup_event_fd(m_poller))
     , m_thread(std::bind(&poller::poll, this))
-  {}
+  { }
 
+  void poller::context::context::change_poll_state(
+      poller::poll_state ps) noexcept
+  {
+    ps.flip(); // Flip before lock
+    std::unique_lock<spin_lock> guard(m_lock);
+    m_current_state &= ps;
+  }
 
   void poller::poll() noexcept
   {
