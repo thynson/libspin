@@ -98,6 +98,7 @@ namespace spin
      */
     class singleton_factory
     {
+      friend class enable_singleton<Inheriant, true>;
     public:
 
       /**
@@ -105,7 +106,7 @@ namespace spin
        */
       std::shared_ptr<Inheriant> operator () ()
       {
-        std::shared_ptr<Inheriant> ret = instance.lock();
+        auto ret = instance.lock();
 
         if (ret)
         { return ret; }
@@ -117,14 +118,9 @@ namespace spin
         if (ret)
         { return ret; }
 
-        ret.reset(new target_type,
-            [](Inheriant *p)
-            {
-              delete static_cast<target_type*>(p);
-            });
-
+        ret = std::make_shared<target_type>();
         instance = ret;
-        return ret;
+        return std::move(ret); // returns a different type
       }
     private:
       class target_type : public Inheriant { };
@@ -143,7 +139,7 @@ namespace spin
 
     enable_singleton &operator = (enable_singleton &&) = delete;
 
-    static std::weak_ptr<Inheriant> instance;
+    static std::weak_ptr<typename singleton_factory::target_type> instance;
     static std::mutex lock;
   };
 
@@ -154,7 +150,9 @@ namespace spin
     std::mutex enable_singleton<Inheriant, Volatile>::lock;
 
   template<class Inheriant>
-    std::weak_ptr<Inheriant> enable_singleton<Inheriant, true>::instance;
+    std::weak_ptr<typename
+    enable_singleton<Inheriant, true>::singleton_factory::target_type>
+    enable_singleton<Inheriant, true>::instance;
 
   template<class Inheriant>
     std::mutex enable_singleton<Inheriant, true>::lock;
