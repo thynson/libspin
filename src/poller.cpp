@@ -79,6 +79,8 @@ namespace spin
     m_current_state &= ps;
   }
 
+  poller::singleton_factory poller::get_instance; // static member instansiate
+
   void poller::poll() noexcept
   {
     std::array<epoll_event, 512> epevts; // May it throws std::bad_alloc?
