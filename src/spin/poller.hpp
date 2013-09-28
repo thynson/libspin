@@ -46,7 +46,7 @@ namespace spin
     public:
       context(main_loop &loop);
 
-      virtual ~context() noexcept;
+      virtual ~context() noexcept = default;
 
       virtual void poll_state_changed(poll_state ps) = 0;
 
