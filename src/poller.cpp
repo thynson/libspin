@@ -44,8 +44,9 @@ namespace spin
     }
   }
 
-  poller::context::context(main_loop &loop)
+  poller::context::context(main_loop &loop, handle &h)
     : m_main_loop(loop)
+    , m_handle(h)
     , m_poller(singleton<poller>::get_instance())
     , m_lock()
     , m_current_state()

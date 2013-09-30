@@ -45,7 +45,7 @@ namespace spin
     {
       friend class poller;
     public:
-      context(main_loop &loop);
+      context(main_loop &loop, handle &h);
 
       virtual ~context() noexcept = default;
 
@@ -58,6 +58,7 @@ namespace spin
 
     private:
       main_loop &m_main_loop;
+      handle &m_handle;
       std::shared_ptr<poller> m_poller;
       spin_lock m_lock;
       poll_state m_current_state;
@@ -68,7 +69,9 @@ namespace spin
 
   protected:
     poller();
+
   private:
+
     void poll() noexcept;
 
     handle m_poller;
