@@ -20,6 +20,7 @@ ACLOCAL_AMFLAGS=-I build-aux/m4
 libspin_ladir=$(includedir)/spin
 lib_LTLIBRARIES=libspin.la
 libspin_la_HEADERS=spin/utils.hpp\
+				   spin/singleton.hpp\
 				   spin/environment.hpp\
 				   spin/spin_lock.hpp\
 				   spin/main_loop.hpp\

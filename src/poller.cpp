@@ -46,7 +46,7 @@ namespace spin
 
   poller::context::context(main_loop &loop)
     : m_main_loop(loop)
-    , m_poller(get_instance())
+    , m_poller(singleton<poller>::get_instance())
     , m_lock()
     , m_current_state()
     , m_polled_state()
@@ -78,8 +78,6 @@ namespace spin
     std::unique_lock<spin_lock> guard(m_lock);
     m_current_state &= ps;
   }
-
-  poller::singleton_factory poller::get_instance; // static member instansiate
 
   void poller::poll() noexcept
   {

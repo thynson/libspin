@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/enable_singleton.hpp>
+#include <spin/singleton.hpp>
 
 #include <iostream>
 #include <thread>
@@ -26,34 +26,33 @@
 #include <condition_variable>
 
 
-class volatile_singleton
-  : public spin::enable_singleton<volatile_singleton, true>
+class X
 {
 public:
   static std::atomic_long count_construct_times;
-  static singleton_factory get_instance;
+  constexpr static bool volatility = true;
+
+  X()
+    : flag(true)
+  {
+    count_construct_times++;
+  }
 
   void f()
   {
     assert (flag);
   }
 
-  ~volatile_singleton()
+  ~X()
   {
     flag = false;
   }
 protected:
-  volatile_singleton()
-    : flag(true)
-  {
-    count_construct_times++;
-  }
 
   std::atomic_bool flag;
 };
 
-std::atomic_long volatile_singleton::count_construct_times{0};
-volatile_singleton::singleton_factory volatile_singleton::get_instance;
+std::atomic_long X::count_construct_times{0};
 
 std::mutex lock;
 std::condition_variable cv;
@@ -66,8 +65,7 @@ void mt_access()
   while (std::chrono::steady_clock::now() < tp)
   {
     {
-      std::shared_ptr<volatile_singleton> x
-        = volatile_singleton::get_instance();
+      std::shared_ptr<X> x = spin::singleton<X>::get_instance();
       assert(x);
       x->f();
       count_access_times++;
@@ -80,7 +78,7 @@ void mt_access()
 void mt_test(int n)
 {
   // Clear counter
-  volatile_singleton::count_construct_times = 0;
+  X::count_construct_times = 0;
   count_access_times = 0;
 
   std::vector<std::thread> vt;
@@ -95,8 +93,8 @@ void mt_test(int n)
 
   std::cout << "Multi-threading test for " << n << "concurrent thread:"
     << std::endl
-    << " volatile_singleton singlethon class was constructed "
-    << volatile_singleton::count_construct_times
+    << " X's singlethon class was constructed "
+    << X::count_construct_times
     << " times" << std::endl
     << " while instance be accessed " << count_access_times
     << " times" << std::endl;
@@ -105,7 +103,7 @@ void mt_test(int n)
 int main ()
 {
   {
-    std::shared_ptr<volatile_singleton> x = volatile_singleton::get_instance();
+    std::shared_ptr<X> x = spin::singleton<X>::get_instance();
     assert (x); // assert x is not null
   }
 

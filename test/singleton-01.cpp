@@ -15,20 +15,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/enable_singleton.hpp>
+#include <spin/singleton.hpp>
 #include <cassert>
 
-class singleton : public spin::enable_singleton<singleton>
+class X
 {
-public:
-  static singleton_factory get_instance;
 };
-
-singleton::singleton_factory singleton::get_instance;
 
 int main()
 {
-  std::shared_ptr<singleton> x = singleton::get_instance();
+  std::shared_ptr<X> x = spin::singleton<X>::get_instance();
   assert(x);
   return 0;
 }

@@ -19,15 +19,16 @@
 #define __SPIN_POLLER_HPP_INCLUDED__
 
 #include "main_loop.hpp"
-#include "enable_singleton.hpp"
 #include "handle.hpp"
+#include "singleton.hpp"
 #include <bitset>
 
 namespace spin
 {
 
-  class poller : public enable_singleton<poller, true>
+  class poller
   {
+    friend class singleton<poller>;
   public:
 
     enum
@@ -64,8 +65,6 @@ namespace spin
       main_loop::task m_poster;
       main_loop::task m_dispatcher;
     };
-
-    static singleton_factory get_instance;
 
   protected:
     poller();

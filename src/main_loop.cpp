@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "spin/main_loop.hpp"
+#include <spin/main_loop.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <mutex>
 #include <condition_variable>
