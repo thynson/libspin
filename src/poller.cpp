@@ -62,7 +62,7 @@ namespace spin
           std::unique_lock<spin_lock> guard(m_lock);
           auto state = m_polled_state;
           guard.unlock();
-          poll_state_changed(state);
+          on_poll_event(state);
         })
   { }
 
@@ -72,8 +72,8 @@ namespace spin
     , m_thread(std::bind(&poller::poll, this))
   { }
 
-  void poller::context::context::change_poll_state(
-      poller::poll_state ps) noexcept
+  void poller::context::context::change_poll_flag(
+      poller::poll_flag ps) noexcept
   {
     ps.flip(); // Flip before lock
     std::unique_lock<spin_lock> guard(m_lock);
@@ -129,7 +129,7 @@ namespace spin
         {
           epoll_event e = *begin++;
           context *t = get_context(e);
-          poll_state ps;
+          poll_flag ps;
 
           if (e.events & EPOLLIN) ps.set(POLL_READABLE);
           if (e.events & EPOLLOUT) ps.set(POLL_WRITABLE);

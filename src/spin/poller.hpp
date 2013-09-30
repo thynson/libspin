@@ -39,7 +39,7 @@ namespace spin
       MAX_POLL
     };
 
-    typedef std::bitset<MAX_POLL> poll_state;
+    typedef std::bitset<MAX_POLL> poll_flag;
 
     class context
     {
@@ -49,9 +49,9 @@ namespace spin
 
       virtual ~context() noexcept = default;
 
-      virtual void poll_state_changed(poll_state ps) = 0;
+      virtual void on_poll_event(poll_flag ps) = 0;
 
-      void change_poll_state(poll_state ps) noexcept;
+      void change_poll_flag(poll_flag ps) noexcept;
 
       main_loop &get_main_loop() const noexcept
       { return m_main_loop; }
@@ -61,8 +61,8 @@ namespace spin
       handle &m_handle;
       std::shared_ptr<poller> m_poller;
       spin_lock m_lock;
-      poll_state m_current_state;
-      poll_state m_polled_state;
+      poll_flag m_current_state;
+      poll_flag m_polled_state;
       main_loop::task m_poster;
       main_loop::task m_dispatcher;
     };

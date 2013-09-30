@@ -34,7 +34,7 @@ namespace spin
 
     virtual ~detail() override = default;
 
-    void poll_state_changed(poller::poll_state ps) override
+    void on_poll_event(poller::poll_flag ps) override
     {  }
   private:
   };
@@ -65,7 +65,7 @@ namespace spin
       : poller::context(loop, h)
     {}
 
-    void poll_state_changed(poller::poll_state ps) override
+    void on_poll_event(poller::poll_flag ps) override
     { }
 
   };
