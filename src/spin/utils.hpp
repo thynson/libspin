@@ -33,25 +33,35 @@ namespace spin {
   using intrusive_list_node = boost::intrusive::list_member_hook<
     boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
-  template<typename Type, intrusive_list_node Type::* Node>
-    using intrusive_list = boost::intrusive::list<Type
-    , boost::intrusive::member_hook<Type, intrusive_list_node, Node>
+  template<typename Type, typename NodeHolder,
+    intrusive_list_node NodeHolder::* Node>
+    using basic_intrusive_list = boost::intrusive::list<Type
+    , boost::intrusive::member_hook<NodeHolder, intrusive_list_node, Node>
     , boost::intrusive::constant_time_size<false>>;
+
+  template<typename Type, intrusive_list_node Type::* Node>
+    using intrusive_list = basic_intrusive_list<Type, Type, Node>;
 
   using intrusive_set_node = boost::intrusive::set_member_hook<
     boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
 
-  template<typename Type, intrusive_set_node Type::* Node>
-    using intrusive_multiset =
-    boost::intrusive::multiset<Type
-    , boost::intrusive::member_hook<Type, intrusive_set_node, Node>
+  template<typename Type, typename NodeHolder,
+    intrusive_set_node NodeHolder::* Node>
+    using basic_intrusive_multiset = boost::intrusive::multiset<Type
+    , boost::intrusive::member_hook<NodeHolder, intrusive_set_node, Node>
     , boost::intrusive::constant_time_size<false>>;
 
   template<typename Type, intrusive_set_node Type::* Node>
-    using intrusive_set =
-    boost::intrusive::set<Type
-    , boost::intrusive::member_hook<Type, intrusive_set_node, Node>
+    using intrusive_multiset = basic_intrusive_multiset<Type, Type, Node>;
+
+  template<typename Type, typename NodeHolder,
+    intrusive_set_node NodeHolder::* Node>
+    using basic_intrusive_set = boost::intrusive::set<Type
+    , boost::intrusive::member_hook<NodeHolder, intrusive_set_node, Node>
     , boost::intrusive::constant_time_size<false>>;
+
+  template<typename Type, intrusive_set_node Type::* Node>
+    using intrusive_set = basic_intrusive_set<Type, Type, Node>;
 
 }
 
