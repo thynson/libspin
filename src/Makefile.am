@@ -26,10 +26,12 @@ libspin_la_HEADERS=spin/time.hpp\
 				   spin/spin_lock.hpp\
 				   spin/main_loop.hpp\
 				   spin/handle.hpp\
-				   spin/poller.hpp
+				   spin/poller.hpp\
+				   spin/socket.hpp
 
 libspin_la_SOURCES=main_loop.cpp\
 				   handle.cpp\
-				   poller.cpp
+				   poller.cpp\
+				   socket.cpp
 
 
