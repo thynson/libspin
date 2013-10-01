@@ -44,7 +44,7 @@ namespace spin
     }
   }
 
-  poller::context::context(main_loop &loop, handle &h)
+  poller::context::context(main_loop &loop, handle &h, poll_flag flag)
     : m_main_loop(loop)
     , m_handle(h)
     , m_poller(singleton<poller>::get_instance())
@@ -64,7 +64,18 @@ namespace spin
           guard.unlock();
           on_poll_event(state);
         })
-  { m_main_loop.ref(); }
+  {
+    m_main_loop.ref();
+    epoll_event epev;
+    epev.data.ptr = this;
+    if (flag[POLL_READABLE]) epev.events |= EPOLLIN;
+    if (flag[POLL_WRITABLE]) epev.events |= EPOLLOUT;
+    if (flag[POLL_ERROR]) epev.events |= EPOLLERR;
+    int ret = epoll_ctl(m_poller->m_poller.get_handle(), EPOLL_CTL_ADD,
+        h.get_handle(), &epev);
+    if (ret == -1)
+      handle::throw_for_last_system_error();
+  }
 
   poller::context::~context()
   { m_main_loop.unref(); }

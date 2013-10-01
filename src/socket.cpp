@@ -29,7 +29,8 @@ namespace spin
   {
   public:
     detail(main_loop &loop, handle &socket)
-      : poller::context(loop, socket)
+      : poller::context(loop, socket,
+          poller::POLL_WRITABLE | poller::POLL_READABLE | poller::POLL_ERROR)
     { }
 
     virtual ~detail() override = default;
@@ -46,6 +47,8 @@ namespace spin
   {
   }
 
+  stream_socket_peer::~stream_socket_peer() noexcept
+  {}
 
   void stream_socket_peer::read(char buff[], size_t size,
       std::function<void(size_t size)> cb)
@@ -62,7 +65,8 @@ namespace spin
   {
   public:
     detail(main_loop &loop, handle &h)
-      : poller::context(loop, h)
+      : poller::context(loop, h,
+            poller::POLL_READABLE | poller::POLL_ERROR)
       , m_callback()
       , m_flag()
       , m_accept_task(std::bind(&detail::do_accept, this))
@@ -83,12 +87,12 @@ namespace spin
       {
         sockaddr_storage addr;
         socklen_t len = sizeof(addr);
-        handle fd(::accept, get_handle().get_handle(), (sockaddr *)&addr,
-            &len);
-        if (fd)
+        int fd = ::accept(get_handle().get_handle(),
+            reinterpret_cast<sockaddr*>(&addr), &len);
+        if (fd != -1)
         {
           m_callback(std::unique_ptr<stream_socket_peer>(
-              new stream_socket_peer(get_main_loop(), std::move(fd))));
+              new stream_socket_peer(get_main_loop(), handle(fd))));
           get_main_loop().dispatch(m_accept_task);
         }
         else
@@ -106,9 +110,12 @@ namespace spin
 
   stream_socket_listener::stream_socket_listener(main_loop &loop, handle h)
     : m_handle (std::move(h))
-    , m_detail (std::unique_ptr<detail>(new detail(loop, h)))
+    , m_detail (std::unique_ptr<detail>(new detail(loop, m_handle)))
   {
   }
+
+  stream_socket_listener::~stream_socket_listener()
+  {  }
 
 
   std::function<void(std::unique_ptr<stream_socket_peer>)>

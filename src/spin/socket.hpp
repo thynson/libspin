@@ -26,7 +26,7 @@ namespace spin
   {
     friend class stream_socket_server;
   public:
-    ~stream_socket_peer() = default;
+    ~stream_socket_peer();
 
     stream_socket_peer(stream_socket_peer &&peer) noexcept = default;
     stream_socket_peer &operator = (stream_socket_peer &&peer) noexcept = default;
@@ -52,7 +52,7 @@ namespace spin
   {
   public:
     stream_socket_listener(main_loop &loop, handle h);
-    ~stream_socket_listener() = delete;
+    ~stream_socket_listener();
 
     std::function<void(std::unique_ptr<stream_socket_peer>)>
     accept(std::function<void(std::unique_ptr<stream_socket_peer>)> cb);

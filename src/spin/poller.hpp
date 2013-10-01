@@ -45,7 +45,7 @@ namespace spin
     {
       friend class poller;
     public:
-      context(main_loop &loop, handle &h);
+      context(main_loop &loop, handle &h, poll_flag flag);
 
       virtual ~context() noexcept;
 
