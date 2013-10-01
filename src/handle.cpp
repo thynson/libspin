@@ -32,8 +32,19 @@ namespace spin
 
   handle::~handle() noexcept
   {
-    if (m_handle > 0)
-      close(m_handle);
+    close();
+  }
+
+  void handle::close() noexcept
+  {
+    if (this->operator bool())
+      ::close(m_handle);
+    m_handle = 0;
+  }
+
+  handle::operator bool() const noexcept
+  {
+    return m_handle > 0;
   }
 
   void handle::throw_for_last_system_error()

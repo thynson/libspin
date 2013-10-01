@@ -75,6 +75,12 @@ namespace spin
     handle_t get_handle() const noexcept
     { return m_handle; }
 
+    /** @brief Close the handle */
+    void close() noexcept;
+
+    /** @breif Test if the managed handle is valid */
+    operator bool() const noexcept;
+
   private:
     /**
      * @brief Helper function for delegation template constructor
