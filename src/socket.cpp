@@ -63,23 +63,62 @@ namespace spin
   public:
     detail(main_loop &loop, handle &h)
       : poller::context(loop, h)
+      , m_callback()
+      , m_flag()
+      , m_accept_task(std::bind(&detail::do_accept, this))
     {}
 
     void on_poll_event(poller::poll_flag ps) override
-    { }
+    {
+      m_flag |= ps;
+      if (m_flag[poller::POLL_READABLE])
+      {
+        do_accept();
+      }
+    }
 
+    void do_accept()
+    {
+      if (m_callback)
+      {
+        sockaddr_storage addr;
+        socklen_t len = sizeof(addr);
+        handle fd(::accept, get_handle().get_handle(), (sockaddr *)&addr,
+            &len);
+        if (fd)
+        {
+          m_callback(std::unique_ptr<stream_socket_peer>(
+              new stream_socket_peer(get_main_loop(), std::move(fd))));
+          get_main_loop().dispatch(m_accept_task);
+        }
+        else
+        {
+          if (errno == EAGAIN)
+            change_poll_flag(m_flag.reset(poller::POLL_READABLE));
+        }
+      }
+    }
+
+    std::function<void(std::unique_ptr<stream_socket_peer>)> m_callback;
+    poller::poll_flag m_flag;
+    main_loop::task m_accept_task;
   };
 
-  stream_socket_listener::stream_socket_listener(main_loop &loop, handle &h)
+  stream_socket_listener::stream_socket_listener(main_loop &loop, handle h)
     : m_handle (std::move(h))
     , m_detail (std::unique_ptr<detail>(new detail(loop, h)))
   {
   }
 
 
-  void stream_socket_listener::accept(
+  std::function<void(std::unique_ptr<stream_socket_peer>)>
+  stream_socket_listener::accept(
       std::function<void(std::unique_ptr<stream_socket_peer>)> cb)
   {
+    std::swap(m_detail->m_callback, cb);
+    if (cb == nullptr)
+      m_detail->do_accept();
+    return cb;
   }
 
 

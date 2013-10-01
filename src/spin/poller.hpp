@@ -56,6 +56,10 @@ namespace spin
       main_loop &get_main_loop() const noexcept
       { return m_main_loop; }
 
+    protected:
+      handle &get_handle() const
+      { return m_handle; }
+
     private:
       main_loop &m_main_loop;
       handle &m_handle;

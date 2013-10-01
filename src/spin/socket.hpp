@@ -51,10 +51,11 @@ namespace spin
   class stream_socket_listener
   {
   public:
-    stream_socket_listener(main_loop &loop, handle &h);
+    stream_socket_listener(main_loop &loop, handle h);
     ~stream_socket_listener() = delete;
 
-    void accept(std::function<void(std::unique_ptr<stream_socket_peer>)> cb);
+    std::function<void(std::unique_ptr<stream_socket_peer>)>
+    accept(std::function<void(std::unique_ptr<stream_socket_peer>)> cb);
   protected:
 
     class detail;
