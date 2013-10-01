@@ -14,11 +14,12 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-AUTOMAKE_OPTIONS=foreign 1.7
-ACLOCAL_AMFLAGS=-I build-aux/m4
+bin_PROGRAMS=example_socket_server
 
-AM_CPPFLAGS="-Wall -Werror -fvisibility=hidden -D__BUILD_SPIN__=1"
-AM_LDFLAGS="-Xlinker --no-undefined -lpthread"
+AM_CPPFLAGS=@AM_CPPFLAGS@ -I$(top_srcdir)/src
+AM_LDFLAGS=@AM_LDFLAGS@ ../src/libspin.la -lpthread
 
-SUBDIRS=src docs example test
+example_socket_server_SOURCES=socket_server.cpp
+
+
 

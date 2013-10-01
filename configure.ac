@@ -44,6 +44,7 @@ AC_PROG_CXX([clang++ g++])
 AC_SUBST(VERSION)
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
+AC_CONFIG_FILES([example/Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_CONFIG_FILES([docs/Makefile])
 AC_OUTPUT
