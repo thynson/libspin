@@ -250,6 +250,13 @@ namespace spin {
       return t;
     }
 
+
+    void ref() noexcept
+    { m_ref_counter++; }
+
+    void unref() noexcept
+    { m_ref_counter--; }
+
   private:
 
     task_list wait_for_events();

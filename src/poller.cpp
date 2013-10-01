@@ -64,7 +64,10 @@ namespace spin
           guard.unlock();
           on_poll_event(state);
         })
-  { }
+  { m_main_loop.ref(); }
+
+  poller::context::~context()
+  { m_main_loop.unref(); }
 
   poller::poller()
     : m_poller(epoll_create1, O_CLOEXEC)
