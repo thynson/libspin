@@ -100,9 +100,10 @@ namespace spin
         }
         else
         {
-          if (errno == EAGAIN) {
+          if (errno == EAGAIN)
+          {
             errno = 0;
-            change_poll_flag(poller::POLL_READABLE);
+            change_poll_flag(1 << poller::POLL_READABLE);
           }
         }
       }
