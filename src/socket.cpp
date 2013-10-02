@@ -50,7 +50,10 @@ namespace spin
   }
 
   stream_socket_peer::~stream_socket_peer() noexcept
-  {}
+  {
+    auto guard = m_detail->get_poller().lock();
+    m_handle.close();
+  }
 
   void stream_socket_peer::read(char buff[], size_t size,
       std::function<void(size_t size)> cb)
@@ -116,7 +119,10 @@ namespace spin
   }
 
   stream_socket_listener::~stream_socket_listener()
-  {  }
+  {
+    auto guard = m_detail->get_poller().lock();
+    m_handle.close();
+  }
 
 
   std::function<void(std::unique_ptr<stream_socket_peer>)>

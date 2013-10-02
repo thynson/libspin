@@ -144,6 +144,7 @@ namespace spin
         begin++;
       }
 
+      auto guard = lock();
       while (begin != end)
       {
         main_loop::task_list tmplist;
@@ -152,12 +153,18 @@ namespace spin
         auto get_context = [] (const epoll_event &e)
         { return static_cast<context*>(e.data.ptr); };
 
+        // Lock, prevent the race between main_loop.post
+        // and poller::context::~context
         auto &loop = get_context(*begin)->m_main_loop;
 
         while (begin != p)
         {
           epoll_event e = *begin++;
           context *t = get_context(e);
+
+          if (!t->m_handle) // Already closed
+            continue;
+
           poll_flag ps;
 
           if (e.events & EPOLLIN) ps.set(POLL_READABLE);

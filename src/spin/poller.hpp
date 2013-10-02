@@ -43,6 +43,9 @@ namespace spin
 
     ~poller() noexcept;
 
+    std::unique_lock<std::mutex> lock() noexcept
+    { return std::unique_lock<std::mutex>(m_lock); }
+
     class context
     {
       friend class poller;
@@ -57,6 +60,9 @@ namespace spin
 
       main_loop &get_main_loop() const noexcept
       { return m_main_loop; }
+
+      poller &get_poller() const noexcept
+      { return *m_poller; }
 
     protected:
       handle &get_handle() const
@@ -83,6 +89,7 @@ namespace spin
     handle m_poller;
     handle m_exit_notifier;
     std::thread m_thread;
+    std::mutex m_lock;
   };
 }
 
