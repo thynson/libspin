@@ -56,6 +56,7 @@ namespace spin
           m_main_loop.dispatch(m_dispatcher);
           std::unique_lock<spin_lock> guard(m_lock);
           m_current_state |= m_polled_state;
+          m_polled_state.reset();
         })
     , m_dispatcher([this]
         {

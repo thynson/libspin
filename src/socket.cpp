@@ -70,14 +70,12 @@ namespace spin
       : poller::context(loop, h,
             (1 << poller::POLL_READABLE) | (1 << poller::POLL_ERROR))
       , m_callback()
-      , m_flag()
       , m_accept_task(std::bind(&detail::do_accept, this))
     {}
 
     void on_poll_event(poller::poll_flag ps) override
     {
-      m_flag |= ps;
-      if (m_flag[poller::POLL_READABLE])
+      if (ps[poller::POLL_READABLE])
       {
         do_accept();
       }
@@ -99,14 +97,15 @@ namespace spin
         }
         else
         {
-          if (errno == EAGAIN)
-            change_poll_flag(m_flag.reset(poller::POLL_READABLE));
+          if (errno == EAGAIN) {
+            errno = 0;
+            change_poll_flag(poller::POLL_READABLE);
+          }
         }
       }
     }
 
     std::function<void(std::unique_ptr<stream_socket_peer>)> m_callback;
-    poller::poll_flag m_flag;
     main_loop::task m_accept_task;
   };
 
