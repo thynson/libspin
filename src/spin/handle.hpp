@@ -59,6 +59,7 @@ namespace spin
 
     /** @breif Move constructor */
     handle(handle &&x) noexcept
+      : m_handle(0)
     { std::swap(x.m_handle, m_handle); }
 
     /** @brief Move assign operator */
