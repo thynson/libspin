@@ -41,6 +41,8 @@ namespace spin
 
     typedef std::bitset<MAX_POLL> poll_flag;
 
+    ~poller() noexcept;
+
     class context
     {
       friend class poller;
