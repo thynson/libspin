@@ -51,17 +51,13 @@ namespace spin
     , m_lock()
     , m_current_state()
     , m_polled_state()
-    , m_poster([this]
-        {
-          m_main_loop.dispatch(m_dispatcher);
-          std::unique_lock<spin_lock> guard(m_lock);
-          m_current_state |= m_polled_state;
-          m_polled_state.reset();
-        })
+    , m_poster([this] { m_main_loop.dispatch(m_dispatcher); })
     , m_dispatcher([this]
         {
           std::unique_lock<spin_lock> guard(m_lock);
-          auto state = m_current_state;
+          auto state = m_polled_state;
+          m_current_state |= state;
+          m_polled_state.reset();
           guard.unlock();
           on_poll_event(state);
         })
