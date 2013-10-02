@@ -68,6 +68,7 @@ namespace spin
     m_main_loop.ref();
     epoll_event epev;
     epev.data.ptr = this;
+    epev.events = EPOLLET;
     if (flag[POLL_READABLE]) epev.events |= EPOLLIN;
     if (flag[POLL_WRITABLE]) epev.events |= EPOLLOUT;
     if (flag[POLL_ERROR]) epev.events |= EPOLLERR;
