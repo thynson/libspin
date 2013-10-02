@@ -99,7 +99,7 @@ namespace spin
   {
     std::array<epoll_event, 512> epevts; // May it throws std::bad_alloc?
     bool will_exit = false;
-    while (will_exit)
+    while (!will_exit)
     {
       int ret = epoll_wait (m_poller.get_handle(), epevts.data(),
           epevts.size(), -1);
