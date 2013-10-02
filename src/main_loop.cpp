@@ -152,6 +152,8 @@ namespace spin
 
   void main_loop::post(main_loop::task_list &tl) noexcept
   {
+    if (tl.empty())
+      return;
     std::unique_lock<std::mutex> guard(m_lock);
     m_posted_tasks.splice(m_posted_tasks.end(), tl);
     m_cond.notify_one();
