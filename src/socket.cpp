@@ -30,7 +30,9 @@ namespace spin
   public:
     detail(main_loop &loop, handle &socket)
       : poller::context(loop, socket,
-          poller::POLL_WRITABLE | poller::POLL_READABLE | poller::POLL_ERROR)
+          (1 << poller::POLL_WRITABLE)
+          | (1 << poller::POLL_READABLE)
+          | (1 << poller::POLL_ERROR))
     { }
 
     virtual ~detail() override = default;
@@ -66,7 +68,7 @@ namespace spin
   public:
     detail(main_loop &loop, handle &h)
       : poller::context(loop, h,
-            poller::POLL_READABLE | poller::POLL_ERROR)
+            (1 << poller::POLL_READABLE) | (1 << poller::POLL_ERROR))
       , m_callback()
       , m_flag()
       , m_accept_task(std::bind(&detail::do_accept, this))

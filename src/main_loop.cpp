@@ -147,11 +147,13 @@ namespace spin
   {
     std::unique_lock<std::mutex> guard(m_lock);
     m_posted_tasks.push_back(t);
+    m_cond.notify_one();
   }
 
   void main_loop::post(main_loop::task_list &tl) noexcept
   {
     std::unique_lock<std::mutex> guard(m_lock);
     m_posted_tasks.splice(m_posted_tasks.end(), tl);
+    m_cond.notify_one();
   }
 }

@@ -60,7 +60,7 @@ namespace spin
     , m_dispatcher([this]
         {
           std::unique_lock<spin_lock> guard(m_lock);
-          auto state = m_polled_state;
+          auto state = m_current_state;
           guard.unlock();
           on_poll_event(state);
         })
@@ -103,6 +103,10 @@ namespace spin
     {
       int ret = epoll_wait (m_poller.get_handle(), epevts.data(),
           epevts.size(), -1);
+
+      if (ret == -1)
+        continue;
+
       auto begin = epevts.begin(), end = begin + ret;
 
       auto cmper = [] (const epoll_event &lhs, const epoll_event &rhs)
@@ -152,7 +156,7 @@ namespace spin
 
           std::unique_lock<spin_lock> guard(t->m_lock);
           ps &= ~(t->m_current_state | t->m_polled_state);
-          guard.unlock();
+          t->m_polled_state |= ps;
           if (ps.any())
             tmplist.push_back(t->m_poster);
         }
