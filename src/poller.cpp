@@ -78,7 +78,7 @@ namespace spin
   poller::context::~context()
   { m_main_loop.unref(); }
 
-  void poller::context::context::change_poll_flag(
+  void poller::context::context::clear_poll_flag(
       poller::poll_flag ps) noexcept
   {
     ps.flip(); // Flip before lock

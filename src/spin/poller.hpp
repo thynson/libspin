@@ -56,7 +56,7 @@ namespace spin
 
       virtual void on_poll_event(poll_flag ps) = 0;
 
-      void change_poll_flag(poll_flag ps) noexcept;
+      void clear_poll_flag(poll_flag ps) noexcept;
 
       main_loop &get_main_loop() const noexcept
       { return m_main_loop; }

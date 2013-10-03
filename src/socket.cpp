@@ -103,7 +103,7 @@ namespace spin
           if (errno == EAGAIN)
           {
             errno = 0;
-            change_poll_flag(1 << poller::POLL_READABLE);
+            clear_poll_flag(1 << poller::POLL_READABLE);
           }
         }
       }
