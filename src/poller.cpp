@@ -140,6 +140,8 @@ namespace spin
         begin++;
       }
 
+      // Lock, prevent the race between main_loop.post
+      // and poller::context::~context
       auto guard = lock();
       while (begin != end)
       {
@@ -149,8 +151,6 @@ namespace spin
         auto get_context = [] (const epoll_event &e)
         { return static_cast<context*>(e.data.ptr); };
 
-        // Lock, prevent the race between main_loop.post
-        // and poller::context::~context
         auto &loop = get_context(*begin)->m_main_loop;
 
         while (begin != p)
