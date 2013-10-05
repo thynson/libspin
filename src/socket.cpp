@@ -90,7 +90,7 @@ namespace spin
       {
         sockaddr_storage addr;
         socklen_t len = sizeof(addr);
-        int fd = ::accept(get_handle().get_handle(),
+        int fd = ::accept(get_handle().get_os_handle(),
             reinterpret_cast<sockaddr*>(&addr), &len);
         if (fd != -1)
         {

@@ -23,9 +23,7 @@
 
 // For handle_t
 #ifdef __unix__
-typedef int handle_t;
-#else
-typedef void *handle_t;
+typedef int os_handle_t;
 #endif
 
 
@@ -52,19 +50,19 @@ namespace spin
     {}
 
     /** @brief Constructor */
-    handle(handle_t) noexcept;
+    handle(os_handle_t os_handle) noexcept;
 
     /** @breif Destructor */
     ~handle() noexcept;
 
     /** @breif Move constructor */
     handle(handle &&x) noexcept
-      : m_handle(0)
-    { std::swap(x.m_handle, m_handle); }
+      : m_os_handle(0)
+    { std::swap(x.m_os_handle, m_os_handle); }
 
     /** @brief Move assign operator */
     handle &operator = (handle &&x) noexcept
-    { std::swap(x.m_handle, m_handle); return *this; }
+    { std::swap(x.m_os_handle, m_os_handle); return *this; }
 
     /** @brief Forbidden copy constructor */
     handle(const handle &) = delete;
@@ -73,8 +71,8 @@ namespace spin
     handle &operator = (const handle &) = delete;
 
     /** @brief Get handle for system call */
-    handle_t get_handle() const noexcept
-    { return m_handle; }
+    os_handle_t get_os_handle() const noexcept
+    { return m_os_handle; }
 
     /** @brief Close the handle */
     void close() noexcept;
@@ -94,9 +92,9 @@ namespace spin
      * error message retrieved from strerror_r will be throw)
      */
     template<typename Callable, typename ...Types>
-    static handle_t construct_aux(Callable &&callable, Types &&...args)
+    static os_handle_t construct_aux(Callable &&callable, Types &&...args)
     {
-      handle_t x = std::forward<Callable>(callable)(
+      os_handle_t x = std::forward<Callable>(callable)(
           std::forward<Types>(args)...);
 #ifdef __unix__
       if (x <= 0)
@@ -110,7 +108,7 @@ namespace spin
       return x;
 #endif
     }
-    handle_t m_handle;
+    os_handle_t m_os_handle;
   };
 
 
