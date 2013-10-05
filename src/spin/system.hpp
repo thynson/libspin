@@ -15,8 +15,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __SPIN_HANDLE_HPP_INCLUDED__
-#define __SPIN_HANDLE_HPP_INCLUDED__
+#ifndef __SPIN_SYSTEM_HPP_INCLUDED__
+#define __SPIN_SYSTEM_HPP_INCLUDED__
 
 #include <utility>
 #include <stdexcept>

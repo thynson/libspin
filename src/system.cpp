@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/handle.hpp>
+#include <spin/system.hpp>
 #ifdef __unix__
 #include <unistd.h>
 #include <errno.h>

@@ -34,16 +34,16 @@ int main ()
   socklen_t addrlen = sizeof(inaddr);
 
   int value = 1;
-  if (::setsockopt(h.get_handle(), SOL_SOCKET, SO_REUSEPORT, &value,
+  if (::setsockopt(h.get_os_handle(), SOL_SOCKET, SO_REUSEPORT, &value,
         sizeof(value)) == -1)
-    handle::throw_for_last_system_error();
+    throw std::system_error(errno, std::system_category());
 
 
-  if (::bind(h.get_handle(), reinterpret_cast<sockaddr*>(&inaddr), addrlen) != 0)
-    handle::throw_for_last_system_error();
+  if (::bind(h.get_os_handle(), reinterpret_cast<sockaddr*>(&inaddr), addrlen) != 0)
+    throw std::system_error(errno, std::system_category());
 
-  if (::listen(h.get_handle(), SOMAXCONN) == -1)
-    handle::throw_for_last_system_error();
+  if (::listen(h.get_os_handle(), SOMAXCONN) == -1)
+    throw std::system_error(errno, std::system_category());
 
   main_loop loop;
   stream_socket_listener listener(loop, std::move(h));

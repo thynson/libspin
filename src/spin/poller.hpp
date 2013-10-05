@@ -19,7 +19,7 @@
 #define __SPIN_POLLER_HPP_INCLUDED__
 
 #include "main_loop.hpp"
-#include "handle.hpp"
+#include "system.hpp"
 #include "singleton.hpp"
 #include <bitset>
 
