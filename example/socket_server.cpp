@@ -26,7 +26,8 @@ int main ()
 {
   handle h { socket, PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0 };
   if (!h)
-    handle::throw_for_last_system_error();
+    throw std::system_error(errno, std::system_category());
+
   sockaddr_in inaddr;
   inaddr.sin_family = AF_INET;
   inaddr.sin_port = htons(1333);

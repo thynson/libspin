@@ -39,7 +39,7 @@ namespace spin
           x.get_os_handle(), &evt);
 
       if (ret != 0)
-        handle::throw_for_last_system_error(); // XXX
+        throw_for_last_system_error(); // XXX
       return x;
     }
   }
@@ -72,7 +72,7 @@ namespace spin
     int ret = epoll_ctl(m_poller->m_poller.get_os_handle(), EPOLL_CTL_ADD,
         h.get_os_handle(), &epev);
     if (ret == -1)
-      handle::throw_for_last_system_error();
+      throw_for_last_system_error();
   }
 
   poller::context::~context()

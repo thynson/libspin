@@ -30,18 +30,17 @@ typedef int os_handle_t;
 namespace spin
 {
 
+  /**
+   * @brief Throw exception based on last system error
+   */
+  [[noreturn]]
+  void throw_for_last_system_error();
+
+
   /** @brief RAAI Wrapper for handle_t */
   class handle
   {
-
   public:
-
-    /**
-     * @brief Helper function for construct_aux
-     * @todo Move to spin/error.hpp
-     */
-    static void throw_for_last_system_error();
-
     /** @brief Delegate constructor */
     template<typename Callable, typename ...Types>
     handle(Callable &&callable, Types &&...args)

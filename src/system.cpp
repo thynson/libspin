@@ -47,7 +47,7 @@ namespace spin
     return m_os_handle > 0;
   }
 
-  void handle::throw_for_last_system_error()
+  void throw_for_last_system_error()
   {
     char buff[1024];
 #ifdef _GNU_SOURCE
