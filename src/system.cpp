@@ -47,20 +47,5 @@ namespace spin
     return m_os_handle > 0;
   }
 
-  void throw_for_last_system_error()
-  {
-    char buff[1024];
-#ifdef _GNU_SOURCE
-    const char *error_msg = strerror_r(errno, buff, sizeof(buff));
-    throw std::runtime_error(error_msg);
-#else
-    int orign_errno;
-    int ret = strerror_r(orign_errno, buff, sizeof(buff));
-    if (ret == 0)
-      throw std::runtime_error(buff);
-    else
-      throw std::runtime_error("Unknown error occurred");
-#endif
-  }
 #endif
 }

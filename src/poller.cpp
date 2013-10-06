@@ -39,7 +39,7 @@ namespace spin
           x.get_os_handle(), &evt);
 
       if (ret != 0)
-        throw_for_last_system_error(); // XXX
+        throw std::system_error(errno, std::system_category());
       return x;
     }
   }
@@ -72,7 +72,7 @@ namespace spin
     int ret = epoll_ctl(m_poller->m_poller.get_os_handle(), EPOLL_CTL_ADD,
         h.get_os_handle(), &epev);
     if (ret == -1)
-      throw_for_last_system_error();
+      throw std::system_error(errno, std::system_category());
   }
 
   poller::context::~context()

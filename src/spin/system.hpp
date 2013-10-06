@@ -19,7 +19,8 @@
 #define __SPIN_SYSTEM_HPP_INCLUDED__
 
 #include <utility>
-#include <stdexcept>
+#include <system_error>
+#include <cerrno>
 
 // For handle_t
 #ifdef __unix__
@@ -29,13 +30,6 @@ typedef int os_handle_t;
 
 namespace spin
 {
-
-  /**
-   * @brief Throw exception based on last system error
-   */
-  [[noreturn]]
-  void throw_for_last_system_error();
-
 
   /** @brief RAAI Wrapper for handle_t */
   class handle
@@ -86,7 +80,7 @@ namespace spin
      * @tparam Types Parameters' type pack
      * @param callable The handle constructor
      * @param args Arguments for callable
-     * @throws std::runtime_error if callable return an invalid handle type
+     * @throws std::system_error if callable return an invalid handle type
      * (e.g. incase of -1 is returned for UNIX system, std::runtime_error with
      * error message retrieved from strerror_r will be throw)
      */
@@ -96,13 +90,9 @@ namespace spin
       os_handle_t x = std::forward<Callable>(callable)(
           std::forward<Types>(args)...);
 #ifdef __unix__
-      if (x <= 0)
+      if (x == -1)
       {
-        if (x != -1)
-          throw std::runtime_error("Unexpected value is returned, shoud either "
-                                   "be -1 or postive integer for UNIX system");
-        else
-          throw_for_last_system_error();
+        throw std::system_error(errno, std::system_category());
       }
       return x;
 #endif
