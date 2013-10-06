@@ -161,7 +161,7 @@ namespace spin {
 
       /** @brief Get the main loop this timer attached to */
       main_loop &get_main_loop() const noexcept
-      { return *m_main_loop; }
+      { return m_main_loop; }
 
       /** @brief Get the task object */
       const task &get_task() const noexcept
@@ -185,7 +185,7 @@ namespace spin {
       { return m_task.set_proc(std::move(proc)); }
 
     private:
-      main_loop *m_main_loop;
+      main_loop &m_main_loop;
       task m_task;
       intrusive_set_node m_node;
       time::steady_time_point m_deadline;

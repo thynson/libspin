@@ -36,18 +36,19 @@ namespace spin
   main_loop::deadline_timer::deadline_timer(main_loop &loop,
       std::function<void()> proc, time::steady_time_point deadline,
       bool check_deadline) noexcept
-    : m_main_loop(&loop)
+    : m_main_loop(loop)
     , m_task(std::move(proc))
     , m_node()
     , m_deadline(std::move(deadline))
   {
     if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
-      m_main_loop->m_deadline_timer_queue.insert(*this);
+      m_main_loop.m_deadline_timer_queue.insert(*this);
   }
 
   main_loop::deadline_timer::deadline_timer(
       main_loop::deadline_timer &&t) noexcept
-    : m_task(std::move(t.m_task))
+    : m_main_loop(t.m_main_loop)
+    , m_task(std::move(t.m_task))
     , m_node()
     , m_deadline(std::move(t.m_deadline))
   { m_node.swap_nodes(t.m_node); }
@@ -57,7 +58,7 @@ namespace spin
       bool check_deadline) noexcept
   {
     m_node.unlink();
-    auto &q = m_main_loop->m_deadline_timer_queue;
+    auto &q = m_main_loop.m_deadline_timer_queue;
     std::swap(deadline, m_deadline);
     if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
       q.insert(*this);
@@ -66,8 +67,8 @@ namespace spin
 
   main_loop::main_loop() noexcept
     : m_deadline_timer_queue()
-    , m_defered_tasks()
     , m_posted_tasks()
+    , m_defered_tasks()
     , m_lock()
     , m_cond()
     , m_ref_counter()

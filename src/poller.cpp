@@ -90,9 +90,8 @@ namespace spin
     : m_poller(epoll_create1, O_CLOEXEC)
     , m_exit_notifier(setup_event_fd(m_poller))
     , m_thread(std::bind(&poller::poll, this))
-  {
-
-  }
+    , m_lock()
+  { }
 
   poller::~poller() noexcept
   {

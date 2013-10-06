@@ -17,6 +17,9 @@
 AUTOMAKE_OPTIONS=foreign 1.7
 ACLOCAL_AMFLAGS=-I build-aux/m4
 
+AM_CXXFLAGS=-Weffc++ -Wall -Werror
+AM_CPPFLAGS=-fvisibility=hidden -D__BUILD_SPIN__=1
+AM_LDFLAGS=-Xlinker --no-undefined -lpthread
 libspin_ladir=$(includedir)/spin
 lib_LTLIBRARIES=libspin.la
 libspin_la_HEADERS=spin/time.hpp\
