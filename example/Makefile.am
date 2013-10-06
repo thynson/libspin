@@ -16,8 +16,8 @@
 
 bin_PROGRAMS=example_socket_server
 
-AM_CPPFLAGS=@AM_CPPFLAGS@ -I$(top_srcdir)/src
-AM_LDFLAGS=@AM_LDFLAGS@ ../src/libspin.la -lpthread
+AM_CPPFLAGS=-I$(top_srcdir)/src
+AM_LDFLAGS=../src/libspin.la
 
 example_socket_server_SOURCES=socket_server.cpp
 

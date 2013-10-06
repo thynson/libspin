@@ -22,7 +22,7 @@
 
 namespace spin
 {
-  class stream_socket_peer
+  class __SPIN_EXPORT__ stream_socket_peer
   {
     friend class stream_socket_server;
   public:
@@ -48,7 +48,7 @@ namespace spin
 
 
 
-  class stream_socket_listener
+  class __SPIN_EXPORT__ stream_socket_listener
   {
   public:
     stream_socket_listener(main_loop &loop, handle h);

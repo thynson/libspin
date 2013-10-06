@@ -18,6 +18,7 @@
 #ifndef __SPIN_SYSTEM_HPP_INCLUDED__
 #define __SPIN_SYSTEM_HPP_INCLUDED__
 
+#include "environment.hpp"
 #include <utility>
 #include <system_error>
 #include <cerrno>
@@ -32,7 +33,7 @@ namespace spin
 {
 
   /** @brief RAAI Wrapper for handle_t */
-  class handle
+  class __SPIN_EXPORT__ handle
   {
   public:
     /** @brief Delegate constructor */
