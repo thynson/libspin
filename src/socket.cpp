@@ -35,7 +35,7 @@ namespace spin
           | (1 << poller::POLL_ERROR))
     { }
 
-    virtual ~detail() override = default;
+    virtual ~detail() noexcept override = default;
 
     void on_poll_event(poller::poll_flag ps) override
     {  }
@@ -75,6 +75,8 @@ namespace spin
       , m_callback()
       , m_accept_task(std::bind(&detail::do_accept, this))
     {}
+
+    virtual ~detail() noexcept override = default;
 
     void on_poll_event(poller::poll_flag ps) override
     {
@@ -119,7 +121,7 @@ namespace spin
   {
   }
 
-  stream_socket_listener::~stream_socket_listener()
+  stream_socket_listener::~stream_socket_listener() noexcept
   {
     auto guard = m_detail->get_poller().lock();
     m_handle.close();

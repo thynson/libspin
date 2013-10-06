@@ -75,7 +75,7 @@ namespace spin
       throw std::system_error(errno, std::system_category());
   }
 
-  poller::context::~context()
+  poller::context::~context() noexcept
   { m_main_loop.unref(); }
 
   void poller::context::context::clear_poll_flag(
