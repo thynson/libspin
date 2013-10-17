@@ -37,7 +37,7 @@ namespace spin
 
     virtual ~detail() noexcept override = default;
 
-    void on_poll_event(poller::poll_flag ps) override
+    void on_poll_event(poller::poll_flag) override
     {  }
   private:
   };
@@ -55,13 +55,13 @@ namespace spin
     m_handle.close();
   }
 
-  void stream_socket_peer::read(char buff[], size_t size,
-      std::function<void(size_t size)> cb)
+  void stream_socket_peer::read(char [], size_t,
+      std::function<void(size_t size)>)
   {
   }
 
-  void stream_socket_peer::write(const char buff[], size_t size,
-      std::function<void(size_t size)> cb)
+  void stream_socket_peer::write(const char[], size_t,
+      std::function<void(size_t size)>)
   {
   }
 

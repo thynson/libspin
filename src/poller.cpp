@@ -117,7 +117,7 @@ namespace spin
       auto cmper = [] (const epoll_event &lhs, const epoll_event &rhs)
       {
         context *lt = static_cast<context*>(lhs.data.ptr);
-        context *rt = static_cast<context*>(lhs.data.ptr);
+        context *rt = static_cast<context*>(rhs.data.ptr);
 
         // We need to ensure that the nullptr context which used for notify
         // this thread to exit, if present in evepts, will become the first

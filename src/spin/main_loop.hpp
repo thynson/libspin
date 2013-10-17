@@ -168,7 +168,7 @@ namespace spin {
       { return m_task; }
 
       /** @brief Test if this timer is expired */
-      const bool is_expired() const noexcept
+      bool is_expired() const noexcept
       { return !m_node.is_linked() && !m_task.is_dispatching(); }
 
       /**
