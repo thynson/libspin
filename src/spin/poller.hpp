@@ -87,7 +87,7 @@ namespace spin
     void poll() noexcept;
 
     system_handle m_poller;
-    system_handle m_exit_notifier;
+    system_handle m_interrupter;
     std::thread m_thread;
     std::mutex m_lock;
   };

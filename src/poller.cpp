@@ -88,7 +88,7 @@ namespace spin
 
   poller::poller()
     : m_poller(epoll_create1, O_CLOEXEC)
-    , m_exit_notifier(setup_event_fd(m_poller))
+    , m_interrupter(setup_event_fd(m_poller))
     , m_thread(std::bind(&poller::poll, this))
     , m_lock()
   { }
@@ -96,7 +96,7 @@ namespace spin
   poller::~poller() noexcept
   {
     std::uint64_t value = 1;
-    ::write(m_exit_notifier.get_raw_handle(), &value, sizeof(value));
+    ::write(m_interrupter.get_raw_handle(), &value, sizeof(value));
     m_thread.join();
   }
 
