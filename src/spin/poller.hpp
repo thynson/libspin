@@ -50,7 +50,7 @@ namespace spin
     {
       friend class poller;
     public:
-      context(main_loop &loop, handle &h, poll_flag flag);
+      context(main_loop &loop, system_handle &h, poll_flag flag);
 
       virtual ~context() noexcept;
 
@@ -65,12 +65,12 @@ namespace spin
       { return *m_poller; }
 
     protected:
-      handle &get_handle() const
+      system_handle &get_handle() const
       { return m_handle; }
 
     private:
       main_loop &m_main_loop;
-      handle &m_handle;
+      system_handle &m_handle;
       std::shared_ptr<poller> m_poller;
       spin_lock m_lock;
       poll_flag m_current_state;
@@ -86,8 +86,8 @@ namespace spin
 
     void poll() noexcept;
 
-    handle m_poller;
-    handle m_exit_notifier;
+    system_handle m_poller;
+    system_handle m_exit_notifier;
     std::thread m_thread;
     std::mutex m_lock;
   };

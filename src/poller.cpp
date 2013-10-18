@@ -26,17 +26,17 @@ namespace spin
 
   namespace
   {
-    handle setup_event_fd(const handle &epollfd)
+    system_handle setup_event_fd(const system_handle &epollfd)
     {
-      handle x(eventfd, 0, EFD_NONBLOCK | EFD_CLOEXEC);
+      system_handle x(eventfd, 0, EFD_NONBLOCK | EFD_CLOEXEC);
 
       // Register this eventfd with epoll so other thread may used notify the
       // polling thread to exit
       epoll_event evt;
       evt.events = EPOLLIN | EPOLLET;
       evt.data.ptr = nullptr;
-      int ret = epoll_ctl (epollfd.get_os_handle(), EPOLL_CTL_ADD,
-          x.get_os_handle(), &evt);
+      int ret = epoll_ctl (epollfd.get_raw_handle(), EPOLL_CTL_ADD,
+          x.get_raw_handle(), &evt);
 
       if (ret != 0)
         throw std::system_error(errno, std::system_category());
@@ -44,7 +44,7 @@ namespace spin
     }
   }
 
-  poller::context::context(main_loop &loop, handle &h, poll_flag flag)
+  poller::context::context(main_loop &loop, system_handle &h, poll_flag flag)
     : m_main_loop(loop)
     , m_handle(h)
     , m_poller(singleton<poller>::get_instance())
@@ -69,8 +69,8 @@ namespace spin
     if (flag[POLL_READABLE]) epev.events |= EPOLLIN;
     if (flag[POLL_WRITABLE]) epev.events |= EPOLLOUT;
     if (flag[POLL_ERROR]) epev.events |= EPOLLERR;
-    int ret = epoll_ctl(m_poller->m_poller.get_os_handle(), EPOLL_CTL_ADD,
-        h.get_os_handle(), &epev);
+    int ret = epoll_ctl(m_poller->m_poller.get_raw_handle(), EPOLL_CTL_ADD,
+        h.get_raw_handle(), &epev);
     if (ret == -1)
       throw std::system_error(errno, std::system_category());
   }
@@ -96,7 +96,7 @@ namespace spin
   poller::~poller() noexcept
   {
     std::uint64_t value = 1;
-    ::write(m_exit_notifier.get_os_handle(), &value, sizeof(value));
+    ::write(m_exit_notifier.get_raw_handle(), &value, sizeof(value));
     m_thread.join();
   }
 
@@ -106,7 +106,7 @@ namespace spin
     bool will_exit = false;
     while (!will_exit)
     {
-      int ret = epoll_wait (m_poller.get_os_handle(), epevts.data(),
+      int ret = epoll_wait (m_poller.get_raw_handle(), epevts.data(),
           epevts.size(), -1);
 
       if (ret == -1)

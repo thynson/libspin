@@ -26,25 +26,25 @@ namespace spin
 {
 
 #ifdef __unix__
-  handle::handle(os_handle_t x) noexcept
-    : m_os_handle(x)
+  system_handle::system_handle(system_raw_handle x) noexcept
+    : m_raw_handle(x)
   {  }
 
-  handle::~handle() noexcept
+  system_handle::~system_handle() noexcept
   {
     close();
   }
 
-  void handle::close() noexcept
+  void system_handle::close() noexcept
   {
     if (this->operator bool())
-      ::close(m_os_handle);
-    m_os_handle = 0;
+      ::close(m_raw_handle);
+    m_raw_handle = 0;
   }
 
-  handle::operator bool() const noexcept
+  system_handle::operator bool() const noexcept
   {
-    return m_os_handle > 0;
+    return m_raw_handle > 0;
   }
 
 #endif

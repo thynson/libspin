@@ -24,7 +24,7 @@ using namespace std;
 
 int main ()
 {
-  handle h { socket, PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0 };
+  system_handle h { socket, PF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0 };
   if (!h)
     throw std::system_error(errno, std::system_category());
 
@@ -35,15 +35,15 @@ int main ()
   socklen_t addrlen = sizeof(inaddr);
 
   int value = 1;
-  if (::setsockopt(h.get_os_handle(), SOL_SOCKET, SO_REUSEPORT, &value,
+  if (::setsockopt(h.get_raw_handle(), SOL_SOCKET, SO_REUSEPORT, &value,
         sizeof(value)) == -1)
     throw std::system_error(errno, std::system_category());
 
 
-  if (::bind(h.get_os_handle(), reinterpret_cast<sockaddr*>(&inaddr), addrlen) != 0)
+  if (::bind(h.get_raw_handle(), reinterpret_cast<sockaddr*>(&inaddr), addrlen) != 0)
     throw std::system_error(errno, std::system_category());
 
-  if (::listen(h.get_os_handle(), SOMAXCONN) == -1)
+  if (::listen(h.get_raw_handle(), SOMAXCONN) == -1)
     throw std::system_error(errno, std::system_category());
 
   main_loop loop;

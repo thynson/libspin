@@ -23,9 +23,8 @@
 #include <system_error>
 #include <cerrno>
 
-// For handle_t
 #ifdef __unix__
-typedef int os_handle_t;
+typedef int system_raw_handle;
 #endif
 
 
@@ -33,62 +32,62 @@ namespace spin
 {
 
   /** @brief RAAI Wrapper for handle_t */
-  class __SPIN_EXPORT__ handle
+  class __SPIN_EXPORT__ system_handle
   {
   public:
     /** @brief Delegate constructor */
     template<typename Callable, typename ...Types>
-    handle(Callable &&callable, Types &&...args)
-      : handle(construct_aux(std::forward<Callable>(callable),
+    system_handle(Callable &&callable, Types &&...args)
+      : system_handle(construct_aux(std::forward<Callable>(callable),
             std::forward<Types>(args)...))
     {}
 
     /** @brief Constructor */
-    handle(os_handle_t os_handle) noexcept;
+    system_handle(system_raw_handle rawhandle) noexcept;
 
     /** @breif Destructor */
-    ~handle() noexcept;
+    ~system_handle() noexcept;
 
     /** @breif Move constructor */
-    handle(handle &&x) noexcept
-      : m_os_handle(0)
-    { std::swap(x.m_os_handle, m_os_handle); }
+    system_handle(system_handle &&x) noexcept
+      : m_raw_handle(0)
+    { std::swap(x.m_raw_handle, m_raw_handle); }
 
     /** @brief Move assign operator */
-    handle &operator = (handle &&x) noexcept
-    { std::swap(x.m_os_handle, m_os_handle); return *this; }
+    system_handle &operator = (system_handle &&x) noexcept
+    { std::swap(x.m_raw_handle, m_raw_handle); return *this; }
 
     /** @brief Forbidden copy constructor */
-    handle(const handle &) = delete;
+    system_handle(const system_handle &) = delete;
 
     /** @brief Forbidden copy assign operator */
-    handle &operator = (const handle &) = delete;
+    system_handle &operator = (const system_handle &) = delete;
 
-    /** @brief Get handle for system call */
-    os_handle_t get_os_handle() const noexcept
-    { return m_os_handle; }
+    /** @brief Get system_handle for system call */
+    system_raw_handle get_raw_handle() const noexcept
+    { return m_raw_handle; }
 
-    /** @brief Close the handle */
+    /** @brief Close the system_handle */
     void close() noexcept;
 
-    /** @breif Test if the managed handle is valid */
+    /** @breif Test if the managed system_handle is valid */
     operator bool() const noexcept;
 
   private:
     /**
      * @brief Helper function for delegation template constructor
-     * @tparam Callable The handle constructor type
+     * @tparam Callable The system_handle constructor type
      * @tparam Types Parameters' type pack
-     * @param callable The handle constructor
+     * @param callable The system_handle constructor
      * @param args Arguments for callable
-     * @throws std::system_error if callable return an invalid handle type
+     * @throws std::system_error if callable return an invalid system_handle type
      * (e.g. incase of -1 is returned for UNIX system, std::runtime_error with
      * error message retrieved from strerror_r will be throw)
      */
     template<typename Callable, typename ...Types>
-    static os_handle_t construct_aux(Callable &&callable, Types &&...args)
+    static system_raw_handle construct_aux(Callable &&callable, Types &&...args)
     {
-      os_handle_t x = std::forward<Callable>(callable)(
+      system_raw_handle x = std::forward<Callable>(callable)(
           std::forward<Types>(args)...);
 #ifdef __unix__
       if (x == -1)
@@ -98,7 +97,7 @@ namespace spin
       return x;
 #endif
     }
-    os_handle_t m_os_handle;
+    system_raw_handle m_raw_handle;
   };
 
 
