@@ -30,7 +30,9 @@ libspin_la_HEADERS=spin/time.hpp\
 				   spin/main_loop.hpp\
 				   spin/system.hpp\
 				   spin/poller.hpp\
-				   spin/socket.hpp
+				   spin/socket.hpp\
+				   spin/intruse.hpp
+
 
 libspin_la_SOURCES=main_loop.cpp\
 				   system.cpp\
