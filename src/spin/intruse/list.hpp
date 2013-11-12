@@ -19,7 +19,7 @@
 #define __SPIN_INTRUSE_LIST_HPP_INCLUDED__
 
 #include <iterator>
-#include <cassert>
+#include <type_traits>
 
 namespace spin
 {
@@ -36,6 +36,7 @@ namespace spin
       friend class ::spin::intruse::list<Inheriator, Tag>;
       friend class ::spin::intruse::list_iterator<Inheriator, Tag>;
     public:
+
       /**
        * @brief Unlink a node from container
        * @param node The node to be unlink
@@ -95,6 +96,21 @@ namespace spin
       ~list_node() noexcept
       { unlink(*this); }
 
+      list_node(const list_node &) = delete;
+
+      list_node(list_node && n) noexcept
+        : list_node()
+      { swap(*this, n); }
+
+      list_node &operator = (const list_node &) = delete;
+
+      list_node &operator = (list_node &&node) noexcept
+      {
+        this->~list_node();
+        new (this) list_node(std::move(node));
+        return *this;
+      }
+
     private:
 
       list_node(list_node *prev, list_node *next) noexcept
@@ -149,10 +165,12 @@ namespace spin
         return l;
       }
 
-      friend bool operator == (const list_iterator &l, const list_iterator &r) noexcept
+      friend bool operator ==
+      (const list_iterator &l, const list_iterator &r) noexcept
       { return l.m_node == r.m_node; }
 
-      friend bool operator != (const list_iterator &l, const list_iterator &r) noexcept
+      friend bool operator !=
+      (const list_iterator &l, const list_iterator &r) noexcept
       { return !(l == r); }
 
     private:
@@ -181,32 +199,51 @@ namespace spin
 
       ~list_const_iterator() noexcept = default;
 
-
       reference operator * () const noexcept { return *internal_cast(); }
+
       pointer operator -> () const noexcept { return internal_cast(); }
 
+      /**
+       * @breif Iterate forward
+       * @returns Iterator itself
+       */
       list_const_iterator &operator ++ () const noexcept
       { m_node = m_node->m_next; return *this; }
 
+      /**
+       * @brief Iterate backward
+       * @returns Iterator itself
+       */
       list_const_iterator &operator -- () const noexcept
       { m_node = m_node->m_prev; return *this; }
 
+      /**
+       * @breif Iterate forward
+       * @returns An iterator has the origin position
+       */
       list_const_iterator operator ++ (int) const noexcept
       { return iterator(m_node->m_next); }
 
+      /**
+       * @breif Iterate backward
+       * @returns An iterator has the origin position
+       */
       list_const_iterator operator -- (int) const noexcept
       { return iterator(m_node->m_prev); }
 
+      /** @breif Test whether the two iterator is equal */
       friend bool operator == (const list_const_iterator &l,
           const list_const_iterator &r) noexcept
       { return l->m_node == r->m_node; }
 
+      /** @breif Test whether the two iterator is not equal */
       friend bool operator != (const list_const_iterator &l,
           const list_const_iterator &r) noexcept
       { return !(l == r); }
 
     private:
 
+      /** @brief Cast to the pointer of the type that holds the node */
       pointer internal_cast() const noexcept
       { return static_cast<pointer>(m_node); }
 
@@ -278,48 +315,6 @@ namespace spin
       list &operator = (const list &) = delete;
 
 
-      // Begin
-
-      iterator begin() noexcept
-      { return iterator(m_head.m_next); }
-
-      reverse_iterator rbegin() noexcept
-      { return reverse_iterator(&m_tail); }
-
-      const_iterator cbegin() const noexcept
-      { return const_iterator(m_head.m_next); }
-
-      const_iterator begin() const noexcept
-      { return const_iterator(m_head.m_nexgt); }
-
-      const_reverse_iterator rbegin() const noexcept
-      { return const_reverse_iterator(&m_tail); }
-
-      const_reverse_iterator crbegin() const noexcept
-      { return const_reverse_iterator(&m_tail); }
-
-
-      // End
-
-      iterator end() noexcept
-      { return iterator(&m_tail); }
-
-      reverse_iterator rend() noexcept
-      { return reverse_iterator(m_head.m_next); }
-
-      const_iterator end() const noexcept
-      { return const_iterator(&m_tail); }
-
-      const_iterator cend() const noexcept
-      { return const_iterator(&m_tail); }
-
-      const_reverse_iterator rend() const noexcept
-      { return const_reverse_iterator(m_head.m_next); }
-
-      const_reverse_iterator crend() const noexcept
-      { return const_reverse_iterator(m_head.m_next); }
-
-
       // Capacity
 
       bool empty() const noexcept
@@ -347,9 +342,50 @@ namespace spin
       const_reference back() const noexcept
       { return *rbegin(); }
 
+      iterator begin() noexcept
+      { return iterator(m_head.m_next); }
+
+      reverse_iterator rbegin() noexcept
+      { return reverse_iterator(&m_tail); }
+
+      const_iterator cbegin() const noexcept
+      { return const_iterator(m_head.m_next); }
+
+      const_iterator begin() const noexcept
+      { return const_iterator(m_head.m_nexgt); }
+
+      const_reverse_iterator rbegin() const noexcept
+      { return const_reverse_iterator(&m_tail); }
+
+      const_reverse_iterator crbegin() const noexcept
+      { return const_reverse_iterator(&m_tail); }
+
+      iterator end() noexcept
+      { return iterator(&m_tail); }
+
+      reverse_iterator rend() noexcept
+      { return reverse_iterator(m_head.m_next); }
+
+      const_iterator end() const noexcept
+      { return const_iterator(&m_tail); }
+
+      const_iterator cend() const noexcept
+      { return const_iterator(&m_tail); }
+
+      const_reverse_iterator rend() const noexcept
+      { return const_reverse_iterator(m_head.m_next); }
+
+      const_reverse_iterator crend() const noexcept
+      { return const_reverse_iterator(m_head.m_next); }
+
 
       // Modifier
 
+      /**
+       * @breif Insert given value to specified position
+       * @param pos The specified position
+       * @param ref Reference to the element to be inserted
+       */
       void insert(iterator pos, reference ref) noexcept
       {
         node_type &nref = ref;
@@ -363,36 +399,64 @@ namespace spin
       }
 
 
+      /**
+       * @brief Insert elements from range to specified position
+       * @tparam InputIterator The type of iterators which represent the range
+       * @param pos The specified position
+       * @param b The begin of the range
+       * @param e The end of the range
+       */
       template<typename InputIterator>
-        void insert(iterator pos, InputIterator b, T e)
+        void insert(iterator pos, InputIterator b, InputIterator e)
           noexcept(noexcept(list(b, e)))
         {
           list l(b, e);
           splice(pos, l);
         }
 
+      /**
+       * @brief Erase an elements at specified position
+       * @param pos The position of the elements
+       */
       void erase(iterator pos) noexcept
       {
         assert (pos != end());
         node_type::unlink(*pos);
       }
 
+      /**
+       * @brief Erase all elements within specified range
+       * @param b The begin of the range
+       * @param e The end of the range
+       */
       void erase(iterator b, iterator e) noexcept
       {
         while (b != e)
           erase(b++);
       }
 
+      /**
+       * @brief Insert a elements to the front of this list
+       * @param ref The refernce to the element to be inserted
+       */
       void push_front(reference ref) noexcept
       {
         insert(begin(), ref);
       }
 
+      /**
+       * @brief Insert a elements to the back of this list
+       * @param ref The refernce to the element to be inserted
+       */
       void push_back(reference ref) noexcept
       {
         insert(end(), ref);
       }
 
+      /**
+       * @brief Remove elements equals to specified value
+       * @param value The specified value
+       */
       void remove(const value_type &value)
         noexcept(noexcept(value == value))
       {
@@ -404,6 +468,10 @@ namespace spin
         }
       }
 
+      /**
+       * @breif Remove elements accepted by specified predicate
+       * @param pred The specified predicate
+       */
       template<typename Predicate>
       void remove_if(Predicate &&pred)
         noexcept(noexcept(pred(std::declval<T>())))
@@ -416,9 +484,17 @@ namespace spin
         }
       }
 
+      /**
+       * @brief Swap elements with another list, overload for rvalue reference
+       * @param l The list to be swapped with
+       */
       void swap(list &&l) noexcept
       { swap(l); }
 
+      /**
+       * @brief Swap elements with another list
+       * @param l The list to be swapped with
+       */
       void swap(list &l) noexcept
       {
         list *lhs = this, *rhs = &l;
@@ -453,6 +529,7 @@ namespace spin
         }
       }
 
+      /** @param Reverse the order of this list */
       void reverse() noexcept
       {
         list x;
@@ -466,6 +543,7 @@ namespace spin
         swap(x);
       }
 
+      /** @param Erase all elements from this list */
       void clear() noexcept
       {
         auto *ptr = m_head.m_next;
@@ -502,7 +580,7 @@ namespace spin
       /**
        * @breif Transfer all elements ranged from b to e in l to position pos
        * in this list
-       * @note l shall be distinct list
+       * @note l shall be a distinct list
        */
       void splice(iterator pos, list &l, iterator b, iterator e) noexcept
       {
@@ -520,6 +598,10 @@ namespace spin
         y.m_next->m_prev = &y;
       }
 
+      /**
+       * @brief Sort this list with specified strict weak ordering comparer
+       * @param cmp The specified weak ordering comparer
+       */
       template<typename StrictWeakOrderingComparer>
         void sort(StrictWeakOrderingComparer &&cmp)
           noexcept(noexcept(cmp(std::declval<T>(), std::declval<T>())))
@@ -560,18 +642,33 @@ namespace spin
           swap(*(fill - 1));
         }
 
+      /** @brief Sort elements in this list with std::less */
       void sort()
         noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
       { sort(std::less<T>()); }
 
+      /**
+       * @breif Merge sorted list
+       * @param l The list to be merged
+       */
       void merge(list &l)
         noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
       { merge(l, std::less<T>()); }
 
+      /**
+       * @breif Merge a sorted list, overload for rvalue refernece
+       * @param l The list to be merged
+       */
       void merge(list &&l)
         noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
       { merge(l); }
 
+      /**
+       * @breif Merge sorted list l with specified strict weak ordering
+       * comparer cmper
+       * @param l List to be merged
+       * @param cmper The specified strict weak ordering comparer
+       */
       template<typename StrictWeakOrderingComparer>
       void merge(list &l, StrictWeakOrderingComparer &&cmper)
         noexcept(noexcept(cmper(std::declval<T>(), std::declval<T>())))
@@ -580,6 +677,13 @@ namespace spin
             std::forward<StrictWeakOrderingComparer>(cmper));
       }
 
+      /**
+       * @breif Merge a sorted part of list l from b to e with specified
+       * strict weak ordering comparer cmper
+       * @param l List to be merged
+       * @param b List to be merged
+       * @param cmper The specified strict weak ordering comparer
+       */
       template<typename StrictWeakOrderingComparer>
       void merge(list &l, iterator b, iterator e,
           StrictWeakOrderingComparer &&cmper)
@@ -603,14 +707,24 @@ namespace spin
           splice(q, l, b, e);
       }
 
+      /** @breif Erase duplicate elements */
       void unique()
         noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
       { unique(std::less<T>()); }
 
+      /**
+       * @breif Erase duplicate elements in range [b,e)
+       * @param b Begin of the range
+       * @param e End of the range
+       */
       void unique(iterator b, iterator e)
         noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
       { unique(b, e, std::less<T>()); }
 
+      /**
+       * @breif Erase duplicate elements with specified binary predicate
+       * @param binpred The specified binary predicate
+       */
       template<typename BinaryPredicate>
       void unique(BinaryPredicate && binpred)
         noexcept(noexcept(binpred(std::declval<T>(), std::declval<T>())))
@@ -619,6 +733,13 @@ namespace spin
             std::forward<BinaryPredicate>(binpred));
       }
 
+      /**
+       * @breif Erase duplicate elements with specified binary predicate in
+       * rnage [b, e)
+       * @param b Begin of the range
+       * @param e End of the range
+       * @param binpred The specified binary predicate
+       */
       template<typename BinaryPredicate>
       void unique(iterator b, iterator e, BinaryPredicate &&binpred)
         noexcept(noexcept(binpred(b, e)))
