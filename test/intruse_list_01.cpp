@@ -17,7 +17,9 @@
 
 #include <spin/intruse/list.hpp>
 #include <iostream>
+#include <cassert>
 #include <algorithm>
+#include <random>
 
 using namespace std;
 
@@ -28,22 +30,22 @@ public:
     : i(i)
   {}
 
-  friend bool operator < (const X &lhs, const X &rhs)
+  friend bool operator < (const X &lhs, const X &rhs) noexcept
   { return lhs.i < rhs.i; }
 
-  friend bool operator > (const X &lhs, const X &rhs)
+  friend bool operator > (const X &lhs, const X &rhs) noexcept
   { return rhs < lhs; }
 
-  friend bool operator >= (const X &lhs, const X &rhs)
+  friend bool operator >= (const X &lhs, const X &rhs) noexcept
   { return !(lhs < rhs); }
 
-  friend bool operator <= (const X &lhs, const X &rhs)
+  friend bool operator <= (const X &lhs, const X &rhs) noexcept
   { return !(lhs > rhs); }
 
-  friend bool operator == (const X &lhs, const X &rhs)
+  friend bool operator == (const X &lhs, const X &rhs) noexcept
   { return lhs.i == rhs.i; }
 
-  friend bool operator != (const X &lhs, const X &rhs)
+  friend bool operator != (const X &lhs, const X &rhs) noexcept
   { return lhs.i != rhs.i; }
 
   using list = spin::intruse::list<X>;
@@ -51,6 +53,28 @@ public:
 };
 
 
+void test_sort()
+{
+
+  vector<X> v;
+  std::mt19937 engine;
+  for (int i = 0; i < 1000000; ++i)
+    v.emplace_back(engine());
+
+  X::list l;
+
+  // std::less in libstdc++-4.8.1 is lack of noexcept deduction
+  // static_assert(noexcept(l.sort()), "noexcept deduction failed");
+  // static_assert(noexcept(l.merge(l)), "noexcept deduction failed");
+  // static_assert(noexcept(l.unique()), "noexcept deduction failed");
+
+  for (auto i = v.begin(); i != v.end(); ++i)
+    l.push_back(*i);
+
+  assert(!l.empty());
+  l.sort();
+  assert(std::is_sorted(l.begin(), l.end()));
+}
 
 int main()
 {
@@ -111,5 +135,7 @@ int main()
   assert(l2.back().i == 4);
   l.splice(++l.begin(), l2, ++l2.begin(), --l2.end());
   assert(*++l.begin() == 3);
+
+  test_sort();
 }
 

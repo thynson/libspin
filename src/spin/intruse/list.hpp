@@ -72,16 +72,16 @@ namespace spin
         if (&lhs == &rhs) return;
 
         if (lhs.m_prev)
-        { lhs.m_prev->m_next = rhs; }
+        { lhs.m_prev->m_next = &rhs; }
 
         if (lhs.m_next)
-        { lhs.m_next->m_prev = rhs; }
+        { lhs.m_next->m_prev = &rhs; }
 
         if (rhs.m_prev)
-        { rhs.m_prev->m_next = lhs; }
+        { rhs.m_prev->m_next = &lhs; }
 
         if (rhs.m_next)
-        { rhs.m_next->m_prev = lhs; }
+        { rhs.m_next->m_prev = &lhs; }
 
         std::swap(lhs.m_prev, rhs.m_prev);
         std::swap(lhs.m_next, rhs.m_next);
@@ -135,7 +135,7 @@ namespace spin
       using iterator_category = std::bidirectional_iterator_tag;
       using node_type         = list_node<Inheriator, Tag>;
 
-      list_iterator (node_type *node) noexcept
+      explicit list_iterator (node_type *node) noexcept
         : m_node (node)
       { }
 
@@ -346,7 +346,7 @@ namespace spin
       { return iterator(m_head.m_next); }
 
       reverse_iterator rbegin() noexcept
-      { return reverse_iterator(&m_tail); }
+      { return reverse_iterator(end()); }
 
       const_iterator cbegin() const noexcept
       { return const_iterator(m_head.m_next); }
@@ -355,16 +355,16 @@ namespace spin
       { return const_iterator(m_head.m_nexgt); }
 
       const_reverse_iterator rbegin() const noexcept
-      { return const_reverse_iterator(&m_tail); }
+      { return const_reverse_iterator(end()); }
 
       const_reverse_iterator crbegin() const noexcept
-      { return const_reverse_iterator(&m_tail); }
+      { return const_reverse_iterator(end()); }
 
       iterator end() noexcept
       { return iterator(&m_tail); }
 
       reverse_iterator rend() noexcept
-      { return reverse_iterator(m_head.m_next); }
+      { return reverse_iterator(begin()); }
 
       const_iterator end() const noexcept
       { return const_iterator(&m_tail); }
@@ -373,10 +373,10 @@ namespace spin
       { return const_iterator(&m_tail); }
 
       const_reverse_iterator rend() const noexcept
-      { return const_reverse_iterator(m_head.m_next); }
+      { return const_reverse_iterator(begin()); }
 
       const_reverse_iterator crend() const noexcept
-      { return const_reverse_iterator(m_head.m_next); }
+      { return const_reverse_iterator(begin()); }
 
 
       // Modifier
@@ -420,7 +420,6 @@ namespace spin
        */
       void erase(iterator pos) noexcept
       {
-        assert (pos != end());
         node_type::unlink(*pos);
       }
 
@@ -543,7 +542,7 @@ namespace spin
         swap(x);
       }
 
-      /** @param Erase all elements from this list */
+      /** @brief Erase all elements from this list */
       void clear() noexcept
       {
         auto *ptr = m_head.m_next;
@@ -584,8 +583,6 @@ namespace spin
        */
       void splice(iterator pos, list &l, iterator b, iterator e) noexcept
       {
-        assert(this != &l);
-
         if (b == e) return;
 
         node_type &x = *(b->m_prev), &y = *(e->m_prev);
@@ -644,7 +641,7 @@ namespace spin
 
       /** @brief Sort elements in this list with std::less */
       void sort()
-        noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
+        noexcept(noexcept(std::declval<list>().sort(std::less<T>())))
       { sort(std::less<T>()); }
 
       /**
@@ -652,7 +649,7 @@ namespace spin
        * @param l The list to be merged
        */
       void merge(list &l)
-        noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
+        noexcept(noexcept(l.merge(l, std::less<T>())))
       { merge(l, std::less<T>()); }
 
       /**
@@ -660,7 +657,7 @@ namespace spin
        * @param l The list to be merged
        */
       void merge(list &&l)
-        noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
+        noexcept(noexcept(l.merge(l)))
       { merge(l); }
 
       /**
@@ -669,12 +666,13 @@ namespace spin
        * @param l List to be merged
        * @param cmper The specified strict weak ordering comparer
        */
-      template<typename StrictWeakOrderingComparer>
-      void merge(list &l, StrictWeakOrderingComparer &&cmper)
-        noexcept(noexcept(cmper(std::declval<T>(), std::declval<T>())))
+      template<typename Comparer>
+      void merge(list &l, Comparer &&cmper)
+        noexcept(noexcept(l.merge(l, l.begin(), l.end(),
+                std::forward<Comparer>(cmper))))
       {
         merge(l, l.begin(), l.end(),
-            std::forward<StrictWeakOrderingComparer>(cmper));
+            std::forward<Comparer>(cmper));
       }
 
       /**
@@ -684,9 +682,9 @@ namespace spin
        * @param b List to be merged
        * @param cmper The specified strict weak ordering comparer
        */
-      template<typename StrictWeakOrderingComparer>
+      template<typename Comparer>
       void merge(list &l, iterator b, iterator e,
-          StrictWeakOrderingComparer &&cmper)
+          Comparer &&cmper)
         noexcept(noexcept(cmper(std::declval<T>(), std::declval<T>())))
       {
         if (this == &l) return;
@@ -694,7 +692,7 @@ namespace spin
         auto p = begin(), q = end();
 
         while (p != q && b != e)
-          if (cmper(*b, *p))
+          if (std::forward<Comparer>(cmper)(*b, *p))
           {
             auto &n = *b++;
             node_type::unlink(n);
@@ -709,7 +707,7 @@ namespace spin
 
       /** @breif Erase duplicate elements */
       void unique()
-        noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
+        noexcept(noexcept(std::declval<list>().unique(std::less<T>())))
       { unique(std::less<T>()); }
 
       /**
@@ -718,7 +716,7 @@ namespace spin
        * @param e End of the range
        */
       void unique(iterator b, iterator e)
-        noexcept(noexcept(std::less<T>()(std::declval<T>(), std::declval<T>())))
+        noexcept(noexcept(std::declval<list>().unique(b, e, std::less<T>())))
       { unique(b, e, std::less<T>()); }
 
       /**
@@ -727,7 +725,9 @@ namespace spin
        */
       template<typename BinaryPredicate>
       void unique(BinaryPredicate && binpred)
-        noexcept(noexcept(binpred(std::declval<T>(), std::declval<T>())))
+        noexcept(noexcept(std::declval<list>().unique
+              (std::declval<iterator>(), std::declval<iterator>(),
+               std::forward<BinaryPredicate>(binpred))))
       {
         unique(begin(), end(),
             std::forward<BinaryPredicate>(binpred));
