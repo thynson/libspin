@@ -31,12 +31,14 @@ libspin_la_HEADERS=spin/time.hpp\
 				   spin/system.hpp\
 				   spin/poller.hpp\
 				   spin/socket.hpp\
-				   spin/intruse/list.hpp
+				   spin/intruse/list.hpp\
+				   spin/intruse/rbtree.hpp
 
 
 libspin_la_SOURCES=main_loop.cpp\
 				   system.cpp\
 				   poller.cpp\
-				   socket.cpp
+				   socket.cpp\
+				   intruse_rbtree.cpp
 
 
