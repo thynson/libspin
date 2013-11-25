@@ -559,6 +559,22 @@ namespace spin
       rbtree_node(const rbtree_node &) = delete;
       rbtree_node operator = (const rbtree_node &) = delete;
 
+      friend bool operator < (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+      { return cmper(lhs.m_key, rhs.m_key); }
+
+      friend bool operator > (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+      { return cmper(rhs.m_key, lhs.m_key); }
+
+      friend bool operator <= (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+      { return !cmper(rhs.m_key, lhs.m_key); }
+
+      friend bool operator >= (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+      { return !cmper(rhs.m_key, lhs.m_key); }
+
     private:
 
       static rbtree_node *internal_cast(rbtree_node<void, void> *x)
