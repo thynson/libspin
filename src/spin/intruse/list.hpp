@@ -18,6 +18,8 @@
 #ifndef __SPIN_INTRUSE_LIST_HPP_INCLUDED__
 #define __SPIN_INTRUSE_LIST_HPP_INCLUDED__
 
+#include <spin/functional.hpp>
+
 #include <iterator>
 #include <type_traits>
 
@@ -639,18 +641,18 @@ namespace spin
           swap(*(fill - 1));
         }
 
-      /** @brief Sort elements in this list with std::less */
+      /** @brief Sort elements in this list with spin::less */
       void sort()
-        noexcept(noexcept(std::declval<list>().sort(std::less<T>())))
-      { sort(std::less<T>()); }
+        noexcept(noexcept(std::declval<list>().sort(less<T>())))
+      { sort(less<T>()); }
 
       /**
        * @breif Merge sorted list
        * @param l The list to be merged
        */
       void merge(list &l)
-        noexcept(noexcept(l.merge(l, std::less<T>())))
-      { merge(l, std::less<T>()); }
+        noexcept(noexcept(l.merge(l, less<T>())))
+      { merge(l, less<T>()); }
 
       /**
        * @breif Merge a sorted list, overload for rvalue refernece
@@ -707,8 +709,8 @@ namespace spin
 
       /** @breif Erase duplicate elements */
       void unique()
-        noexcept(noexcept(std::declval<list>().unique(std::less<T>())))
-      { unique(std::less<T>()); }
+        noexcept(noexcept(std::declval<list>().unique(less<T>())))
+      { unique(less<T>()); }
 
       /**
        * @breif Erase duplicate elements in range [b,e)
@@ -716,8 +718,8 @@ namespace spin
        * @param e End of the range
        */
       void unique(iterator b, iterator e)
-        noexcept(noexcept(std::declval<list>().unique(b, e, std::less<T>())))
-      { unique(b, e, std::less<T>()); }
+        noexcept(noexcept(std::declval<list>().unique(b, e, less<T>())))
+      { unique(b, e, less<T>()); }
 
       /**
        * @breif Erase duplicate elements with specified binary predicate
@@ -742,7 +744,7 @@ namespace spin
        */
       template<typename BinaryPredicate>
       void unique(iterator b, iterator e, BinaryPredicate &&binpred)
-        noexcept(noexcept(binpred(b, e)))
+        noexcept(noexcept(binpred(*b, *e)))
       {
         if (b == e) return;
         auto n = b;
