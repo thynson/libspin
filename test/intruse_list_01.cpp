@@ -63,10 +63,9 @@ void test_sort()
 
   X::list l;
 
-  // std::less in libstdc++-4.8.1 is lack of noexcept deduction
-  // static_assert(noexcept(l.sort()), "noexcept deduction failed");
-  // static_assert(noexcept(l.merge(l)), "noexcept deduction failed");
-  // static_assert(noexcept(l.unique()), "noexcept deduction failed");
+  static_assert(noexcept(l.sort()), "noexcept deduction failed");
+  static_assert(noexcept(l.merge(l)), "noexcept deduction failed");
+  static_assert(noexcept(l.unique()), "noexcept deduction failed");
 
   for (auto i = v.begin(); i != v.end(); ++i)
     l.push_back(*i);

@@ -687,7 +687,7 @@ namespace spin
       template<typename Comparer>
       void merge(list &l, iterator b, iterator e,
           Comparer &&cmper)
-        noexcept(noexcept(cmper(std::declval<T>(), std::declval<T>())))
+        noexcept(noexcept(cmper(*b, *e)))
       {
         if (this == &l) return;
 
