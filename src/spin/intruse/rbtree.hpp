@@ -85,8 +85,7 @@ namespace spin
 
       // Status
 
-      /** @brief Test if a node is container node or root node, should be
-       * faster than is_container_node and is_root_node */
+      /** @brief Tricky way to test if a node is container node or root node */
       bool is_container_or_root() const noexcept
       { return m_p != nullptr && m_p->m_p == this; }
 
@@ -374,6 +373,24 @@ namespace spin
 
       }
 
+      /**
+       * @brief Search and execute, const version
+       * @tparam Key the type indexed
+       * @tparam Caster type whose instances are callable that cast an
+       * rbtree_node<void, void> reference to Key type
+       * @tparam Comparer type whose instances are callable that compare two
+       * instances of Key type
+       * @tparam Callable type whose instances are are callable with two
+       * argument, the type of first argument is rbtree_node<void, void>, and
+       * the type of second argument is boolean indicates that the compare
+       * result of specified key with the first parameter pass to routine
+       * @param hint The entry for search
+       * @param key The key to be searched with
+       * @param caster An instance of caster
+       * @param comparer An instance of Comparer
+       * @param routine An instance of Callable
+       * @note For empty tree, routine will not be called
+       */
       template<typename Key, typename Caster, typename Comparer, typename Callable>
       static void search_and_execute(const rbtree_node<void, void> &hint, const Key &key,
           Caster && caster, Comparer && comparer, Callable && routine)
@@ -495,6 +512,7 @@ namespace spin
       static void __SPIN_INTERNAL__
       rebalance_for_unlink(rbtree_node *node) noexcept;
 
+      /** @brief Transfer link to another */
       void __SPIN_INTERNAL__ transfer_link(rbtree_node &node) noexcept;
 
       /**
@@ -533,11 +551,11 @@ namespace spin
 
     public:
 
-      /* @brief get key of this node */
+      /** @brief get key of this node */
       const Key &get_key() const noexcept
       { return m_key; }
 
-      /* @brief update key of this node */
+      /** @brief update key of this node */
       Key update_key(Key key)
         noexcept(noexcept(std::swap(key, key)))
       {
@@ -548,9 +566,20 @@ namespace spin
         return key;
       }
 
+      /**
+       * @brief Unlink current node from a tree
+       * @note User is responsible to ensure this node is already attached
+       * into a tree
+       */
       static void unlink(rbtree_node &node) noexcept
       { node.rbtree_node<void, void>::unlink(); }
 
+      /**
+       * @brief Get the first node in the tree whose key is not less than
+       * specified value
+       * @param hint Entry node for search
+       * @param key The specified value for searching the lower boundry
+       */
       static rbtree_node<void, void> *
       lower_bound(rbtree_node<void, void> &hint, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
@@ -576,6 +605,43 @@ namespace spin
         return p;
       }
 
+      /**
+       * @brief Get the first node in the tree whose key is not less than
+       * specified value
+       * @param hint Entry node for search
+       * @param key The specified value for searching the lower boundry
+       */
+      static const rbtree_node<void, void> *
+      lower_bound(const rbtree_node<void, void> &hint, const Key &key)
+      noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      {
+        auto *p = &hint;
+        search_and_execute(hint, key,
+            // caster
+            [] (const rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
+
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return cmper(lhs, rhs); },
+
+            [&] (const rbtree_node<void, void> &node, bool result)
+            {
+              if (result)
+                p = node.m_r;
+              else
+                p = &node;
+            }
+          );
+        return p;
+      }
+
+      /**
+       * @brief Get the first node in the tree whose key is greater than
+       * specified value
+       * @param hint Entry node for search
+       * @param key The specified value for searching the upper boundry
+       */
       static rbtree_node<void, void> *
       upper_bound(rbtree_node<void, void> &hint, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
@@ -602,11 +668,42 @@ namespace spin
       }
 
       /**
+       * @brief Get the first node in the tree whose key is greater than
+       * specified value
+       * @param hint Entry node for search
+       * @param key The specified value for searching the upper boundry
+       */
+      static const rbtree_node<void, void> *
+      upper_bound(const rbtree_node<void, void> &hint, const Key &key)
+      noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      {
+        auto *p = &hint;
+        search_and_execute(hint, key,
+            // caster
+            [] (const rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
+
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return !cmper(rhs, lhs); },
+
+            [&] (const rbtree_node<void, void> &node, bool result)
+            {
+              if (result)
+                p = node.m_r;
+              else
+                p = &node;
+            }
+          );
+        return p;
+      }
+
+      /**
        * @brief Insert a node to a tree that hint_node is attached to
        * @param hint_node The node which is attached into a rbtree for hinting
        * where node should be placed to
        * @param node The node to be insert
-       * @note Use is responsible to ensure hint_node is already attached to a
+       * @note User is responsible to ensure hint_node is already attached to a
        * tree; and if duplicate is permitted, the node is insert after any
        * node duplicate with this node
        */
@@ -710,6 +807,71 @@ namespace spin
           );
       }
 
+      /**
+       * @brief Insert a node to a tree that hint_node is attached to
+       * @param hint_node The node which is attached into a rbtree for hinting
+       * where node should be placed to
+       * @param node The node to be insert
+       * @note User is responsible to ensure hint_node is already attached to a
+       * tree; and duplicated node is not allow
+       */
+      static rbtree_node *
+      insert_no_duplicate(rbtree_node<void, void> &hint_node, rbtree_node &node)
+      noexcept(noexcept(std::declval<Comparer>()(node.get_key(), node.get_key())))
+      {
+        if (hint_node.m_is_container && hint_node.is_empty_container_node())
+        {
+          hint_node.insert_root_node(&node);
+          return ;
+        }
+
+        rbtree_node *result = &node;
+
+        search_and_execute(hint_node, node.get_key(),
+
+            // caster
+            [] (rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
+
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return cmper(lhs, rhs); },
+
+            // routine
+            [&] (rbtree_node<void, void> &n, bool result)
+            {
+              if (n.m_is_container)
+              {
+                n.insert_root_node(&node);
+              }
+              else if (result)
+              {
+                if (cmper(node.get_key(), n.get_key()))
+                  result = &n;
+                else if (n.m_has_r)
+                  n.next()->insert_before(&node);
+                else
+                  n.insert_after(&node);
+              }
+              else
+              {
+                if (!cmper(node.get_key(), n.get_key()))
+                  result = &n;
+                else if (n.m_has_l)
+                  n.prev()->insert_after(&node);
+                else
+                  n.insert_before(&node);
+              }
+            }
+          );
+        return result;
+      }
+
+
+      /**
+       * @brief Default constructor, forwarding all arguments to delegated key
+       * type
+       */
       template<typename ...Args>
       rbtree_node(Args && ...args)
         noexcept(noexcept(Key(std::forward<Args>(args)...)))
@@ -717,14 +879,17 @@ namespace spin
         , m_key(std::forward<Args>(args)...)
       { }
 
+      /** @brief Default destructor */
       ~rbtree_node() noexcept(noexcept(std::declval<Key>().~Key())) = default;
 
+      /** @brief Move constructor */
       rbtree_node(rbtree_node &&n)
         noexcept(noexcept(Key(std::declval<Key>())))
         : rbtree_node<void, void>(std::move(n))
         , m_key(std::move(n.m_key))
       { }
 
+      /** @brief Move assignment */
       rbtree_node &operator = (rbtree_node &&n)
         noexcept(noexcept(std::swap(n.m_key, n.m_key)))
       {
@@ -1036,25 +1201,31 @@ namespace spin
         noexcept(noexcept(std::declval<Comparer>()(key, key)))
       { return lower_bound(end(), key); }
 
-      const_iterator lower_bound(const Key &key) const noexcept;
+      const_iterator lower_bound(const Key &key) const noexcept
+      { return lower_bound(end(), key); }
 
       iterator lower_bound(iterator hint, const Key &key)
         noexcept(noexcept(std::declval<Comparer>()(key, key)))
       { return iterator(node_type::lower_bound(*hint, key)); }
 
-      const_iterator lower_bound(const_iterator hint, const Key &key) const noexcept;
+      const_iterator lower_bound(const_iterator hint, const Key &key)
+        const noexcept
+      { return const_iterator(node_type::lower_bound(*hint, key)); }
 
       iterator upper_bound(const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       { return upper_bound(end(), key); }
 
-      //const_iterator upper_bound(const Key &key) const noexcept;
+      const_iterator upper_bound(const Key &key) const noexcept
+      { return upper_bound(end(), key); }
 
       iterator upper_bound(iterator hint, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       { return iterator(node_type::upper_bound(*hint, key)); }
 
-      //const_iterator upper_bound(const_iterator hint, const Key &key) const noexcept;
+      const_iterator upper_bound(const_iterator hint, const Key &key)
+      const noexcept
+      { return const_iterator(node_type::upper_bound(*hint, key)); }
 
       // Modifier
       iterator insert(value_type &val) noexcept
@@ -1084,10 +1255,26 @@ namespace spin
           node_type::unlink(*i++);
       }
 
-      void remove(Key &key) noexcept(noexcept(key == key)); // TODO
+      void remove(Key &key)
+      noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      {
+        auto b = upper_bound(end(), key);
+        auto e = lower_bound(b, key);
+        erase(b, e);
+      }
 
       template<typename Predicate>
-      void remove(Predicate &&predicate) noexcept(noexcept(pred(std::declval<Key>())));
+      void remove(Predicate &&predicate)
+      noexcept(noexcept(predicate(std::declval<Key>())))
+      {
+        auto b = begin(), e = end();
+        while (b != e)
+        {
+          auto x = b++;
+          if (predicate(x->get_key()))
+            erase(x);
+        }
+      }
 
       void swap(rbtree &&t) noexcept
       { swap(t); }
@@ -1098,7 +1285,8 @@ namespace spin
       void clear() noexcept
       { erase(begin(), end()); }
 
-      const Comparer &key_comp() const noexcept;
+      const Comparer &key_comp() const noexcept
+      { return node_type::cmper; }
     private:
       rbtree_node<void, void> m_container_node;
     };

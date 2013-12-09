@@ -282,7 +282,7 @@ namespace spin
       using node_type               = list_node<T, Tag>;
 
       /** @brief Default constructor */
-      list() noexcept
+      list () noexcept
         : m_head(nullptr, &m_tail)
         , m_tail(&m_head, nullptr)
       { }
