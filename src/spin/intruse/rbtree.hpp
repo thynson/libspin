@@ -377,6 +377,118 @@ namespace spin
         }
 
       }
+
+      template<typename Key, typename Caster, typename Comparer, typename Callable>
+      static void search_and_execute(const rbtree_node<void, void> &hint, const Key &key,
+          Caster && caster, Comparer && comparer, Callable && routine)
+        noexcept(noexcept(std::forward<Caster>(caster)(hint))
+            && noexcept(std::declval<Comparer>()(key, key))
+            && noexcept(std::declval<Callable>()(hint, false)))
+      {
+        auto *p = &hint;
+
+        if (p->is_container_node())
+        {
+          if (p->is_empty_container_node())
+            return ;
+          else
+            p = p->get_root_node_from_container_node();
+        }
+
+        auto cmper = [&] (rbtree_node *node) -> bool
+        {
+          return std::forward<Comparer>(comparer)(
+              std::forward<Caster>(caster)(*node), key);
+        };
+
+        bool hint_result = cmper(p);
+
+        auto done = [&] () -> void
+        { std::forward<Callable>(routine)(*p, hint_result); };
+
+        // Search for younest common parent
+        if (hint_result)
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_l)
+            {
+              if (cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_r->m_is_container)
+            {
+              if (cmper(p->m_r))
+                p = p->m_r;
+              else
+                break;
+            }
+            else
+            {
+              done();
+              return ;
+            }
+          }
+        }
+        else
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_r)
+            {
+              if (!cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_l->m_is_container)
+            {
+              if (!cmper(p->m_l))
+                p = p->m_l;
+              else
+                break;
+            }
+            else
+            {
+              done();
+              return ;
+            }
+          }
+        }
+
+        for ( ; ; )
+        {
+          if (hint_result)
+          {
+            if (p->m_has_r)
+              p = p->m_r;
+            else
+            {
+              done();
+              return ;
+            }
+          }
+          else
+          {
+            if (p->m_has_l)
+              p = p->m_l;
+            else
+            {
+              done();
+              return ;
+            }
+          }
+
+          hint_result = cmper(p);
+        }
+
+      }
     private:
 
       /** @brief Rebalance a node after insertion */
@@ -436,7 +548,7 @@ namespace spin
         auto *p = unlink_checked();
         std::swap(key, m_key);
         if (p)
-          insert_before(*p, *this); // FIXME: duplicated or not
+          insert_after(*p, *this); // FIXME: duplicated or not
         return key;
       }
 
@@ -504,6 +616,8 @@ namespace spin
        */
       static void insert_after(rbtree_node<void, void> &hint_node,
           rbtree_node &node)
+      noexcept(
+          noexcept(std::declval<Comparer>()(node.get_key(), node.get_key())))
       {
         if (hint_node.m_is_container && hint_node.is_empty_container_node())
         {
@@ -555,8 +669,9 @@ namespace spin
        * tree; and if duplicate is permitted, the node is insert before any
        * node duplicate with this node
        */
-      static rbtree_node *insert_before(rbtree_node<void, void> &hint_node,
+      static void insert_before(rbtree_node<void, void> &hint_node,
           rbtree_node &node)
+      noexcept(noexcept(std::declval<Comparer>()(node.get_key(), node.get_key())))
       {
         if (hint_node.m_is_container && hint_node.is_empty_container_node())
         {
@@ -933,12 +1048,14 @@ namespace spin
 
       const_iterator lower_bound(const_iterator hint, const Key &key) const noexcept;
 
-      iterator upper_bound(const Key &key) // noexcept
+      iterator upper_bound(const Key &key)
+      noexcept(noexcept(std::declval<Comparer>()(key, key)))
       { return upper_bound(end(), key); }
 
       //const_iterator upper_bound(const Key &key) const noexcept;
 
-      iterator upper_bound(iterator hint, const Key &key) //noexcept;
+      iterator upper_bound(iterator hint, const Key &key)
+      noexcept(noexcept(std::declval<Comparer>()(key, key)))
       { return iterator(node_type::upper_bound(*hint, key)); }
 
       //const_iterator upper_bound(const_iterator hint, const Key &key) const noexcept;

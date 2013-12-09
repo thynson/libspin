@@ -30,11 +30,11 @@ int main()
   rbtree_node<int> vn[100];
   rbtree<int> tree;
 
-  for (int i = 0; i < sizeof(vn)/sizeof(vn[0]); i++)
-    vn[i].update_key((i / 4) * 4); //  0 0 0 0 4 4 4 4 8 8 8 8 ...
-
   for (int i = 0; i < 100; i++)
     tree.insert(vn[i]);
+
+  for (int i = 0; i < sizeof(vn)/sizeof(vn[0]); i++)
+    vn[i].update_key((i / 4) * 4); //  0 0 0 0 4 4 4 4 8 8 8 8 ...
 
   for (auto &i : tree)
     std::cout << i.get_key() << ' ' << &i << std::endl;
