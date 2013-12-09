@@ -74,7 +74,7 @@ namespace spin
       rbtree_node<void, void>::get_root_node_from_container_node()
       const noexcept
     {
-      assert(is_container_node());
+      assert(m_is_container);
       if (m_p == this)
         return nullptr;
       else
@@ -84,7 +84,7 @@ namespace spin
     rbtree_node<void, void> *
       rbtree_node<void, void>::get_root_node_from_container_node() noexcept
     {
-      assert(is_container_node());
+      assert(m_is_container);
       if (m_p == this)
         return nullptr;
       else
@@ -94,7 +94,7 @@ namespace spin
     rbtree_node<void, void> *
       rbtree_node<void, void>::get_root_node() noexcept
     {
-      assert (!is_container_node());
+      assert (!m_is_container);
       auto *p = this;
       while (p->m_p->m_p != this)
       {
@@ -109,7 +109,7 @@ namespace spin
     const rbtree_node<void, void> *
       rbtree_node<void, void>::get_root_node() const noexcept
     {
-      assert (!is_container_node());
+      assert (!m_is_container);
       auto *p = this;
       while (p->m_p->m_p != this)
         p = p->m_p;
@@ -119,35 +119,35 @@ namespace spin
     rbtree_node<void, void> *
       rbtree_node<void, void>::back_of_container() noexcept
     {
-      assert (is_container_node());
+      assert (m_is_container);
       return m_r;
     }
 
     const rbtree_node<void, void> *
       rbtree_node<void, void>::back_of_container() const noexcept
     {
-      assert (is_container_node());
+      assert (m_is_container);
       return m_r;
     }
 
     const rbtree_node<void, void> *
       rbtree_node<void, void>::front_of_container() const noexcept
     {
-      assert (is_container_node());
+      assert (m_is_container);
       return m_l;
     }
 
     rbtree_node<void, void> *
       rbtree_node<void, void>::front_of_container() noexcept
     {
-      assert (is_container_node());
+      assert (m_is_container);
       return m_l;
     }
 
     rbtree_node<void, void> *
       rbtree_node<void, void>::next() noexcept
     {
-      if (!is_container_node())
+      if (!m_is_container)
       {
         if (this->m_has_r)
           return m_r->front();
@@ -161,7 +161,7 @@ namespace spin
     const rbtree_node<void, void> *
       rbtree_node<void, void>::next() const noexcept
     {
-      if (!is_container_node())
+      if (!m_is_container)
       {
         if (this->m_has_r)
           return m_r->front();
@@ -176,7 +176,7 @@ namespace spin
     const rbtree_node<void, void> *
       rbtree_node<void, void>::prev() const noexcept
     {
-      if (!is_container_node())
+      if (!m_is_container)
       {
         if (this->m_has_l)
           return m_l->back();
@@ -190,7 +190,7 @@ namespace spin
     rbtree_node<void, void> *
       rbtree_node<void, void>::prev() noexcept
     {
-      if (!is_container_node())
+      if (!m_is_container)
       {
         if (this->m_has_l)
           return m_l->back();
@@ -236,7 +236,7 @@ namespace spin
     void rbtree_node<void, void>::lrotate() noexcept
     {
       assert(m_has_r);
-      assert(!is_container_node());
+      assert(!m_is_container);
       auto *y = m_r;
       if (y->m_has_l)
       {
@@ -265,7 +265,7 @@ namespace spin
     void rbtree_node<void, void>::rrotate() noexcept
     {
       assert(m_has_l);
-      assert(!is_container_node());
+      assert(!m_is_container);
       auto *y = m_l;
       if (y->m_has_r)
       {
@@ -296,7 +296,7 @@ namespace spin
     {
       assert(m_has_l == false);
       node->m_l = m_l;
-      if (m_l->is_container_node())
+      if (m_l->m_is_container)
         m_l->m_l = node;
       node->m_r = this;
       node->m_p = this;
@@ -311,7 +311,7 @@ namespace spin
     {
       assert(m_has_r == false);
       node->m_r = m_r;
-      if (m_r->is_container_node())
+      if (m_r->m_is_container)
         m_r->m_r = node;
       node->m_l = this;
       node->m_p = this;
@@ -324,7 +324,7 @@ namespace spin
     void rbtree_node<void, void>::
       insert_root_node(rbtree_node<void, void> *node) noexcept
     {
-      assert(is_container_node());
+      assert(m_is_container);
       assert(!node->m_is_red);
       m_p = m_l = m_r = node;
       node->m_p = node->m_l = node->m_r = this;
@@ -335,7 +335,7 @@ namespace spin
     {
       node->unlink_checked();
 
-      if (is_container_node())
+      if (m_is_container)
         insert_root_node(node);
       else if (m_has_l)
         prev()->insert_to_left(node);
@@ -348,7 +348,7 @@ namespace spin
     {
       node->unlink_checked();
 
-      if (is_container_node())
+      if (m_is_container)
         insert_root_node(node);
       else if (this->m_has_r)
         next()->insert_to_right(node);
@@ -372,7 +372,7 @@ namespace spin
     rbtree_node<void, void> *rbtree_node<void, void>::unlink() noexcept
     {
       assert (is_linked());
-      assert (!is_container_node());
+      assert (!m_is_container);
 
       rbtree_node *y = next(), *x;
 
@@ -387,7 +387,7 @@ namespace spin
         x = this;
 
       x->m_p = m_p;
-      if (m_p->is_container_node())
+      if (m_p->m_is_container)
       {
         if (this == x)
         {
@@ -412,7 +412,7 @@ namespace spin
         {
           m_p->m_l = m_l;
           m_p->m_has_l = false;
-          if (m_l->is_container_node())
+          if (m_l->m_is_container)
             m_l->m_l = m_p;
         }
         else
@@ -420,7 +420,7 @@ namespace spin
           m_p->m_l = x;
           if (x == this->m_r)
           {
-            if (m_l->is_container_node())
+            if (m_l->m_is_container)
             {
               m_l->m_l = x->front();
               m_l->m_l->m_l = m_l;
@@ -438,7 +438,7 @@ namespace spin
         {
           m_p->m_r = m_r;
           m_p->m_has_r = false;
-          if (m_r->is_container_node())
+          if (m_r->m_is_container)
             m_r->m_r = m_p;
         }
         else
@@ -446,7 +446,7 @@ namespace spin
           m_p->m_r = x;
           if (x == this->m_l)
           {
-            if (m_r->is_container_node())
+            if (m_r->m_is_container)
             {
               m_r->m_r = x->back();
               m_r->m_r->m_r = m_r;
@@ -471,7 +471,7 @@ namespace spin
     rbtree_node<void, void> *
       rbtree_node<void, void>::unlink_checked() noexcept
     {
-      if (is_container_node())
+      if (m_is_container)
         return nullptr;
       if (is_linked())
         return unlink();
@@ -730,7 +730,7 @@ namespace spin
           break;
       }
 
-      if (node->is_container_node())
+      if (node->m_is_container)
         return;
       else if (!node->is_root_node())
         node = node->get_root_node();

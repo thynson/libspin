@@ -90,10 +90,6 @@ namespace spin
       bool is_container_or_root() const noexcept
       { return m_p != nullptr && m_p->m_p == this; }
 
-      /** @brief Test if a node is container node */
-      bool is_container_node() const noexcept
-      { return this->m_is_container; }
-
       /** @brief Test if a node is the root node of rbtree */
       bool is_root_node() const noexcept
       { return is_container_or_root() && !this->m_is_container; }
@@ -275,7 +271,7 @@ namespace spin
       {
         auto *p = &hint;
 
-        if (p->is_container_node())
+        if (p->m_is_container)
         {
           if (p->is_empty_container_node())
             return ;
@@ -387,7 +383,7 @@ namespace spin
       {
         auto *p = &hint;
 
-        if (p->is_container_node())
+        if (p->m_is_container)
         {
           if (p->is_empty_container_node())
             return ;
