@@ -248,6 +248,135 @@ namespace spin
        */
       rbtree_node *unlink_checked() noexcept;
 
+      /**
+       * @brief Search and execute
+       * @tparam Key the type indexed
+       * @tparam Caster type whose instances are callable that cast an
+       * rbtree_node<void, void> reference to Key type
+       * @tparam Comparer type whose instances are callable that compare two
+       * instances of Key type
+       * @tparam Callable type whose instances are are callable with two
+       * argument, the type of first argument is rbtree_node<void, void>, and
+       * the type of second argument is boolean indicates that the compare
+       * result of specified key with the first parameter pass to routine
+       * @param hint The entry for search
+       * @param key The key to be searched with
+       * @param caster An instance of caster
+       * @param comparer An instance of Comparer
+       * @param routine An instance of Callable
+       * @note For empty tree, routine will not be called
+       */
+      template<typename Key, typename Caster, typename Comparer, typename Callable>
+      static void search_and_execute(rbtree_node<void, void> &hint, const Key &key,
+          Caster && caster, Comparer && comparer, Callable && routine)
+        noexcept(noexcept(std::forward<Caster>(caster)(hint))
+            && noexcept(std::declval<Comparer>()(key, key))
+            && noexcept(std::declval<Callable>()(hint, false)))
+      {
+        auto *p = &hint;
+
+        if (p->is_container_node())
+        {
+          if (p->is_empty_container_node())
+            return ;
+          else
+            p = p->get_root_node_from_container_node();
+        }
+
+        auto cmper = [&] (rbtree_node *node) -> bool
+        {
+          return std::forward<Comparer>(comparer)(
+              std::forward<Caster>(caster)(*node), key);
+        };
+
+        bool hint_result = cmper(p);
+
+        auto done = [&] () -> void
+        { std::forward<Callable>(routine)(*p, hint_result); };
+
+        // Search for younest common parent
+        if (hint_result)
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_l)
+            {
+              if (cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_r->m_is_container)
+            {
+              if (cmper(p->m_r))
+                p = p->m_r;
+              else
+                break;
+            }
+            else
+            {
+              done();
+              return ;
+            }
+          }
+        }
+        else
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_r)
+            {
+              if (!cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_l->m_is_container)
+            {
+              if (!cmper(p->m_l))
+                p = p->m_l;
+              else
+                break;
+            }
+            else
+            {
+              done();
+              return ;
+            }
+          }
+        }
+
+        for ( ; ; )
+        {
+          if (hint_result)
+          {
+            if (p->m_has_r)
+              p = p->m_r;
+            else
+            {
+              done();
+              return ;
+            }
+          }
+          else
+          {
+            if (p->m_has_l)
+              p = p->m_l;
+            else
+            {
+              done();
+              return ;
+            }
+          }
+
+          hint_result = cmper(p);
+        }
+
+      }
     private:
 
       /** @brief Rebalance a node after insertion */
@@ -307,7 +436,7 @@ namespace spin
         auto *p = unlink_checked();
         std::swap(key, m_key);
         if (p)
-          insert_before(*p, *this, false); // FIXME: duplicated or not
+          insert_before(*p, *this); // FIXME: duplicated or not
         return key;
       }
 
@@ -318,211 +447,50 @@ namespace spin
       lower_bound(rbtree_node<void, void> &hint, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *pos = &hint;
+        auto *p = &hint;
+        search_and_execute(hint, key,
+            // caster
+            [] (rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
 
-        if (pos->is_container_node())
-        {
-          if (pos->is_empty_container_node())
-            return internal_cast(pos);
-          else
-            pos = pos->get_root_node_from_container_node();
-        }
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return cmper(lhs, rhs); },
 
-        //bool common_parent_found = false;
-        bool hint_result = cmper(internal_cast(pos)->get_key(), key);
-
-        // Search for younest common parent
-
-        if (hint_result)
-        {
-          while (!pos->m_p->m_is_container)
-          {
-            auto *p = internal_cast(pos);
-            if (p == p->m_p->m_l)
+            [&] (rbtree_node<void, void> &node, bool result)
             {
-              if (cmper(internal_cast(p->m_p)->get_key(), key))
-              {
-                pos = p->m_p;
-                continue;
-              }
-            }
-
-            if (!p->m_r->m_is_container)
-            {
-              if (cmper(internal_cast(p->m_r)->get_key(), key))
-                pos = p->m_r;
+              if (result)
+                p = node.m_r;
               else
-              {
-                pos = p->m_r;
-                hint_result = false;
-                break;
-              }
+                p = &node;
             }
-            else
-              return p->m_r;
-          }
-        }
-        else
-        {
-          while (!pos->m_p->m_is_container)
-          {
-            auto *p = internal_cast(pos);
-            if (p == p->m_p->m_r)
-            {
-              if (!cmper(internal_cast(p->m_p)->get_key(), key))
-              {
-                pos = p->m_p;
-                continue;
-              }
-            }
-
-            if (!p->m_l->m_is_container)
-            {
-              if (!cmper(internal_cast(p->m_l)->get_key(), key))
-                pos = p->m_l;
-              else
-              {
-                pos = p->m_l;
-                hint_result = true;
-                break;
-              }
-            }
-            else
-              return p;
-          }
-        }
-
-        for ( ; ; )
-        {
-          auto *p = internal_cast(pos);
-          if (hint_result)
-          {
-            if (p->m_has_r)
-              pos = internal_cast(p->m_r);
-            else
-              return p->m_r;
-          }
-          else
-          {
-            if (p->m_has_l)
-              pos = internal_cast(p->m_l);
-            else
-              return p;
-          }
-
-          hint_result = cmper(internal_cast(pos)->get_key(), key);
-        }
+          );
+        return p;
       }
 
-
-      /**
-       * @brief Insert a node to a tree that hint_node is attached to
-       * @param hint_node The node which is attached into a rbtree for hinting
-       * where node should be placed to
-       * @param node The node to be insert
-       * @note Use is responsible to ensure hint_node is already attached to a
-       * tree; and if duplicate is permitted, the node is insert before any
-       * node duplicate with this node
-       */
-      static rbtree_node *insert_after(rbtree_node<void, void> &hint_node,
-          rbtree_node &node, bool duplicate = false)
+      static rbtree_node<void, void> *
+      upper_bound(rbtree_node<void, void> &hint, const Key &key)
+      noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *pos = &hint_node;
-        if (pos->is_container_node())
-        {
-          if (pos->is_empty_container_node())
-          {
-            pos->insert_after(&node);
-            return &node;
-          }
-          else
-            pos = pos->get_root_node_from_container_node();
-        }
+        auto *p = &hint;
+        search_and_execute(hint, key,
+            // caster
+            [] (rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
 
-        // FIXME: Visiting
-        while (!pos->is_root_node())
-        {
-          auto *p = internal_cast(pos);
-          if (cmper(p->get_key(), node.get_key()))
-          {
-            if (p->m_p->m_l == p && p->m_p->m_has_l)
-              pos = p->m_p;
-            else
-            {
-              if (p->m_has_r)
-              {
-                pos = p->m_r;
-                break;
-              }
-              else
-              {
-                pos->insert_after(&node);
-                return &node;
-              }
-            }
-          }
-          else if (cmper(node.get_key(), p->get_key()))
-          {
-            if (p->m_p->m_r == p && p->m_p->m_has_r)
-              pos = p->m_p;
-            else
-            {
-              if (p->m_has_l)
-              {
-                pos = p->m_l;
-                break;
-              }
-              else
-              {
-                pos->insert_before(&node);
-                return &node;
-              }
-            }
-          }
-          else if (duplicate)
-          {
-            pos->insert_after(&node);
-            return &node;
-          }
-          else
-            return p;
-        }
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return !cmper(rhs, lhs); },
 
-        for ( ; ; )
-        {
-          auto *p = internal_cast(pos);
-          if (cmper(p->get_key(), node.get_key()))
-          {
-            if (p->m_has_r)
+            [&] (rbtree_node<void, void> &node, bool result)
             {
-              pos = p->m_r;
-              continue;
+              if (result)
+                p = node.m_r;
+              else
+                p = &node;
             }
-            else
-            {
-              p->insert_after(&node);
-              return &node;
-            }
-          }
-          else if (cmper(node.get_key(), p->get_key()))
-          {
-            if (p->m_has_l)
-            {
-              pos = p->m_l;
-              continue;
-            }
-            else
-            {
-              p->insert_before(&node);
-              return &node;
-            }
-          }
-          else if (duplicate)
-          {
-            pos->insert_after(&node);
-            return &node;
-          }
-        }
+          );
+        return p;
       }
 
       /**
@@ -534,105 +502,101 @@ namespace spin
        * tree; and if duplicate is permitted, the node is insert after any
        * node duplicate with this node
        */
-      static rbtree_node *insert_before(rbtree_node<void, void> &hint_node,
-          rbtree_node &node, bool duplicate = false)
+      static void insert_after(rbtree_node<void, void> &hint_node,
+          rbtree_node &node)
       {
-        auto *pos = &hint_node;
-        if (pos->is_container_node())
+        if (hint_node.m_is_container && hint_node.is_empty_container_node())
         {
-          if (pos->is_empty_container_node())
-          {
-            pos->insert_after(&node);
-            return &node;
-          }
-          else
-            pos = pos->get_root_node_from_container_node();
+          hint_node.insert_root_node(&node);
+          return ;
         }
 
-        // FIXME: Visiting
-        while (!pos->is_root_node())
-        {
-          auto *p = internal_cast(pos);
-          if (cmper(p->get_key(), node.get_key()))
-          {
-            if (p->m_p->m_l == p && p->m_p->m_has_l)
-              pos = p->m_p;
-            else
+        search_and_execute(hint_node, node.get_key(),
+
+            // caster
+            [] (rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
+
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return !cmper(rhs, lhs); },
+
+            // routine
+            [&] (rbtree_node<void, void> &n, bool result)
             {
-              if (p->m_has_r)
+              if (n.m_is_container)
               {
-                pos = p->m_r;
-                break;
+                n.insert_root_node(&node);
+              }
+              else if (result)
+              {
+                if (n.m_has_r)
+                  n.next()->insert_before(&node);
+                else
+                  n.insert_after(&node);
               }
               else
               {
-                pos->insert_after(&node);
-                return &node;
+                if (n.m_has_l)
+                  n.prev()->insert_after(&node);
+                else
+                  n.insert_before(&node);
               }
             }
-          }
-          else if (cmper(node.get_key(), p->get_key()))
-          {
-            if (p->m_p->m_r == p && p->m_p->m_has_r)
-              pos = p->m_p;
-            else
+          );
+      }
+
+      /**
+       * @brief Insert a node to a tree that hint_node is attached to
+       * @param hint_node The node which is attached into a rbtree for hinting
+       * where node should be placed to
+       * @param node The node to be insert
+       * @note Use is responsible to ensure hint_node is already attached to a
+       * tree; and if duplicate is permitted, the node is insert before any
+       * node duplicate with this node
+       */
+      static rbtree_node *insert_before(rbtree_node<void, void> &hint_node,
+          rbtree_node &node)
+      {
+        if (hint_node.m_is_container && hint_node.is_empty_container_node())
+        {
+          hint_node.insert_root_node(&node);
+          return ;
+        }
+
+        search_and_execute(hint_node, node.get_key(),
+
+            // caster
+            [] (rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
+
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return cmper(lhs, rhs); },
+
+            // routine
+            [&] (rbtree_node<void, void> &n, bool result)
             {
-              if (p->m_has_l)
+              if (n.m_is_container)
               {
-                pos = p->m_l;
-                break;
+                n.insert_root_node(&node);
+              }
+              else if (result)
+              {
+                if (n.m_has_r)
+                  n.next()->insert_before(&node);
+                else
+                  n.insert_after(&node);
               }
               else
               {
-                pos->insert_before(&node);
-                return &node;
+                if (n.m_has_l)
+                  n.prev()->insert_after(&node);
+                else
+                  n.insert_before(&node);
               }
             }
-          }
-          else if (duplicate)
-          {
-            pos->insert_before(&node);
-            return &node;
-          }
-          else
-            return p;
-        }
-
-        for ( ; ; )
-        {
-          auto *p = internal_cast(pos);
-          if (cmper(p->get_key(), node.get_key()))
-          {
-            if (p->m_has_r)
-            {
-              pos = p->m_r;
-              continue;
-            }
-            else
-            {
-              pos->insert_after(&node);
-              return &node;
-            }
-          }
-          else if (cmper(node.get_key(), p->get_key()))
-          {
-            if (p->m_has_l)
-            {
-              pos = p->m_l;
-              continue;
-            }
-            else
-            {
-              pos->insert_before(&node);
-              return &node;
-            }
-          }
-          else if (duplicate)
-          {
-            pos->insert_before(&node);
-            return &node;
-          }
-        }
+          );
       }
 
       template<typename ...Args>
@@ -969,24 +933,26 @@ namespace spin
 
       const_iterator lower_bound(const_iterator hint, const Key &key) const noexcept;
 
-      iterator upper_bound(const Key &key) noexcept;
+      iterator upper_bound(const Key &key) // noexcept
+      { return upper_bound(end(), key); }
 
-      const_iterator upper_bound(const Key &key) const noexcept;
+      //const_iterator upper_bound(const Key &key) const noexcept;
 
-      iterator upper_bound(const_iterator hint, const Key &key) noexcept;
+      iterator upper_bound(iterator hint, const Key &key) //noexcept;
+      { return iterator(node_type::upper_bound(*hint, key)); }
 
-      const_iterator upper_bound(const_iterator hint, const Key &key) const noexcept;
+      //const_iterator upper_bound(const_iterator hint, const Key &key) const noexcept;
 
       // Modifier
-      std::pair<iterator, bool> insert(value_type &val) noexcept
+      iterator insert(value_type &val) noexcept
       {
         return insert(end(), val);
       }
 
-      std::pair<iterator, bool> insert(iterator hint, value_type &val) noexcept
+      iterator insert(iterator hint, value_type &val) noexcept
       {
-        auto *p = node_type::insert_before(*hint, val);
-        return std::make_pair(iterator(p), p == &val);
+        node_type::insert_after(*hint, val);
+        return iterator(&val);
       }
 
       template<typename InputIterator>

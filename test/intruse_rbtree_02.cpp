@@ -31,28 +31,70 @@ int main()
   rbtree<int> tree;
 
   for (int i = 0; i < sizeof(vn)/sizeof(vn[0]); i++)
-    vn[i].update_key(i * 2); //  0 0 0 0 1 1 1 1 2 2 2 2 ... 24 24 24 24
+    vn[i].update_key((i / 4) * 4); //  0 0 0 0 4 4 4 4 8 8 8 8 ...
 
   for (int i = 0; i < 100; i++)
     tree.insert(vn[i]);
+
+  for (auto &i : tree)
+    std::cout << i.get_key() << ' ' << &i << std::endl;
 
   assert(std::is_sorted(tree.begin(), tree.end()));
 
   for (auto i = tree.begin(); i != tree.end(); ++i)
   {
-    assert (&*tree.lower_bound(i, 35) == &vn[18]);
-    assert (&*tree.lower_bound(i, 36) == &vn[18]);
-    for (int k = 0; k < 100; k++)
+    for (int k = 0; k <= 25; k++)
     {
-      assert (&*tree.lower_bound(i, 2 * k - 1) == &vn[k]);
-      assert (&*tree.lower_bound(i, 2 * k) == &vn[k]);
+      if (k != 25)
+      {
+        assert (&*tree.lower_bound(i, 4 * k - 3) == &vn[k * 4]);
+        assert (&*tree.lower_bound(i, 4 * k - 2) == &vn[k * 4]);
+        assert (&*tree.lower_bound(i, 4 * k - 1) == &vn[k * 4]);
+        assert (&*tree.lower_bound(i, 4 * k - 0) == &vn[k * 4]);
+        assert (&*tree.upper_bound(i, 4 * (k - 1) + 3) == &vn[k * 4]);
+        assert (&*tree.upper_bound(i, 4 * (k - 1) + 2) == &vn[k * 4]);
+        assert (&*tree.upper_bound(i, 4 * (k - 1) + 1) == &vn[k * 4]);
+        assert (&*tree.upper_bound(i, 4 * (k - 1) + 0) == &vn[k * 4]);
+      }
+      else
+      {
+        assert (tree.lower_bound(i, 4 * k - 3) == tree.end());
+        assert (tree.lower_bound(i, 4 * k - 2) == tree.end());
+        assert (tree.lower_bound(i, 4 * k - 1) == tree.end());
+        assert (tree.lower_bound(i, 4 * k - 0) == tree.end());
+        assert (tree.upper_bound(i, 4 * (k - 1) + 3) == tree.end());
+        assert (tree.upper_bound(i, 4 * (k - 1) + 2) == tree.end());
+        assert (tree.upper_bound(i, 4 * (k - 1) + 1) == tree.end());
+        assert (tree.upper_bound(i, 4 * (k - 1) + 0) == tree.end());
+      }
+
     }
   }
 
-  for (int k = 0; k < 100; k++)
+  for (int k = 0; k <= 25; k++)
   {
-    assert (&*tree.lower_bound(tree.end(), 2 * k - 1) == &vn[k]);
-    assert (&*tree.lower_bound(tree.end(), 2 * k) == &vn[k]);
+    if (k != 25)
+    {
+      assert (&*tree.lower_bound(tree.end(), 4 * k - 3) == &vn[k * 4]);
+      assert (&*tree.lower_bound(tree.end(), 4 * k - 2) == &vn[k * 4]);
+      assert (&*tree.lower_bound(tree.end(), 4 * k - 1) == &vn[k * 4]);
+      assert (&*tree.lower_bound(tree.end(), 4 * k - 0) == &vn[k * 4]);
+      assert (&*tree.upper_bound(tree.end(), 4 * (k - 1) + 3) == &vn[k * 4]);
+      assert (&*tree.upper_bound(tree.end(), 4 * (k - 1) + 2) == &vn[k * 4]);
+      assert (&*tree.upper_bound(tree.end(), 4 * (k - 1) + 1) == &vn[k * 4]);
+      assert (&*tree.upper_bound(tree.end(), 4 * (k - 1) + 0) == &vn[k * 4]);
+    }
+    else
+    {
+      assert (tree.lower_bound(tree.end(), 4 * k - 3) == tree.end());
+      assert (tree.lower_bound(tree.end(), 4 * k - 2) == tree.end());
+      assert (tree.lower_bound(tree.end(), 4 * k - 1) == tree.end());
+      assert (tree.lower_bound(tree.end(), 4 * k - 0) == tree.end());
+      assert (tree.upper_bound(tree.end(), 4 * (k - 1) + 3) == tree.end());
+      assert (tree.upper_bound(tree.end(), 4 * (k - 1) + 2) == tree.end());
+      assert (tree.upper_bound(tree.end(), 4 * (k - 1) + 1) == tree.end());
+      assert (tree.upper_bound(tree.end(), 4 * (k - 1) + 0) == tree.end());
+    }
   }
 
 }
