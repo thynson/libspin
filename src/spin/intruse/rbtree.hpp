@@ -254,7 +254,7 @@ namespace spin
        * argument, the type of first argument is rbtree_node<void, void>, and
        * the type of second argument is boolean indicates that the compare
        * result of specified key with the first parameter pass to routine
-       * @param hint The entry for search
+       * @param entry The entry node for search
        * @param key The key to be searched with
        * @param caster An instance of caster
        * @param comparer An instance of Comparer
@@ -263,15 +263,15 @@ namespace spin
        */
       template<typename Key, typename KeyFetcher,
         typename Comparer, typename Callable>
-      static void search_and_execute(rbtree_node &hint, const Key &key,
+      static void search_and_execute(rbtree_node &entry, const Key &key,
           KeyFetcher && keyfetcher, Comparer && comparer, Callable && routine)
-        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(hint))
+        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(entry))
             && noexcept(std::declval<Comparer>()(key, key))
-            && noexcept(std::declval<Callable>()(hint, false)))
+            && noexcept(std::declval<Callable>()(entry, false)))
       {
-        assert(hint.is_linked());
+        assert(entry.is_linked());
 
-        auto *p = &hint;
+        auto *p = &entry;
 
         if (p->m_is_container)
         {
@@ -387,7 +387,7 @@ namespace spin
        * argument, the type of first argument is rbtree_node<void, void>, and
        * the type of second argument is boolean indicates that the compare
        * result of specified key with the first parameter pass to routine
-       * @param hint The entry for search
+       * @param entry The entry for search
        * @param key The key to be searched with
        * @param caster An instance of caster
        * @param comparer An instance of Comparer
@@ -395,15 +395,15 @@ namespace spin
        * @note For empty tree, routine will not be called
        */
       template<typename Key, typename KeyFetcher, typename Comparer, typename Callable>
-      static void search_and_execute(const rbtree_node &hint, const Key &key,
+      static void search_and_execute(const rbtree_node &entry, const Key &key,
           KeyFetcher && keyfetcher, Comparer && comparer, Callable && routine)
-        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(hint))
+        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(entry))
             && noexcept(std::declval<Comparer>()(key, key))
-            && noexcept(std::declval<Callable>()(hint, false)))
+            && noexcept(std::declval<Callable>()(entry, false)))
       {
-        assert(hint.is_linked());
+        assert(entry.is_linked());
 
-        auto *p = &hint;
+        auto *p = &entry;
 
         if (p->m_is_container)
         {
@@ -582,15 +582,15 @@ namespace spin
       /**
        * @brief Get the first node in the tree whose key is not less than
        * specified value
-       * @param hint Entry node for search
+       * @param entry Entry node for search
        * @param key The specified value for searching the lower boundry
        */
       static rbtree_node<void, void> *
-      lower_bound(rbtree_node<void, void> &hint, const Key &key)
+      lower_bound(rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *p = &hint;
-        search_and_execute(hint, key,
+        auto *p = &entry;
+        search_and_execute(entry, key,
             // caster
             [] (rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
@@ -613,15 +613,15 @@ namespace spin
       /**
        * @brief Get the first node in the tree whose key is not less than
        * specified value
-       * @param hint Entry node for search
+       * @param entry Entry node for search
        * @param key The specified value for searching the lower boundry
        */
       static const rbtree_node<void, void> *
-      lower_bound(const rbtree_node<void, void> &hint, const Key &key)
+      lower_bound(const rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *p = &hint;
-        search_and_execute(hint, key,
+        auto *p = &entry;
+        search_and_execute(entry, key,
             // caster
             [] (const rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
@@ -644,15 +644,15 @@ namespace spin
       /**
        * @brief Get the first node in the tree whose key is greater than
        * specified value
-       * @param hint Entry node for search
+       * @param entry Entry node for search
        * @param key The specified value for searching the upper boundry
        */
       static rbtree_node<void, void> *
-      upper_bound(rbtree_node<void, void> &hint, const Key &key)
+      upper_bound(rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *p = &hint;
-        search_and_execute(hint, key,
+        auto *p = &entry;
+        search_and_execute(entry, key,
             // caster
             [] (rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
@@ -675,15 +675,15 @@ namespace spin
       /**
        * @brief Get the first node in the tree whose key is greater than
        * specified value
-       * @param hint Entry node for search
+       * @param entry Entry node for search
        * @param key The specified value for searching the upper boundry
        */
       static const rbtree_node<void, void> *
-      upper_bound(const rbtree_node<void, void> &hint, const Key &key)
+      upper_bound(const rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *p = &hint;
-        search_and_execute(hint, key,
+        auto *p = &entry;
+        search_and_execute(entry, key,
             // caster
             [] (const rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
@@ -713,16 +713,16 @@ namespace spin
        * node duplicate with this node
        */
       static void
-      insert_after(rbtree_node<void, void> &hint_node, rbtree_node &node)
+      insert_after(rbtree_node<void, void> &entry, rbtree_node &node)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        if (hint_node.m_is_container && hint_node.is_empty_container_node())
+        if (entry.m_is_container && entry.is_empty_container_node())
         {
-          hint_node.insert_root_node(&node);
+          entry.insert_root_node(&node);
           return ;
         }
 
-        search_and_execute(hint_node, node.get_key(),
+        search_and_execute(entry, node.get_key(),
 
             // caster
             [] (rbtree_node<void, void> &n)
@@ -759,7 +759,7 @@ namespace spin
 
       /**
        * @brief Insert a node to a tree that hint_node is attached to
-       * @param hint_node The node which is attached into a rbtree for hinting
+       * @param entry The node which is attached into a rbtree for hinting
        * where node should be placed to
        * @param node The node to be insert
        * @note Use is responsible to ensure hint_node is already attached to a
@@ -767,16 +767,16 @@ namespace spin
        * node duplicate with this node
        */
       static void
-      insert_before(rbtree_node<void, void> &hint_node, rbtree_node &node)
+      insert_before(rbtree_node<void, void> &entry, rbtree_node &node)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        if (hint_node.m_is_container && hint_node.is_empty_container_node())
+        if (entry.m_is_container && entry.is_empty_container_node())
         {
-          hint_node.insert_root_node(&node);
+          entry.insert_root_node(&node);
           return ;
         }
 
-        search_and_execute(hint_node, node.get_key(),
+        search_and_execute(entry, node.get_key(),
 
             // caster
             [] (rbtree_node<void, void> &n)
@@ -820,18 +820,18 @@ namespace spin
        * a tree; and duplicated node is not allow
        */
       static rbtree_node *
-      insert_no_duplicate(rbtree_node<void, void> &hint_node, rbtree_node &node)
+      insert_unique(rbtree_node<void, void> &entry, rbtree_node &node)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        if (hint_node.m_is_container && hint_node.is_empty_container_node())
+        if (entry.m_is_container && entry.is_empty_container_node())
         {
-          hint_node.insert_root_node(&node);
+          entry.insert_root_node(&node);
           return ;
         }
 
         rbtree_node *result = &node;
 
-        search_and_execute(hint_node, node.get_key(),
+        search_and_execute(entry, node.get_key(),
 
             // caster
             [] (rbtree_node<void, void> &n)
