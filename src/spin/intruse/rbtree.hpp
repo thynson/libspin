@@ -246,7 +246,7 @@ namespace spin
       /**
        * @brief Search and execute
        * @tparam Key the type indexed
-       * @tparam Caster type whose instances are callable that cast an
+       * @tparam KeyFetcher type whose instances are callable that cast an
        * rbtree_node<void, void> reference to Key type
        * @tparam Comparer type whose instances are callable that compare two
        * instances of Key type
@@ -261,13 +261,16 @@ namespace spin
        * @param routine An instance of Callable
        * @note For empty tree, routine will not be called
        */
-      template<typename Key, typename Caster, typename Comparer, typename Callable>
+      template<typename Key, typename KeyFetcher,
+        typename Comparer, typename Callable>
       static void search_and_execute(rbtree_node &hint, const Key &key,
-          Caster && caster, Comparer && comparer, Callable && routine)
-        noexcept(noexcept(std::forward<Caster>(caster)(hint))
+          KeyFetcher && keyfetcher, Comparer && comparer, Callable && routine)
+        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(hint))
             && noexcept(std::declval<Comparer>()(key, key))
             && noexcept(std::declval<Callable>()(hint, false)))
       {
+        assert(hint.is_linked());
+
         auto *p = &hint;
 
         if (p->m_is_container)
@@ -281,7 +284,7 @@ namespace spin
         auto cmper = [&] (rbtree_node *node) -> bool
         {
           return std::forward<Comparer>(comparer)(
-              std::forward<Caster>(caster)(*node), key);
+              std::forward<KeyFetcher>(keyfetcher)(*node), key);
         };
 
         bool hint_result = cmper(p);
@@ -391,13 +394,15 @@ namespace spin
        * @param routine An instance of Callable
        * @note For empty tree, routine will not be called
        */
-      template<typename Key, typename Caster, typename Comparer, typename Callable>
+      template<typename Key, typename KeyFetcher, typename Comparer, typename Callable>
       static void search_and_execute(const rbtree_node &hint, const Key &key,
-          Caster && caster, Comparer && comparer, Callable && routine)
-        noexcept(noexcept(std::forward<Caster>(caster)(hint))
+          KeyFetcher && keyfetcher, Comparer && comparer, Callable && routine)
+        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(hint))
             && noexcept(std::declval<Comparer>()(key, key))
             && noexcept(std::declval<Callable>()(hint, false)))
       {
+        assert(hint.is_linked());
+
         auto *p = &hint;
 
         if (p->m_is_container)
@@ -411,7 +416,7 @@ namespace spin
         auto cmper = [&] (rbtree_node *node) -> bool
         {
           return std::forward<Comparer>(comparer)(
-              std::forward<Caster>(caster)(*node), key);
+              std::forward<KeyFetcher>(keyfetcher)(*node), key);
         };
 
         bool hint_result = cmper(p);
@@ -707,10 +712,9 @@ namespace spin
        * tree; and if duplicate is permitted, the node is insert after any
        * node duplicate with this node
        */
-      static void insert_after(rbtree_node<void, void> &hint_node,
-          rbtree_node &node)
-      noexcept(
-          noexcept(std::declval<Comparer>()(node.get_key(), node.get_key())))
+      static void
+      insert_after(rbtree_node<void, void> &hint_node, rbtree_node &node)
+      noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
         if (hint_node.m_is_container && hint_node.is_empty_container_node())
         {
@@ -762,9 +766,9 @@ namespace spin
        * tree; and if duplicate is permitted, the node is insert before any
        * node duplicate with this node
        */
-      static void insert_before(rbtree_node<void, void> &hint_node,
-          rbtree_node &node)
-      noexcept(noexcept(std::declval<Comparer>()(node.get_key(), node.get_key())))
+      static void
+      insert_before(rbtree_node<void, void> &hint_node, rbtree_node &node)
+      noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
         if (hint_node.m_is_container && hint_node.is_empty_container_node())
         {
