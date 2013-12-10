@@ -31,10 +31,10 @@ namespace spin
   {
 
     template<typename Key, typename Comparer = less<Key>, typename Tag = void>
-    class rbtree;
+    class rbtree_node;
 
     template<typename Key, typename Comparer = less<Key>, typename Tag = void>
-    class rbtree_node;
+    class rbtree;
 
     template<typename Key, typename Comparer, typename Tag>
     class rbtree_iterator;
@@ -262,7 +262,7 @@ namespace spin
        * @note For empty tree, routine will not be called
        */
       template<typename Key, typename Caster, typename Comparer, typename Callable>
-      static void search_and_execute(rbtree_node<void, void> &hint, const Key &key,
+      static void search_and_execute(rbtree_node &hint, const Key &key,
           Caster && caster, Comparer && comparer, Callable && routine)
         noexcept(noexcept(std::forward<Caster>(caster)(hint))
             && noexcept(std::declval<Comparer>()(key, key))
@@ -392,7 +392,7 @@ namespace spin
        * @note For empty tree, routine will not be called
        */
       template<typename Key, typename Caster, typename Comparer, typename Callable>
-      static void search_and_execute(const rbtree_node<void, void> &hint, const Key &key,
+      static void search_and_execute(const rbtree_node &hint, const Key &key,
           Caster && caster, Comparer && comparer, Callable && routine)
         noexcept(noexcept(std::forward<Caster>(caster)(hint))
             && noexcept(std::declval<Comparer>()(key, key))
@@ -521,7 +521,7 @@ namespace spin
        * privately
        */
       static void __SPIN_INTERNAL__
-      swap_nodes(rbtree_node<void, void> &lhs, rbtree_node<void, void> &rhs)
+      swap_nodes(rbtree_node &lhs, rbtree_node &rhs)
       noexcept;
 
       rbtree_node *m_p;
@@ -812,12 +812,12 @@ namespace spin
        * @param hint_node The node which is attached into a rbtree for hinting
        * where node should be placed to
        * @param node The node to be insert
-       * @note User is responsible to ensure hint_node is already attached to a
-       * tree; and duplicated node is not allow
+       * @note User is responsible to ensure hint_node is already attached to
+       * a tree; and duplicated node is not allow
        */
       static rbtree_node *
       insert_no_duplicate(rbtree_node<void, void> &hint_node, rbtree_node &node)
-      noexcept(noexcept(std::declval<Comparer>()(node.get_key(), node.get_key())))
+      noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
         if (hint_node.m_is_container && hint_node.is_empty_container_node())
         {
@@ -846,7 +846,8 @@ namespace spin
               }
               else if (result)
               {
-                if (cmper(node.get_key(), n.get_key()))
+                auto *p = internal_cast(&n);
+                if (cmper(node.get_key(), p->get_key()))
                   result = &n;
                 else if (n.m_has_r)
                   n.next()->insert_before(&node);
@@ -855,7 +856,8 @@ namespace spin
               }
               else
               {
-                if (!cmper(node.get_key(), n.get_key()))
+                auto *p = internal_cast(&n);
+                if (!cmper(node.get_key(), p->get_key()))
                   result = &n;
                 else if (n.m_has_l)
                   n.prev()->insert_after(&node);
@@ -902,19 +904,19 @@ namespace spin
       rbtree_node operator = (const rbtree_node &) = delete;
 
       friend bool operator < (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+        noexcept(noexcept(std::declval<Comparer>()(lhs.m_key, rhs.m_key)))
       { return cmper(lhs.m_key, rhs.m_key); }
 
       friend bool operator > (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+        noexcept(noexcept(std::declval<Comparer>()(lhs.m_key, rhs.m_key)))
       { return cmper(rhs.m_key, lhs.m_key); }
 
       friend bool operator <= (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+        noexcept(noexcept(std::declval<Comparer>()(lhs.m_key, rhs.m_key)))
       { return !cmper(rhs.m_key, lhs.m_key); }
 
       friend bool operator >= (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>())))
+        noexcept(noexcept(std::declval<Comparer>()(lhs.m_key, rhs.m_key)))
       { return !cmper(rhs.m_key, lhs.m_key); }
 
     private:
