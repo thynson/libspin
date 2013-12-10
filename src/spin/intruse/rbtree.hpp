@@ -259,7 +259,6 @@ namespace spin
        * @param caster An instance of caster
        * @param comparer An instance of Comparer
        * @param routine An instance of Callable
-       * @note For empty tree, routine will not be called
        */
       template<typename Key, typename KeyFetcher,
         typename Comparer, typename Callable>
@@ -276,7 +275,13 @@ namespace spin
         if (p->m_is_container)
         {
           if (p->is_empty_container_node())
+          {
+            // false is passed as 2nd argument so, client code in the routine
+            // may need not to check whether the first parameter is container
+            // node
+            std::forward<Callable>(routine)(*p, false);
             return ;
+          }
           else
             p = p->get_root_node_from_container_node();
         }
@@ -292,7 +297,7 @@ namespace spin
         auto done = [&] () -> void
         { std::forward<Callable>(routine)(*p, hint_result); };
 
-        // Search for younest common parent
+        // Search for youngest common parent
         if (hint_result)
         {
           while (!p->m_p->m_is_container)
@@ -392,7 +397,6 @@ namespace spin
        * @param caster An instance of caster
        * @param comparer An instance of Comparer
        * @param routine An instance of Callable
-       * @note For empty tree, routine will not be called
        */
       template<typename Key, typename KeyFetcher, typename Comparer, typename Callable>
       static void search_and_execute(const rbtree_node &entry, const Key &key,
@@ -408,7 +412,13 @@ namespace spin
         if (p->m_is_container)
         {
           if (p->is_empty_container_node())
+          {
+            // false is passed as 2nd argument so, client code in the routine
+            // may need not to check whether the first parameter is container
+            // node
+            std::forward<Callable>(routine)(*p, false);
             return ;
+          }
           else
             p = p->get_root_node_from_container_node();
         }
@@ -424,7 +434,7 @@ namespace spin
         auto done = [&] () -> void
         { std::forward<Callable>(routine)(*p, hint_result); };
 
-        // Search for younest common parent
+        // Search for youngest common parent
         if (hint_result)
         {
           while (!p->m_p->m_is_container)
@@ -591,7 +601,7 @@ namespace spin
       {
         auto *p = &entry;
         search_and_execute(entry, key,
-            // caster
+            // key fetcher
             [] (rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
 
@@ -622,7 +632,7 @@ namespace spin
       {
         auto *p = &entry;
         search_and_execute(entry, key,
-            // caster
+            // key fetcher
             [] (const rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
 
@@ -653,7 +663,7 @@ namespace spin
       {
         auto *p = &entry;
         search_and_execute(entry, key,
-            // caster
+            // key fetcher
             [] (rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
 
@@ -684,7 +694,7 @@ namespace spin
       {
         auto *p = &entry;
         search_and_execute(entry, key,
-            // caster
+            // key fetcher
             [] (const rbtree_node<void, void> &n)
             { return internal_cast(&n)->get_key(); },
 
@@ -716,12 +726,6 @@ namespace spin
       insert_after(rbtree_node<void, void> &entry, rbtree_node &node)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        if (entry.m_is_container && entry.is_empty_container_node())
-        {
-          entry.insert_root_node(&node);
-          return ;
-        }
-
         search_and_execute(entry, node.get_key(),
 
             // caster
@@ -736,9 +740,7 @@ namespace spin
             [&] (rbtree_node<void, void> &n, bool result)
             {
               if (n.m_is_container)
-              {
                 n.insert_root_node(&node);
-              }
               else if (result)
               {
                 if (n.m_has_r)
@@ -770,12 +772,6 @@ namespace spin
       insert_before(rbtree_node<void, void> &entry, rbtree_node &node)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        if (entry.m_is_container && entry.is_empty_container_node())
-        {
-          entry.insert_root_node(&node);
-          return ;
-        }
-
         search_and_execute(entry, node.get_key(),
 
             // caster
@@ -790,9 +786,7 @@ namespace spin
             [&] (rbtree_node<void, void> &n, bool result)
             {
               if (n.m_is_container)
-              {
                 n.insert_root_node(&node);
-              }
               else if (result)
               {
                 if (n.m_has_r)
@@ -823,12 +817,6 @@ namespace spin
       insert_unique(rbtree_node<void, void> &entry, rbtree_node &node)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        if (entry.m_is_container && entry.is_empty_container_node())
-        {
-          entry.insert_root_node(&node);
-          return ;
-        }
-
         rbtree_node *result = &node;
 
         search_and_execute(entry, node.get_key(),
