@@ -861,6 +861,62 @@ namespace spin
         return result;
       }
 
+      /**
+       * @brief Insert a node to a tree that hint_node is attached to
+       * @param hint_node The node which is attached into a rbtree for hinting
+       * where node should be placed to
+       * @param node The node to be insert
+       * @note User is responsible to ensure hint_node is already attached to
+       * a tree; and duplicated node will be replaced by this node
+       */
+      static rbtree_node *
+      insert_replace(rbtree_node<void, void> &entry, rbtree_node &node)
+      noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
+      {
+        rbtree_node *result = &node;
+
+        search_and_execute(entry, node.get_key(),
+
+            // caster
+            [] (rbtree_node<void, void> &n)
+            { return internal_cast(&n)->get_key(); },
+
+            // comparer
+            [] (const Key &lhs, const Key &rhs)
+            { return cmper(lhs, rhs); },
+
+            // routine
+            [&] (rbtree_node<void, void> &n, bool result)
+            {
+              if (n.m_is_container)
+              {
+                n.insert_root_node(&node);
+              }
+              else if (result)
+              {
+                auto *p = internal_cast(&n);
+                if (n.m_has_r)
+                  n.next()->insert_before(&node);
+                else
+                  n.insert_after(&node);
+                if (cmper(node.get_key(), p->get_key()))
+                  n.unlink();
+
+              }
+              else
+              {
+                auto *p = internal_cast(&n);
+                if (n.m_has_l)
+                  n.prev()->insert_after(&node);
+                else
+                  n.insert_before(&node);
+                if (!cmper(node.get_key(), p->get_key()))
+                  n.unlink();
+              }
+            }
+          );
+        return result;
+      }
 
       /**
        * @brief Default constructor, forwarding all arguments to delegated key
