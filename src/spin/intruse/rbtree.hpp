@@ -990,9 +990,9 @@ namespace spin
     public:
       // Nested type similar with STL
       using iterator_category = std::bidirectional_iterator_tag;
-      using value_type        = rbtree_node<Key, Comparer, Tag>;
-      using reference         = rbtree_node<Key, Comparer, Tag> &;
-      using pointer           = rbtree_node<Key, Comparer, Tag> *;
+      using value_type        = Key;
+      using reference         = Key &;
+      using pointer           = Key *;
       using difference_type   = std::ptrdiff_t;
       using node_type         = rbtree_node<void, void>;
 
@@ -1009,9 +1009,9 @@ namespace spin
 
       ~rbtree_iterator() noexcept = default;
 
-      reference operator * () const noexcept { return *internal_cast(); }
+      reference operator * () const noexcept { return internal_cast()->get_key(); }
 
-      pointer operator -> () const noexcept { return internal_cast(); }
+      pointer operator -> () const noexcept { return &internal_cast()->get_key(); }
 
       rbtree_iterator &operator ++ () noexcept
       {
@@ -1061,9 +1061,9 @@ namespace spin
     public:
       // Nested type similar with STL
       using iterator_category = std::bidirectional_iterator_tag;
-      using value_type        = const rbtree_node<Key, Comparer, Tag>;
-      using reference         = const rbtree_node<Key, Comparer, Tag> &;
-      using pointer           = const rbtree_node<Key, Comparer, Tag> *;
+      using value_type        = const Key;
+      using reference         = const Key &;
+      using pointer           = const Key *;
       using difference_type   = std::ptrdiff_t;
       using node_type         = const rbtree_node<void, void>;
 
@@ -1084,9 +1084,9 @@ namespace spin
 
       ~rbtree_const_iterator() noexcept = default;
 
-      reference operator * () const noexcept { return *internal_cast(); }
+      reference operator * () const noexcept { return internal_cast()->get_type(); }
 
-      pointer operator -> () const noexcept { return internal_cast(); }
+      pointer operator -> () const noexcept { return &internal_cast()->get_type(); }
 
       rbtree_const_iterator &operator ++ () noexcept
       {
@@ -1278,12 +1278,12 @@ namespace spin
       { return const_iterator(node_type::upper_bound(*hint, key)); }
 
       // Modifier
-      iterator insert(value_type &val) noexcept
+      iterator insert(node_type &val) noexcept
       {
         return insert(end(), val);
       }
 
-      iterator insert(iterator hint, value_type &val) noexcept
+      iterator insert(iterator hint, node_type &val) noexcept
       {
         node_type::insert_after(*hint, val);
         return iterator(&val);
@@ -1333,6 +1333,7 @@ namespace spin
       { node_type::swap_nodes(m_container_node, t.m_container_node); }
 
       void clear() noexcept
+        // Can be optimize
       { erase(begin(), end()); }
 
       const Comparer &key_comp() const noexcept
