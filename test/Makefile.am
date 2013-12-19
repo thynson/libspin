@@ -27,7 +27,7 @@ check_PROGRAMS=test_singleton_01\
 			   test_main_loop_03\
 			   test_intruse_list_01\
 			   test_intruse_rbtree_01\
-			   test_intruse_rbtree_02
+			   test_intruse_rbtree_set_01
 
 TESTS=$(check_PROGRAMS)
 
@@ -38,5 +38,5 @@ test_main_loop_02_SOURCES=main_loop-02.cpp
 test_main_loop_03_SOURCES=main_loop-03.cpp
 test_intruse_list_01_SOURCES=intruse_list_01.cpp
 test_intruse_rbtree_01_SOURCES=intruse_rbtree_01.cpp
-test_intruse_rbtree_02_SOURCES=intruse_rbtree_02.cpp
+test_intruse_rbtree_set_01_SOURCES=intruse_rbtree_set_01.cpp
 
