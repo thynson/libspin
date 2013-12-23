@@ -247,6 +247,232 @@ namespace spin
       rbtree_node *unlink_checked() noexcept;
 
       /**
+       * @brief Get the boundry of a rbtree for specified key
+       * @tparam Key the type indexed
+       * @tparam KeyFetcher type whose instances are callable that cast an
+       * rbtree_node<void, void> reference to Key type
+       * @tparam Comparer type whose instances are callable that compare two
+       * instances of Key type
+       * @param entry The entry node of tree
+       * @param key The specified key depends on which the boundry is find
+       * @param caster An instance of caster
+       * @param comparer An instance of Comparer
+       */
+      template<typename Key, typename KeyFetcher, typename Comparer>
+      static std::pair<rbtree_node*, rbtree_node*>
+      boundry(rbtree_node &entry, const Key &key, KeyFetcher && keyfetcher,
+          Comparer && comparer)
+        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(entry))
+            && noexcept(std::forward<Comparer>(comparer)(key, key)))
+      {
+        assert (entry.is_linked());
+
+        auto *p = &entry;
+
+        if (p->m_is_container)
+        {
+          if (p->is_empty_container_node())
+            return std::make_pair(p, p);
+          else
+            p = p->get_root_node_from_container_node();
+        }
+
+        auto cmper = [&] (rbtree_node *node) -> bool
+        {
+          return std::forward<Comparer>(comparer)(
+              std::forward<KeyFetcher>(keyfetcher)(*node), key);
+        };
+        bool hint_result = cmper(p);
+
+        if (hint_result)
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_l)
+            {
+              if (cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_r->m_is_container)
+            {
+              if (cmper(p->m_r))
+                p = p->m_r;
+              else
+                break;
+            }
+            else
+            {
+              return std::make_pair(p, p->m_r);
+            }
+          }
+        }
+        else
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_r)
+            {
+              if (!cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_l->m_is_container)
+            {
+              if (!cmper(p->m_l))
+                p = p->m_l;
+              else
+                break;
+            }
+            else
+            {
+              return std::make_pair(p->m_l, p);
+            }
+          }
+        }
+
+        for ( ; ; )
+        {
+          if (hint_result)
+          {
+            if (p->m_has_r)
+              p = p->m_r;
+            else
+              return std::make_pair(p, p->m_r);
+          }
+          else
+          {
+            if (p->m_has_l)
+              p = p->m_l;
+            else
+              return std::make_pair(p->m_l, p);
+          }
+
+          hint_result = cmper(p);
+        }
+      }
+
+      /**
+       * @brief Get the boundry of a rbtree for specified key
+       * @tparam Key the type indexed
+       * @tparam KeyFetcher type whose instances are callable that cast an
+       * rbtree_node<void, void> reference to Key type
+       * @tparam Comparer type whose instances are callable that compare two
+       * instances of Key type
+       * @param entry The entry node of tree
+       * @param key The specified key depends on which the boundry is find
+       * @param caster An instance of caster
+       * @param comparer An instance of Comparer
+       */
+      template<typename Key, typename KeyFetcher, typename Comparer>
+      static std::pair<const rbtree_node*, const rbtree_node*>
+      boundry(const rbtree_node &entry, const Key &key, KeyFetcher && keyfetcher,
+          Comparer && comparer)
+        noexcept(noexcept(std::forward<KeyFetcher>(keyfetcher)(entry))
+            && noexcept(std::forward<Comparer>(comparer)(key, key)))
+      {
+        assert (entry.is_linked());
+
+        auto *p = &entry;
+
+        if (p->m_is_container)
+        {
+          if (p->is_empty_container_node())
+            return std::make_pair(p, p);
+          else
+            p = p->get_root_node_from_container_node();
+        }
+
+        auto cmper = [&] (rbtree_node *node) -> bool
+        {
+          return std::forward<Comparer>(comparer)(
+              std::forward<KeyFetcher>(keyfetcher)(*node), key);
+        };
+
+        bool hint_result = cmper(p);
+
+        if (hint_result)
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_l)
+            {
+              if (cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_r->m_is_container)
+            {
+              if (cmper(p->m_r))
+                p = p->m_r;
+              else
+                break;
+            }
+            else
+            {
+              return std::make_pair(p, p->m_r);
+            }
+          }
+        }
+        else
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_r)
+            {
+              if (!cmper(p->m_p))
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_l->m_is_container)
+            {
+              if (!cmper(p->m_l))
+                p = p->m_l;
+              else
+                break;
+            }
+            else
+            {
+              return std::make_pair(p->m_l, p);
+            }
+          }
+        }
+
+        for ( ; ; )
+        {
+          if (hint_result)
+          {
+            if (p->m_has_r)
+              p = p->m_r;
+            else
+              return std::make_pair(p, p->m_r);
+          }
+          else
+          {
+            if (p->m_has_l)
+              p = p->m_l;
+            else
+              return std::make_pair(p->m_l, p);
+          }
+
+          hint_result = cmper(p);
+        }
+      }
+
+
+      /**
        * @brief Search and execute
        * @tparam Key the type indexed
        * @tparam KeyFetcher type whose instances are callable that cast an
@@ -583,6 +809,32 @@ namespace spin
           : node(node)
         { }
 
+        void operator ()
+          (std::pair<rbtree_node<void, void> *, rbtree_node<void, void> *> &&pair)
+          noexcept
+        { (*this)(pair); }
+
+        void operator ()
+          (std::pair<rbtree_node<void, void> *, rbtree_node<void, void> *> &pair)
+          noexcept
+        {
+          // first and second cound only be asame when the tree is empty
+          if (pair.first == pair.second)
+            pair.first->insert_root_node(&node);
+
+          // Either pair.first has no right child or pair.second has no left
+          // child, so it can be optimized.
+
+          else if (pair.second->m_is_container)
+            pair.first->insert_to_right(&node);
+          else if (pair.first->m_is_container)
+            pair.second->insert_to_left(&node);
+          else if (pair.second->m_has_l)
+            pair.first->insert_to_right(&node);
+          else
+            pair.second->insert_to_left(&node);
+        }
+
         void operator () (rbtree_node<void, void> &n, bool result) noexcept
         {
           if (n.m_is_container)
@@ -715,27 +967,7 @@ namespace spin
       static rbtree_node<void, void> *
       lower_bound(rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
-      {
-        auto *p = &entry;
-        search_and_execute(entry, key,
-            // key fetcher
-            [] (rbtree_node<void, void> &n)
-            { return internal_cast(&n)->get_key(); },
-
-            // comparer
-            [] (const Key &lhs, const Key &rhs)
-            { return cmper(lhs, rhs); },
-
-            [&] (rbtree_node<void, void> &node, bool result)
-            {
-              if (result)
-                p = node.m_r;
-              else
-                p = &node;
-            }
-          );
-        return p;
-      }
+      { return boundry(entry, key, key_fetcher, cmper).second; }
 
       /**
        * @brief Get the first node in the tree whose key is not less than
@@ -746,27 +978,7 @@ namespace spin
       static const rbtree_node<void, void> *
       lower_bound(const rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
-      {
-        auto *p = &entry;
-        search_and_execute(entry, key,
-            // key fetcher
-            [] (const rbtree_node<void, void> &n)
-            { return internal_cast(&n)->get_key(); },
-
-            // comparer
-            [] (const Key &lhs, const Key &rhs)
-            { return cmper(lhs, rhs); },
-
-            [&] (const rbtree_node<void, void> &node, bool result)
-            {
-              if (result)
-                p = node.m_r;
-              else
-                p = &node;
-            }
-          );
-        return p;
-      }
+      { return boundry(entry, key, key_fetcher, cmper).second; }
 
       /**
        * @brief Get the first node in the tree whose key is greater than
@@ -778,25 +990,9 @@ namespace spin
       upper_bound(rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *p = &entry;
-        search_and_execute(entry, key,
-            // key fetcher
-            [] (rbtree_node<void, void> &n)
-            { return internal_cast(&n)->get_key(); },
-
-            // comparer
-            [] (const Key &lhs, const Key &rhs)
-            { return !cmper(rhs, lhs); },
-
-            [&] (rbtree_node<void, void> &node, bool result)
-            {
-              if (result)
-                p = node.m_r;
-              else
-                p = &node;
-            }
-          );
-        return p;
+        return boundry(entry, key, key_fetcher,
+            [] (const Key &lhs, const Key &rhs) noexcept(is_comparer_noexcept)
+            { return !cmper(rhs, lhs); }).second;
       }
 
       /**
@@ -809,25 +1005,9 @@ namespace spin
       upper_bound(const rbtree_node<void, void> &entry, const Key &key)
       noexcept(noexcept(std::declval<Comparer>()(key, key)))
       {
-        auto *p = &entry;
-        search_and_execute(entry, key,
-            // key fetcher
-            [] (const rbtree_node<void, void> &n)
-            { return internal_cast(&n)->get_key(); },
-
-            // comparer
-            [] (const Key &lhs, const Key &rhs)
-            { return !cmper(rhs, lhs); },
-
-            [&] (const rbtree_node<void, void> &node, bool result)
-            {
-              if (result)
-                p = node.m_r;
-              else
-                p = &node;
-            }
-          );
-        return p;
+        return boundry(entry, key, key_fetcher,
+            [] (const Key &lhs, const Key &rhs) noexcept(is_comparer_noexcept)
+            { return !cmper(rhs, lhs); }).second;
       }
 
 
@@ -844,16 +1024,10 @@ namespace spin
       insert(rbtree_node<void, void> &entry, rbtree_node &node, back_policy)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        search_and_execute(entry, node.get_key(),
-
-            [] (const rbtree_node<void, void> &n) // caster
-            { return internal_cast(&n)->get_key(); },
-
+        duplicate_inserter inserter(node);
+        inserter(boundry(entry, node.get_key(), key_fetcher,
             [] (const Key &lhs, const Key &rhs) noexcept // comparer
-            { return !cmper(rhs, lhs); },
-
-            duplicate_inserter(node) // routine
-          );
+            { return !cmper(rhs, lhs); }));
         return &node;
       }
 
@@ -870,16 +1044,8 @@ namespace spin
       insert(rbtree_node<void, void> &entry, rbtree_node &node, front_policy)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        search_and_execute(entry, node.get_key(),
-
-            [] (const rbtree_node<void, void> &n) // caster
-            { return internal_cast(&n)->get_key(); },
-
-            [] (const Key &lhs, const Key &rhs) noexcept // comparer
-            { return cmper(lhs, rhs); },
-
-            duplicate_inserter(node) // routine
-          );
+        duplicate_inserter inserter(node);
+        inserter(boundry(entry, node.get_key(), key_fetcher, cmper));
         return &node;
       }
 
@@ -896,10 +1062,7 @@ namespace spin
       insert(rbtree_node<void, void> &entry, rbtree_node &node, nearest_policy)
       noexcept(noexcept(std::declval<Comparer>()(node.m_key, node.m_key)))
       {
-        search_and_execute(entry, node.get_key(),
-
-            [] (const rbtree_node<void, void> &n) // caster
-            { return internal_cast(&n)->get_key(); },
+        search_and_execute(entry, node.get_key(), key_fetcher,
 
             [] (const Key &lhs, const Key &rhs) noexcept // comparer
             { return cmper(lhs, rhs) || !cmper(rhs, lhs); },
@@ -1018,19 +1181,23 @@ namespace spin
 
     private:
 
-      static Key &key_fetcher(rbtree_node<void, void> *x) noexcept
-      { return internal_cast(x)->get_key(); }
-
-      static const Key &key_fetcher(const rbtree_node<void, void> *x) noexcept
-      { return internal_cast(x)->get_key(); }
-
       static rbtree_node *internal_cast(rbtree_node<void, void> *x) noexcept
       { return static_cast<rbtree_node *>(x); }
 
       static const rbtree_node *internal_cast(const rbtree_node<void, void> *x) noexcept
       { return static_cast<const rbtree_node *>(x); }
 
+      static class key_fetcher_t
+      {
+      public:
+        const Key &operator () (const rbtree_node<void, void> &x) const noexcept
+        { return internal_cast(&x)->get_key(); }
+      } key_fetcher;
+
       static Comparer cmper;
+
+      constexpr static bool is_comparer_noexcept
+        = noexcept(std::declval<Comparer>()(std::declval<Key>(), std::declval<Key>()));
 
       Key m_key;
     };
@@ -1038,6 +1205,9 @@ namespace spin
     template<typename Key, typename Comparer, typename Tag>
     Comparer rbtree_node<Key, Comparer, Tag>::cmper;
 
+    template<typename Key, typename Comparer, typename Tag>
+    typename rbtree_node<Key, Comparer, Tag>::key_fetcher_t
+    rbtree_node<Key, Comparer, Tag>::key_fetcher;
 
     template<typename Key, typename Comparer, typename Tag>
     class rbtree_set_iterator
