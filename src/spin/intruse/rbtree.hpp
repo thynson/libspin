@@ -671,6 +671,7 @@ namespace spin
         }
       }
 
+
       /**
        * @brief Get the boundry of a rbtree for specified key
        * @tparam Key the type indexed
@@ -892,6 +893,45 @@ namespace spin
         if (entry)
           insert(*entry, *this, p);
         return key;
+      }
+
+      static rbtree_node<void, void> *
+      find(rbtree_node<void, void> &entry, const Key &key, policy_backmost_t)
+      noexcept(is_comparer_noexcept)
+      {
+        auto *p = boundry(entry, key, key_fetcher,
+            [](const Key &lhs, const Key &rhs)
+            noexcept(is_comparer_noexcept) -> bool
+            { return !cmper(rhs, lhs); }).first;
+
+        if (cmper(key_fetcher(*p), key) != !cmper(key, key_fetcher(*p)))
+          return p;
+        else
+          return nullptr;
+      }
+
+      static rbtree_node<void, void> *
+      find(rbtree_node<void, void> &entry, const Key &key, policy_frontmost_t)
+      noexcept(is_comparer_noexcept)
+      {
+        auto *p = boundry(entry, key, key_fetcher, cmper).second;
+
+        if (cmper(key_fetcher(*p), key) != !cmper(key, key_fetcher(*p)))
+          return p;
+        else
+          return nullptr;
+      }
+
+      static rbtree_node<void, void> *
+      find(rbtree_node<void, void> &entry, const Key &key, policy_nearest_t)
+      noexcept(is_comparer_noexcept)
+      {
+        auto p = search(entry, key, key_fetcher, cmper);
+
+        if (p.first == p.second)
+          return p.first;
+        else
+          return nullptr;
       }
 
       /**
@@ -1384,103 +1424,199 @@ namespace spin
       const_reference back() const noexcept
       { return *rbegin(); }
 
-      iterator find(const Key &key) noexcept;
+      iterator find(const Key &key)
+      noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), key, policy_nearest); }
 
-      const_iterator find(const Key &key) const noexcept;
+      iterator find(const Key &key, policy_nearest_t p)
+      noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), key, p); }
 
-      iterator find(const_iterator hint, const Key &key) noexcept;
+      iterator find(const Key &key, policy_frontmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), key, p); }
 
-      const_iterator find(iterator hint, const Key &key) const noexcept;
+      iterator find(const Key &key, policy_backmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), key, p); }
+
+      iterator find(iterator hint, const Key &key)
+      noexcept(node_type::is_comparer_noexcept)
+      { return find(hint, key, policy_nearest); }
+
+      iterator find(iterator hint, const Key &key, policy_nearest_t p)
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto *result = node_type::find(*hint, key, p);
+        if (result == nullptr) return end();
+        else return iterator(result);
+      }
+
+      iterator find(iterator hint, const Key &key, policy_frontmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto *result = node_type::find(*hint, key, p);
+        if (result == nullptr) return end();
+        else return iterator(result);
+      }
+
+      iterator find(iterator hint, const Key &key, policy_backmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto *result = node_type::find(*hint, key, p);
+        if (result == nullptr) return end();
+        else return iterator(result);
+      }
+
+      const_iterator
+      find(const_iterator hint, const Key &key, policy_nearest_t p) const
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto *result = node_type::find(*hint, key, p);
+        if (result == nullptr) return end();
+        else return const_iterator(result);
+      }
+
+      const_iterator
+      find(const_iterator hint, const Key &key, policy_frontmost_t p) const
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto *result = node_type::find(*hint, key, p);
+        if (result == nullptr) return end();
+        else return const_iterator(result);
+      }
+
+      const_iterator
+      find(const_iterator hint, const Key &key, policy_backmost_t p) const
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto *result = node_type::find(*hint, key, p);
+        if (result == nullptr) return end();
+        else return const_iterator(result);
+      }
 
       std::pair<iterator, iterator>
-      equals_range(const Key &key) noexcept;
+      equals_range(const Key &key)
+      noexcept(node_type::is_comparer_noexcept)
+      { return equals_range(end(), key); }
 
       std::pair<iterator, iterator>
-      equals_range(iterator hint, const Key &key) noexcept;
+      equals_range(iterator hint, const Key &key)
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto l = lower_bound(hint, key);
+        auto u = lower_bound(l, key);
+        return std::make_pair(std::move(l), std::move(u));
+      }
 
       std::pair<const_iterator, const_iterator>
-      equals_range(const Key &key) const noexcept;
+      equals_range(const Key &key) const
+      noexcept(node_type::is_comparer_noexcept)
+      { return equals_range(end(), key); }
 
       std::pair<const_iterator, const_iterator>
-      equals_range(const_iterator hint, const Key &key) const noexcept;
+      equals_range(const_iterator hint, const Key &key) const
+      noexcept(node_type::is_comparer_noexcept)
+      {
+        auto l = lower_bound(hint, key);
+        auto u = lower_bound(l, key);
+        return std::make_pair(std::move(l), std::move(u));
+      }
 
       iterator lower_bound(const Key &key)
-        noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      noexcept(node_type::is_comparer_noexcept)
       { return lower_bound(end(), key); }
 
-      const_iterator lower_bound(const Key &key) const noexcept
+      const_iterator lower_bound(const Key &key) const
+      noexcept(node_type::is_comparer_noexcept)
       { return lower_bound(end(), key); }
 
       iterator lower_bound(iterator hint, const Key &key)
-        noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::lower_bound(*hint, key)); }
 
-      const_iterator lower_bound(const_iterator hint, const Key &key)
-        const noexcept
+      const_iterator lower_bound(const_iterator hint, const Key &key) const
+      noexcept(node_type::is_comparer_noexcept)
       { return const_iterator(node_type::lower_bound(*hint, key)); }
 
       iterator upper_bound(const Key &key)
-      noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      noexcept(node_type::is_comparer_noexcept)
       { return upper_bound(end(), key); }
 
-      const_iterator upper_bound(const Key &key) const noexcept
+      const_iterator upper_bound(const Key &key) const
+      noexcept(node_type::is_comparer_noexcept)
       { return upper_bound(end(), key); }
 
       iterator upper_bound(iterator hint, const Key &key)
-      noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::upper_bound(*hint, key)); }
 
-      const_iterator upper_bound(const_iterator hint, const Key &key)
-      const noexcept
+      const_iterator
+      upper_bound(const_iterator hint, const Key &key) const
+      noexcept(node_type::is_comparer_noexcept)
       { return const_iterator(node_type::upper_bound(*hint, key)); }
 
       // Modifier
 
-      iterator insert(node_type &val) noexcept
+      iterator insert(node_type &val)
+      noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, policy_unique); }
 
-      iterator insert(node_type &val, policy_unique_t p) noexcept
+      iterator insert(node_type &val, policy_unique_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
-      iterator insert(node_type &val, policy_override_t p) noexcept
+      iterator insert(node_type &val, policy_override_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
-      iterator insert(node_type &val, policy_frontmost_t p) noexcept
+      iterator insert(node_type &val, policy_frontmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
-      iterator insert(node_type &val, policy_backmost_t p) noexcept
+      iterator insert(node_type &val, policy_backmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
-      iterator insert(node_type &val, policy_nearest_t p) noexcept
+      iterator insert(node_type &val, policy_nearest_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
-      iterator insert(iterator hint, node_type &val) noexcept
+      iterator insert(iterator hint, node_type &val)
+      noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, policy_unique); }
 
-      iterator insert(iterator hint, node_type &val, policy_unique_t p) noexcept
+      iterator insert(iterator hint, node_type &val, policy_unique_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
-      iterator insert(iterator hint, node_type &val, policy_override_t p) noexcept
+      iterator insert(iterator hint, node_type &val, policy_override_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
-      iterator insert(iterator hint, node_type &val, policy_frontmost_t p) noexcept
+      iterator insert(iterator hint, node_type &val, policy_frontmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
-      iterator insert(iterator hint, node_type &val, policy_backmost_t p) noexcept
+      iterator insert(iterator hint, node_type &val, policy_backmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
-      iterator insert(iterator hint, node_type &val, policy_nearest_t p) noexcept
+      iterator insert(iterator hint, node_type &val, policy_nearest_t p)
+      noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
       template<typename InputIterator>
-      void insert(InputIterator b, InputIterator e) noexcept
+      void insert(InputIterator b, InputIterator e)
+      noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(*b++);
       }
 
       template<typename InputIterator>
-      void insert(InputIterator b, InputIterator e, iterator hint) noexcept
+      void insert(InputIterator b, InputIterator e, iterator hint)
+      noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++);
@@ -1488,7 +1624,8 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_unique_t p) noexcept
+          policy_unique_t p)
+      noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1496,7 +1633,8 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_override_t p) noexcept
+          policy_override_t p)
+      noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1504,7 +1642,8 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_frontmost_t p) noexcept
+          policy_frontmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1512,7 +1651,8 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_backmost_t p) noexcept
+          policy_backmost_t p)
+      noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1520,7 +1660,8 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_nearest_t p) noexcept
+          policy_nearest_t p)
+      noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1536,7 +1677,7 @@ namespace spin
       }
 
       void remove(Key &key)
-      noexcept(noexcept(std::declval<Comparer>()(key, key)))
+      noexcept(node_type::is_comparer_noexcept)
       {
         auto b = upper_bound(end(), key);
         auto e = lower_bound(b, key);
@@ -1569,11 +1710,12 @@ namespace spin
       const Comparer &key_comp() const noexcept
       { return node_type::cmper; }
 
+      const Comparer &key_comp() noexcept
+      { return node_type::cmper; }
+
     private:
       rbtree_node<void, void> m_container_node;
     };
-
-
   }
 }
 
