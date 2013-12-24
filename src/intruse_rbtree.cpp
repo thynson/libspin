@@ -749,5 +749,65 @@ namespace spin
       rhs.transfer_link(lhs);
       tmp.transfer_link(rhs);
     }
+
+    void rbtree_node<void, void>::insert(rbtree_node<void, void> *entry,
+        rbtree_node<void, void> *node) noexcept
+    {
+      if (entry->m_is_container)
+        entry->insert_root_node(node);
+      else if (!entry->m_has_l)
+        entry->insert_to_left(node);
+      else if (!entry->m_has_r)
+        entry->insert_to_right(node);
+      else
+        entry->next()->insert_to_left(node);
+    }
+
+    void rbtree_node<void, void>::insert_between(rbtree_node<void, void> *prev,
+        rbtree_node<void, void> *next, rbtree_node<void, void> *node) noexcept
+    {
+      if (prev == next)
+        insert(prev, node);
+      else if (prev->m_is_container)
+        next->insert_to_left(node);
+      else if (next->m_is_container)
+        prev->insert_to_right(node);
+      else if (prev->m_has_r)
+        next->insert_to_left(node);
+      else
+        prev->insert_to_right(node);
+    }
+
+    void rbtree_node<void, void>::insert_unique(rbtree_node<void, void> *prev,
+          rbtree_node<void, void> *next, rbtree_node<void, void> *node) noexcept
+    {
+      if (prev == next)
+      {
+        if (prev->m_is_container)
+          prev->insert_root_node(node);
+      }
+      else
+        insert_between(prev, next, node);
+    }
+
+    void rbtree_node<void, void>::insert_override(rbtree_node<void, void> *prev,
+        rbtree_node<void, void> *next, rbtree_node<void, void> *node) noexcept
+    {
+      if (prev == next)
+      {
+        if (prev->m_is_container)
+          prev->insert_root_node(node);
+        else
+        {
+          auto *l = prev->m_l, *r = prev->m_r;
+          prev->unlink();
+          insert_between(l, r, node);
+        }
+      }
+      else
+        insert_between(prev, next, node);
+
+    }
+
   }
 }
