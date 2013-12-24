@@ -20,6 +20,12 @@ ACLOCAL_AMFLAGS=-I build-aux/m4
 AM_CXXFLAGS=-Wall -Werror -Wextra -Wreorder
 AM_CPPFLAGS=-fvisibility=hidden -D__BUILD_SPIN__=1
 AM_LDFLAGS=-Xlinker --no-undefined -lpthread
+
+
+if !SPIN_ENABLE_DEBUG
+AM_CPPFLAGS+= -DNDEBUG
+endif
+
 libspin_ladir=$(includedir)/spin
 lib_LTLIBRARIES=libspin.la
 libspin_la_HEADERS=spin/time.hpp\

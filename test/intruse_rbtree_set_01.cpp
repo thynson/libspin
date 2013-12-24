@@ -97,5 +97,31 @@ int main()
     }
   }
 
+  cout << "Testing find()" << endl;
+
+  for (int k = 0; k < 100; k++)
+  {
+    if (k % 4 == 0)
+    {
+      assert(&*set.find(k, policy_backmost) == vn + k + 3);
+      assert(&*set.find(k, policy_frontmost) == vn + k);
+      assert(&*set.find(k, policy_nearest) < vn + k + 4);
+      assert(&*set.find(k, policy_nearest) >= vn + k);
+    }
+    else
+    {
+      assert(set.find(k, policy_backmost) == set.end());
+      assert(set.find(k, policy_frontmost) == set.end());
+      assert(set.find(k, policy_nearest) == set.end());
+    }
+  }
+
+  for (int i = 0; i < sizeof(vn)/sizeof(vn[0]); i++)
+    vn[i].update_key((i / 4) * 4, policy_nearest); //  0 0 0 0 4 4 4 4 8 8 8 8 ...
+
+  for (int k = 0; k < 25; k++)
+  {
+    cout << (&*set.find(4 * k, policy_nearest) - vn - 4 * k) << endl;
+  }
 }
 

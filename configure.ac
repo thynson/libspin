@@ -23,6 +23,11 @@ AC_CONFIG_HEADER([config.h])
 AM_INIT_AUTOMAKE([1.11 dist-xz])
 AC_CONFIG_MACRO_DIRS([m4])
 
+AC_ARG_ENABLE(debug, AS_HELP_STRING([--enable-debug],
+	[Build with debug support (default: disabled)]),
+	[spin_enable_debug=$enableval], [spin_enable_debug=no])
+AM_CONDITIONAL(SPIN_ENABLE_DEBUG, [ test "x$spin_enable_debug" != xno ])
+
 
 AC_PROG_CC([clang gcc])
 AC_PROG_CXX([clang++ g++])
