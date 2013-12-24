@@ -31,10 +31,10 @@ int main()
   rbtree_set<int> set;
 
   for (int i = 0; i < 100; i++)
-    set.insert(vn[i], rbtree_set<int>::back_policy());
+    set.insert(vn[i], policy_backmost);
 
   for (int i = 0; i < sizeof(vn)/sizeof(vn[0]); i++)
-    vn[i].update_key<rbtree_set<int>::back_policy>((i / 4) * 4); //  0 0 0 0 4 4 4 4 8 8 8 8 ...
+    vn[i].update_key((i / 4) * 4, policy_backmost); //  0 0 0 0 4 4 4 4 8 8 8 8 ...
 
   for (auto &i : set)
     std::cout << i.get_key() << ' ' << &i << std::endl;
