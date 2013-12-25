@@ -38,21 +38,23 @@ int main()
   vector<X> vx;
   std::mt19937 engine;
   vector<int> v;
-  for (int i = 0; i < 100000; i++)
+  for (int i = 0; i < 1000000; i++)
   {
     vx.emplace_back(engine());
     v.push_back(i);
   }
-  spin::intruse::rbtree<int> t;
+  spin::intruse::rbtree<int, X> t;
 
   auto last = t.end();
   for (auto i = vx.begin(); i != vx.end(); ++i)
-    last = t.insert(last, *i).first; // test with hint
+    last = t.insert(last, *i, spin::intruse::policy_nearest); // test with hint
 
   std::shuffle(v.begin(), v.end(), engine);
 
   for (auto i = v.begin(); i != v.end(); ++i)
+  {
     spin::intruse::rbtree_node<int>::unlink(vx[*i]);
+  }
 
   cout << t.front().get_key() << endl;
   cout << t.back().get_key() << endl;
