@@ -1694,6 +1694,49 @@ namespace spin
     private:
       rbtree_node<void> m_container_node;
     };
+
+    template<typename Index, typename Type, typename Tag, typename Comparer>
+    bool operator == (const rbtree<Index, Type, Tag, Comparer> &x,
+        const rbtree<Index, Type, Tag, Comparer> &y) noexcept
+    {
+      auto i = x.begin(), j = y.begin();
+      auto m = x.end(), n = y.end();
+
+      while (i != m && j != n && *i == *j)
+      { ++i; ++j; }
+
+      returnj i == m && j == n;
+    }
+
+    template<typename Index, typename Type, typename Tag, typename Comparer>
+    bool operator != (const rbtree<Index, Type, Tag, Comparer> &x,
+        const rbtree<Index, Type, Tag, Comparer> &y) noexcept
+    { return !(x == y); }
+
+    template<typename Index, typename Type, typename Tag, typename Comparer>
+    bool operator < (const rbtree<Index, Type, Tag, Comparer> &x,
+        const rbtree<Index, Type, Tag, Comparer> &y) noexcept
+    {
+      if (&x == &y) return false;
+      return std::lexicographical_compare(x.begin(), x.end(),
+          y.begin(), y.end());
+    }
+
+    template<typename Index, typename Type, typename Tag, typename Comparer>
+    bool operator <= (const rbtree<Index, Type, Tag, Comparer> &x,
+        const rbtree<Index, Type, Tag, Comparer> &y) noexcept
+    { return !(y < x); }
+
+    template<typename Index, typename Type, typename Tag, typename Comparer>
+    bool operator > (const rbtree<Index, Type, Tag, Comparer> &x,
+        const rbtree<Index, Type, Tag, Comparer> &y) noexcept
+    { return y < x; }
+
+    template<typename Index, typename Type, typename Tag, typename Comparer>
+    bool operator >= (const rbtree<Index, Type, Tag, Comparer> &x,
+        const rbtree<Index, Type, Tag, Comparer> &y) noexcept
+    { return !(y > x); }
+
   }
 }
 
