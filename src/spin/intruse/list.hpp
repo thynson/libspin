@@ -64,31 +64,8 @@ namespace spin
       }
 
       /** @breif Test a node is linked into a list */
-      static bool is_unlinked(const list_node &node) noexcept
-      { return node.m_next == nullptr && node.m_prev == nullptr; }
-
-      /** @brief Swap two node */
-      static void swap(list_node &lhs, list_node &rhs)
-        noexcept
-      {
-        if (&lhs == &rhs) return;
-
-        if (lhs.m_prev)
-        { lhs.m_prev->m_next = &rhs; }
-
-        if (lhs.m_next)
-        { lhs.m_next->m_prev = &rhs; }
-
-        if (rhs.m_prev)
-        { rhs.m_prev->m_next = &lhs; }
-
-        if (rhs.m_next)
-        { rhs.m_next->m_prev = &lhs; }
-
-        std::swap(lhs.m_prev, rhs.m_prev);
-        std::swap(lhs.m_next, rhs.m_next);
-      }
-
+      static bool is_linked(const list_node &node) noexcept
+      { return node.m_next != nullptr && node.m_prev != nullptr; }
 
       list_node() noexcept
         : m_prev(nullptr)
@@ -114,6 +91,29 @@ namespace spin
       }
 
     private:
+
+      /** @brief Swap two node */
+      static void swap(list_node &lhs, list_node &rhs)
+        noexcept
+      {
+        if (&lhs == &rhs) return;
+
+        if (lhs.m_prev)
+        { lhs.m_prev->m_next = &rhs; }
+
+        if (lhs.m_next)
+        { lhs.m_next->m_prev = &rhs; }
+
+        if (rhs.m_prev)
+        { rhs.m_prev->m_next = &lhs; }
+
+        if (rhs.m_next)
+        { rhs.m_next->m_prev = &lhs; }
+
+        std::swap(lhs.m_prev, rhs.m_prev);
+        std::swap(lhs.m_next, rhs.m_next);
+      }
+
 
       list_node(list_node *prev, list_node *next) noexcept
         : m_prev(prev)

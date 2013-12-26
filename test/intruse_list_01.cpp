@@ -100,11 +100,11 @@ int main()
 
   l.erase(l.begin());
   assert(l.front().i == 4);
-  assert(spin::intruse::list_node<X>::is_unlinked(e));
+  assert(!spin::intruse::list_node<X>::is_linked(e));
 
   l.erase(--l.end());
   assert(l.back().i == 2);
-  assert(spin::intruse::list_node<X>::is_unlinked(a));
+  assert(!spin::intruse::list_node<X>::is_linked(a));
 
   assert(std::is_sorted(l.rbegin(), l.rend(), std::less<X>()));
   assert(std::is_sorted(l.begin(), l.end(), std::greater<X>()));
@@ -112,12 +112,12 @@ int main()
 
   l.erase(++l.begin());
   assert(std::is_sorted(l.rbegin(), l.rend(), std::less<X>()));
-  assert(spin::intruse::list_node<X>::is_unlinked(c));
+  assert(!spin::intruse::list_node<X>::is_linked(c));
 
   l.clear();
   assert(l.empty());
-  assert(spin::intruse::list_node<X>::is_unlinked(b));
-  assert(spin::intruse::list_node<X>::is_unlinked(d));
+  assert(!spin::intruse::list_node<X>::is_linked(b));
+  assert(!spin::intruse::list_node<X>::is_linked(d));
 
 
   l.push_back(a);
