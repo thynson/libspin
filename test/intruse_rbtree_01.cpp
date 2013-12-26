@@ -50,13 +50,13 @@ int main()
     last = t.insert(last, *i, spin::intruse::policy_nearest); // test with hint
 
   std::shuffle(v.begin(), v.end(), engine);
+  cout << t.front().get_key() << endl;
+  cout << t.back().get_key() << endl;
 
   for (auto i = v.begin(); i != v.end(); ++i)
   {
     spin::intruse::rbtree_node<int>::unlink(vx[*i]);
   }
 
-  cout << t.front().get_key() << endl;
-  cout << t.back().get_key() << endl;
 }
 

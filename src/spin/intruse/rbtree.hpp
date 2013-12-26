@@ -37,7 +37,7 @@ namespace spin
     class policy_unique_t     {} policy_unique;
 
 
-    template<typename Index, typename Tag = void,
+    template<typename Index, typename Type, typename Tag = void,
       typename Comparer = less<Index>>
     class rbtree_node;
 
@@ -54,11 +54,11 @@ namespace spin
     class rbtree;
 
     /**
-     * @brief rbtree_node specialization for void key type, used as base class
+     * @brief rbtree_node specialization for void index type, used as base class
      * of all the other rbtree_node
      */
     template<>
-    class __SPIN_EXPORT__ rbtree_node<void>
+    class __SPIN_EXPORT__ rbtree_node<void, void>
     {
       template<typename Index, typename Tag, typename Comparer>
       friend class rbtree_node;
@@ -92,9 +92,6 @@ namespace spin
       rbtree_node(const rbtree_node &) = delete;
 
       rbtree_node &operator = (const rbtree_node &n) = delete;
-
-
-      // Status
 
       /** @brief Tricky way to test if a node is container node or root node */
       bool is_container_or_root() const noexcept
@@ -254,23 +251,72 @@ namespace spin
        */
       rbtree_node *unlink_checked() noexcept;
 
-      static void insert(rbtree_node *entry, rbtree_node *node) noexcept;
+      /**
+       * @brief Insert node as parent's chlid, left child or right chlid are
+       * all possible.
+       * @param parent The node want child
+       * @param node The node want to be inserted
+       */
+      static void insert(rbtree_node *parent, rbtree_node *node) noexcept;
 
+      /**
+       * @brief Insert a node between prev and #next
+       * @param prev The node will become predecessor of #node after insertion
+       * is done
+       * @param next The node will be successor of #node after insertion is
+       * done
+       * @param node The node want to be inserted
+       * @note User code should ensure that #prev is predecessor of #next
+       */
       static void insert_between(rbtree_node *prev,
           rbtree_node *next, rbtree_node *node) noexcept;
 
+      /**
+       * @brief Insert a node between prev and next in condition that no index
+       * will become duplicated
+       * @param prev The node will become predecessor of the node after insertion
+       * is done
+       * @param next The node will be successor of the node after insertion is
+       * done
+       * @param node The node want to be inserted
+       * @note User code should ensure that prev is predecessor of #next
+       */
       static void insert_unique(rbtree_node *prev,
           rbtree_node *next, rbtree_node *node) noexcept;
 
+      /**
+       * @brief Insert a node between prev and next and another node with same index
+       * will be overrided (unlinked from tree)
+       * @param prev The node will become predecessor of the node after insertion
+       * is done
+       * @param next The node will be successor of the node after insertion is
+       * done
+       * @param node The node want to be inserted
+       * @note User code should ensure that prev is predecessor of #next
+       */
       static void insert_override(rbtree_node *prev,
           rbtree_node *next, rbtree_node *node) noexcept;
 
+      /**
+       * @brief Search the position where specified index is suitable to be
+       * @tparam Index the Index type of rbtree
+       * @tparam IndexFetcher the type of indexfetcher functor
+       * @tparam Comparer the type of comparer functor
+       * @param entry A node in the tree which we want to search in
+       * @param index The index we want to search for
+       * @param indexfetcher Functor which cast rbtree_node to Index
+       * type
+       * @param comparer Functor which compares index
+       * @returns a pair of pointer to rbtree_node, if the pair is the same,
+       * then the index is equals to the index of node which the two pointer
+       * point to, else if the pair is not the same, the index is greater than
+       * the first of the pair and less than the second of the pair
+       */
       template<typename Index, typename IndexFetcher, typename Comparer>
-      static std::pair<rbtree_node*, rbtree_node*>
-      search(rbtree_node &entry, const Index &key, IndexFetcher && keyfetcher,
-          Comparer && comparer)
-        noexcept(noexcept(std::forward<IndexFetcher>(keyfetcher)(entry))
-            && noexcept(std::forward<Comparer>(comparer)(key, key)))
+      static std::pair<rbtree_node*, rbtree_node*> search(rbtree_node &entry,
+          const Index &index, IndexFetcher && indexfetcher, Comparer && comparer)
+          noexcept(noexcept(std::forward<IndexFetcher>(indexfetcher)(entry))
+            && noexcept(std::forward<Comparer>(comparer)(index, index)))
       {
         assert (entry.is_linked());
 
@@ -287,134 +333,13 @@ namespace spin
         auto cmp = [&] (rbtree_node *node) -> bool
         {
           return std::forward<Comparer>(comparer)(
-              std::forward<IndexFetcher>(keyfetcher)(*node), key);
+              std::forward<IndexFetcher>(indexfetcher)(*node), index);
         };
 
         auto rcmp = [&] (rbtree_node *node) -> bool
         {
-          return !std::forward<Comparer>(comparer)(key,
-              std::forward<IndexFetcher>(keyfetcher)(*node));
-        };
-
-        auto result = cmp(p);
-        auto rresult = rcmp(p);
-
-        if (result != rresult)
-          return std::make_pair(p, p);
-        else if (result)
-        {
-          while (!p->m_p->m_is_container)
-          {
-            if (p == p->m_p->m_l)
-            {
-              auto x = cmp(p->m_p);
-              auto y = rcmp(p->m_p);
-              if (x != y)
-                return std::make_pair(p->m_p, p->m_p);
-              else if (x)
-              {
-                p = p->m_p;
-                continue;
-              }
-            }
-
-            if (!p->m_r->m_is_container)
-            {
-              auto x = cmp(p->m_r);
-              auto y = rcmp(p->m_r);
-              if (x != y)
-                return std::make_pair(p->m_r, p->m_r);
-              if (x)
-                p = p->m_r;
-              else
-                break;
-            }
-            else
-              return std::make_pair(p, p->m_r);
-          }
-        }
-        else
-        {
-          while (!p->m_p->m_is_container)
-          {
-            if (p == p->m_p->m_r)
-            {
-              auto x = cmp(p->m_p);
-              auto y = rcmp(p->m_p);
-              if (x != y)
-                return std::make_pair(p->m_p, p->m_p);
-              else if (x)
-              {
-                p = p->m_p;
-                continue;
-              }
-            }
-
-            if (!p->m_l->m_is_container)
-            {
-              auto x = cmp(p->m_l);
-              auto y = rcmp(p->m_l);
-              if (x != y)
-                return std::make_pair(p->m_l, p->m_l);
-              if (x)
-                p = p->m_l;
-              else
-                break;
-            }
-            else
-              return std::make_pair(p->m_l, p);
-          }
-        }
-
-        for ( ; ; )
-        {
-          if (result)
-            if (p->m_has_r)
-              p = p->m_r;
-            else
-              return std::make_pair(p, p->m_r);
-          else
-            if (p->m_has_l)
-              p = p->m_l;
-            else
-              return std::make_pair(p->m_l, p);
-
-          result = cmp(p);
-          rresult = rcmp(p);
-          if (result != rresult)
-            return std::make_pair(p, p);
-        }
-      }
-
-      template<typename Index, typename IndexFetcher, typename Comparer>
-      static std::pair<const rbtree_node*, const rbtree_node*>
-      search(const rbtree_node &entry, const Index &key, IndexFetcher && keyfetcher,
-          Comparer && comparer)
-        noexcept(noexcept(std::forward<IndexFetcher>(keyfetcher)(entry))
-            && noexcept(std::forward<Comparer>(comparer)(key, key)))
-      {
-        assert (entry.is_linked());
-
-        auto *p = &entry;
-
-        if (p->m_is_container)
-        {
-          if (p->is_empty_container_node())
-            return std::make_pair(p, p);
-          else
-            p = p->get_root_node_from_container_node();
-        }
-
-        auto cmp = [&] (rbtree_node *node) -> bool
-        {
-          return std::forward<Comparer>(comparer)(
-              std::forward<IndexFetcher>(keyfetcher)(*node), key);
-        };
-
-        auto rcmp = [&] (rbtree_node *node) -> bool
-        {
-          return !std::forward<Comparer>(comparer)(key,
-              std::forward<IndexFetcher>(keyfetcher)(*node));
+          return !std::forward<Comparer>(comparer)(index,
+              std::forward<IndexFetcher>(indexfetcher)(*node));
         };
 
         auto result = cmp(p);
@@ -508,23 +433,158 @@ namespace spin
       }
 
       /**
-       * @brief Get the boundry of a rbtree for specified key
+       * @brief Search the position where specified index is suitable to be
+       * @tparam Index the Index type of rbtree
+       * @tparam IndexFetcher the type of indexfetcher functor
+       * @tparam Comparer the type of comparer functor
+       * @param entry A node in the tree which we want to search in
+       * @param index The index we want to search for
+       * @param indexfetcher Functor which cast rbtree_node to Index
+       * type
+       * @param comparer Functor which compares index
+       * @returns a pair of pointer to rbtree_node, if the pair is the same,
+       * then the index is equals to the index of node which the two pointer
+       * point to, else if the pair is not the same, the index is greater than
+       * the first of the pair and less than the second of the pair
+       */
+      template<typename Index, typename IndexFetcher, typename Comparer>
+      static std::pair<const rbtree_node*, const rbtree_node*> search(
+          const rbtree_node &entry, const Index &index,
+          IndexFetcher && indexfetcher, Comparer && comparer)
+          noexcept(noexcept(std::forward<IndexFetcher>(indexfetcher)(entry))
+            && noexcept(std::forward<Comparer>(comparer)(index, index)))
+      {
+        assert (entry.is_linked());
+
+        auto *p = &entry;
+
+        if (p->m_is_container)
+        {
+          if (p->is_empty_container_node())
+            return std::make_pair(p, p);
+          else
+            p = p->get_root_node_from_container_node();
+        }
+
+        auto cmp = [&] (rbtree_node *node) -> bool
+        {
+          return std::forward<Comparer>(comparer)(
+              std::forward<IndexFetcher>(indexfetcher)(*node), index);
+        };
+
+        auto rcmp = [&] (rbtree_node *node) -> bool
+        {
+          return !std::forward<Comparer>(comparer)(index,
+              std::forward<IndexFetcher>(indexfetcher)(*node));
+        };
+
+        auto result = cmp(p);
+        auto rresult = rcmp(p);
+
+        if (result != rresult)
+          return std::make_pair(p, p);
+        else if (result)
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_l)
+            {
+              auto x = cmp(p->m_p);
+              auto y = rcmp(p->m_p);
+              if (x != y)
+                return std::make_pair(p->m_p, p->m_p);
+              else if (x)
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_r->m_is_container)
+            {
+              auto x = cmp(p->m_r);
+              auto y = rcmp(p->m_r);
+              if (x != y)
+                return std::make_pair(p->m_r, p->m_r);
+              if (x)
+                p = p->m_r;
+              else
+                break;
+            }
+            else
+              return std::make_pair(p, p->m_r);
+          }
+        }
+        else
+        {
+          while (!p->m_p->m_is_container)
+          {
+            if (p == p->m_p->m_r)
+            {
+              auto x = cmp(p->m_p);
+              auto y = rcmp(p->m_p);
+              if (x != y)
+                return std::make_pair(p->m_p, p->m_p);
+              else if (x)
+              {
+                p = p->m_p;
+                continue;
+              }
+            }
+
+            if (!p->m_l->m_is_container)
+            {
+              auto x = cmp(p->m_l);
+              auto y = rcmp(p->m_l);
+              if (x != y)
+                return std::make_pair(p->m_l, p->m_l);
+              if (x)
+                p = p->m_l;
+              else
+                break;
+            }
+            else
+              return std::make_pair(p->m_l, p);
+          }
+        }
+
+        for ( ; ; )
+        {
+          if (result)
+            if (p->m_has_r)
+              p = p->m_r;
+            else
+              return std::make_pair(p, p->m_r);
+          else
+            if (p->m_has_l)
+              p = p->m_l;
+            else
+              return std::make_pair(p->m_l, p);
+
+          result = cmp(p);
+          rresult = rcmp(p);
+          if (result != rresult)
+            return std::make_pair(p, p);
+        }
+      }
+
+      /**
+       * @brief Get the boundry of a rbtree for specified index
        * @tparam Index the type indexed
        * @tparam IndexFetcher type whose instances are callable that cast an
        * rbtree_node<void> reference to Index type
        * @tparam Comparer type whose instances are callable that compare two
        * instances of Index type
        * @param entry The entry node of tree
-       * @param key The specified key depends on which the boundry is find
+       * @param index The specified index depends on which the boundry is find
        * @param caster An instance of caster
        * @param comparer An instance of Comparer
        */
       template<typename Index, typename IndexFetcher, typename Comparer>
-      static std::pair<rbtree_node*, rbtree_node*>
-      boundry(rbtree_node &entry, const Index &key, IndexFetcher && keyfetcher,
-          Comparer && comparer)
-        noexcept(noexcept(std::forward<IndexFetcher>(keyfetcher)(entry))
-            && noexcept(std::forward<Comparer>(comparer)(key, key)))
+      static std::pair<rbtree_node*, rbtree_node*> boundry(rbtree_node &entry,
+          const Index &index, IndexFetcher && indexfetcher, Comparer && comparer)
+        noexcept(noexcept(std::forward<IndexFetcher>(indexfetcher)(entry))
+            && noexcept(std::forward<Comparer>(comparer)(index, index)))
       {
         assert (entry.is_linked());
 
@@ -541,7 +601,7 @@ namespace spin
         auto cmper = [&] (rbtree_node *node) -> bool
         {
           return std::forward<Comparer>(comparer)(
-              std::forward<IndexFetcher>(keyfetcher)(*node), key);
+              std::forward<IndexFetcher>(indexfetcher)(*node), index);
         };
         bool hint_result = cmper(p);
 
@@ -620,23 +680,23 @@ namespace spin
       }
 
       /**
-       * @brief Get the boundry of a rbtree for specified key
+       * @brief Get the boundry of a rbtree for specified index
        * @tparam Index the type indexed
        * @tparam IndexFetcher type whose instances are callable that cast an
        * rbtree_node<void> reference to Index type
        * @tparam Comparer type whose instances are callable that compare two
        * instances of Index type
        * @param entry The entry node of tree
-       * @param key The specified key depends on which the boundry is find
+       * @param index The specified index depends on which the boundry is find
        * @param caster An instance of caster
        * @param comparer An instance of Comparer
        */
       template<typename Index, typename IndexFetcher, typename Comparer>
-      static std::pair<const rbtree_node*, const rbtree_node*>
-      boundry(const rbtree_node &entry, const Index &key, IndexFetcher && keyfetcher,
+      static std::pair<const rbtree_node*, const rbtree_node*> boundry(
+          const rbtree_node &entry, const Index &index, IndexFetcher && indexfetcher,
           Comparer && comparer)
-        noexcept(noexcept(std::forward<IndexFetcher>(keyfetcher)(entry))
-            && noexcept(std::forward<Comparer>(comparer)(key, key)))
+        noexcept(noexcept(std::forward<IndexFetcher>(indexfetcher)(entry))
+            && noexcept(std::forward<Comparer>(comparer)(index, index)))
       {
         assert (entry.is_linked());
 
@@ -653,7 +713,7 @@ namespace spin
         auto cmper = [&] (rbtree_node *node) -> bool
         {
           return std::forward<Comparer>(comparer)(
-              std::forward<IndexFetcher>(keyfetcher)(*node), key);
+              std::forward<IndexFetcher>(indexfetcher)(*node), index);
         };
 
         bool hint_result = cmper(p);
@@ -751,8 +811,7 @@ namespace spin
        * privately
        */
       static void __SPIN_INTERNAL__
-      swap_nodes(rbtree_node &lhs, rbtree_node &rhs)
-      noexcept;
+      swap_nodes(rbtree_node &lhs, rbtree_node &rhs) noexcept;
 
       rbtree_node *m_p;
       rbtree_node *m_l;
@@ -763,114 +822,157 @@ namespace spin
       bool m_is_container;
     };
 
-    template<typename Index, typename Tag, typename Comparer>
-    class rbtree_node : private rbtree_node<void>
+    template<typename Index, typename Type, typename Tag, typename Comparer>
+    class rbtree_node : private rbtree_node<void, void>
     {
-
-      template<typename _Index, typename _Type, typename _Tag, typename _Comparer>
-      friend class rbtree;
-
-      template<typename _Index, typename _Type, typename _Tag, typename _Comparer>
-      friend class rbtree_iterator;
-
-      template<typename _Index, typename _Type, typename _Tag, typename _Comparer>
-      friend class rbtree_const_iterator;
-
+      friend class rbtree<Index, Type, Tag, Comparer>;
+      friend class rbtree_iterator<Index, Type, Tag, Comparer>;
+      friend class rbtree_const_iterator<Index, Type, Tag, Comparer>;
     public:
 
+      /** @brief whether instance Comparer would throw exception when comparing index*/
       constexpr static bool is_comparer_noexcept
         = noexcept(std::declval<Comparer>()(std::declval<Index>(), std::declval<Index>()));
 
-      /** @brief get key of this node */
-      const Index &get_key() const noexcept
-      { return m_key; }
+      /** @brief get index  of this node */
+      static const Index &get_index(rbtree_node &node) const noexcept
+      { return node.m_index; }
 
-      static Index update_key(rbtree_node &node, Index key)
-        noexcept(noexcept(std::swap(key, key)))
-      { update_key(std::move(key), policy_unique); }
+      /** @brief Update index of this node */
+      static Index update_index(rbtree_node &node, Index index)
+          noexcept(noexcept(std::swap(index, index)))
+      { update_index(std::move(index), policy_unique); }
 
-      static Index update_key(rbtree_node &node, Index key, policy_unique_t p)
-        noexcept(noexcept(std::swap(key, key)))
+      /** @brief Update index of this node */
+      static Index update_index(rbtree_node &node, Index index, policy_unique_t p)
+          noexcept(noexcept(std::swap(index, index)))
       {
         auto *entry = node.unlink_checked();
-        std::swap(key, node.m_key);
+        std::swap(index, node.m_index);
         if (entry)
           insert(*entry, &node, p);
-        return key;
+        return index;
       }
 
-      static Index update_key(rbtree_node &node, Index key, policy_override_t p)
-        noexcept(noexcept(std::swap(key, key)))
+      static Index update_index(rbtree_node &node, Index index, policy_override_t p)
+          noexcept(noexcept(std::swap(index, index)))
       {
         auto *entry = node.unlink_checked();
-        std::swap(key, node.m_key);
+        std::swap(index, node.m_index);
         if (entry)
           insert(*entry, &node, p);
-        return key;
+        return index;
       }
 
-      static Index update_key(rbtree_node &node, Index key, policy_frontmost_t p)
-        noexcept(noexcept(std::swap(key, key)))
+      static Index update_index(rbtree_node &node, Index index, policy_frontmost_t p)
+          noexcept(noexcept(std::swap(index, index)))
       {
         auto *entry = node.unlink_checked();
-        std::swap(key, node.m_key);
+        std::swap(index, node.m_index);
         if (entry)
           insert(*entry, &node, p);
-        return key;
+        return index;
       }
 
-      static Index update_key(rbtree_node &node, Index key, policy_backmost_t p)
-        noexcept(noexcept(std::swap(key, key)))
+      static Index update_index(rbtree_node &node, Index index, policy_backmost_t p)
+          noexcept(noexcept(std::swap(index, index)))
       {
         auto *entry = node.unlink_checked();
-        std::swap(key, node.m_key);
+        std::swap(index, node.m_index);
         if (entry)
           insert(*entry, &node, p);
-        return key;
+        return index;
       }
 
-      static Index update_key(rbtree_node &node, Index key, policy_nearest_t p)
-        noexcept(noexcept(std::swap(key, key)))
+      static Index update_index(rbtree_node &node, Index index, policy_nearest_t p)
+          noexcept(noexcept(std::swap(index, index)))
       {
         auto *entry = node.unlink_checked();
-        std::swap(key, node.m_key);
+        std::swap(index, node.m_index);
         if (entry)
           insert(*entry, &node, p);
-        return key;
+        return index;
       }
 
-      static rbtree_node<void> *
-      find(rbtree_node<void> &entry, const Index &key, policy_backmost_t)
-      noexcept(is_comparer_noexcept)
+
+      /**
+       * @brief Default constructor, forwarding all arguments to delegated index
+       * type
+       */
+      template<typename ...Args>
+      rbtree_node(Args && ...args) noexcept(noexcept(Index(std::forward<Args>(args)...)))
+        : rbtree_node<void>()
+        , m_index(std::forward<Args>(args)...)
+      { }
+
+      /** @brief Default destructor */
+      ~rbtree_node() noexcept(noexcept(std::declval<Index>().~Index())) = default;
+
+      /** @brief Move constructor */
+      rbtree_node(rbtree_node &&n) noexcept(noexcept(Index(std::move(n.m_index))))
+        : rbtree_node<void>(std::move(n))
+        , m_index(std::move(n.m_index))
+      { }
+
+      /** @brief Move assignment */
+      rbtree_node & operator = (rbtree_node &&n)
+          noexcept(noexcept(std::swap(n.m_index, n.m_index)))
       {
-        auto *p = boundry(entry, key, key_fetcher,
+        std::swap(m_index, n.m_index);
+        swap(*this, n);
+        return *this;
+      }
+
+      rbtree_node(const rbtree_node &) = delete;
+      rbtree_node operator = (const rbtree_node &) = delete;
+
+      friend bool operator < (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(is_comparer_noexcept)
+      { return cmper(lhs.m_index, rhs.m_index); }
+
+      friend bool operator > (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(is_comparer_noexcept)
+      { return cmper(rhs.m_index, lhs.m_index); }
+
+      friend bool operator <= (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(is_comparer_noexcept)
+      { return !cmper(rhs.m_index, lhs.m_index); }
+
+      friend bool operator >= (const rbtree_node &lhs, const rbtree_node &rhs)
+        noexcept(is_comparer_noexcept)
+      { return !cmper(rhs.m_index, lhs.m_index); }
+
+    private:
+
+      static rbtree_node<void> *find(rbtree_node<void> &entry,
+          const Index &index, policy_backmost_t) noexcept(is_comparer_noexcept)
+      {
+        auto *p = boundry(entry, index, index_fetcher,
             [](const Index &lhs, const Index &rhs)
             noexcept(is_comparer_noexcept) -> bool
             { return !cmper(rhs, lhs); }).first;
 
-        if (cmper(key_fetcher(*p), key) != !cmper(key, key_fetcher(*p)))
+        if (cmper(index_fetcher(*p), index) != !cmper(index, index_fetcher(*p)))
           return p;
         else
           return nullptr;
       }
 
-      static rbtree_node<void> *
-      find(rbtree_node<void> &entry, const Index &key, policy_frontmost_t)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *find(rbtree_node<void> &entry,
+          const Index &index, policy_frontmost_t) noexcept(is_comparer_noexcept)
       {
-        auto *p = boundry(entry, key, key_fetcher, cmper).second;
+        auto *p = boundry(entry, index, index_fetcher, cmper).second;
 
-        if (cmper(key_fetcher(*p), key) != !cmper(key, key_fetcher(*p)))
+        if (cmper(index_fetcher(*p), index) != !cmper(index, index_fetcher(*p)))
           return p;
         else
           return nullptr;
       }
 
-      static rbtree_node<void> *
-      find(rbtree_node<void> &entry, const Index &key, policy_nearest_t)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *find(rbtree_node<void> &entry,
+          const Index &index, policy_nearest_t) noexcept(is_comparer_noexcept)
       {
-        auto p = search(entry, key, key_fetcher, cmper);
+        auto p = search(entry, index, index_fetcher, cmper);
 
         if (p.first == p.second)
           return p.first;
@@ -887,53 +989,49 @@ namespace spin
       { node.rbtree_node<void>::unlink(); }
 
       /**
-       * @brief Get the first node in the tree whose key is not less than
+       * @brief Get the first node in the tree whose index is not less than
        * specified value
        * @param entry Entry node for search
-       * @param key The specified value for searching the lower boundry
+       * @param index The specified value for searching the lower boundry
        */
-      static rbtree_node<void> *
-      lower_bound(rbtree_node<void> &entry, const Index &key)
-      noexcept(is_comparer_noexcept)
-      { return boundry(entry, key, key_fetcher, cmper).second; }
+      static rbtree_node<void> *lower_bound(rbtree_node<void> &entry,
+          const Index &index) noexcept(is_comparer_noexcept)
+      { return boundry(entry, index, index_fetcher, cmper).second; }
 
       /**
-       * @brief Get the first node in the tree whose key is not less than
+       * @brief Get the first node in the tree whose index is not less than
        * specified value
        * @param entry Entry node for search
-       * @param key The specified value for searching the lower boundry
+       * @param index The specified value for searching the lower boundry
        */
-      static const rbtree_node<void> *
-      lower_bound(const rbtree_node<void> &entry, const Index &key)
-      noexcept(is_comparer_noexcept)
-      { return boundry(entry, key, key_fetcher, cmper).second; }
+      static const rbtree_node<void> *lower_bound(const rbtree_node<void> &entry,
+          const Index &index) noexcept(is_comparer_noexcept)
+      { return boundry(entry, index, index_fetcher, cmper).second; }
 
       /**
-       * @brief Get the first node in the tree whose key is greater than
+       * @brief Get the first node in the tree whose index is greater than
        * specified value
        * @param entry Entry node for search
-       * @param key The specified value for searching the upper boundry
+       * @param index The specified value for searching the upper boundry
        */
-      static rbtree_node<void> *
-      upper_bound(rbtree_node<void> &entry, const Index &key)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *upper_bound(rbtree_node<void> &entry,
+          const Index &index) noexcept(is_comparer_noexcept)
       {
-        return boundry(entry, key, key_fetcher,
+        return boundry(entry, index, index_fetcher,
             [] (const Index &lhs, const Index &rhs) noexcept(is_comparer_noexcept)
             { return !cmper(rhs, lhs); }).second;
       }
 
       /**
-       * @brief Get the first node in the tree whose key is greater than
+       * @brief Get the first node in the tree whose index is greater than
        * specified value
        * @param entry Entry node for search
-       * @param key The specified value for searching the upper boundry
+       * @param index The specified value for searching the upper boundry
        */
-      static const rbtree_node<void> *
-      upper_bound(const rbtree_node<void> &entry, const Index &key)
-      noexcept(is_comparer_noexcept)
+      static const rbtree_node<void> *upper_bound(const rbtree_node<void> &entry,
+          const Index &index) noexcept(is_comparer_noexcept)
       {
-        return boundry(entry, key, key_fetcher,
+        return boundry(entry, index, index_fetcher,
             [] (const Index &lhs, const Index &rhs) noexcept(is_comparer_noexcept)
             { return !cmper(rhs, lhs); }).second;
       }
@@ -948,11 +1046,10 @@ namespace spin
        * tree; and if duplicate is permitted, the node is insert after any
        * node duplicate with this node
        */
-      static rbtree_node<void> *
-      insert(rbtree_node<void> &entry, rbtree_node &node, policy_backmost_t)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *insert(rbtree_node<void> &entry,
+          rbtree_node &node, policy_backmost_t) noexcept(is_comparer_noexcept)
       {
-        auto p = boundry(entry, node.get_key(), key_fetcher,
+        auto p = boundry(entry, node.get_index(), index_fetcher,
             [] (const Index &lhs, const Index &rhs) noexcept(is_comparer_noexcept)
             { return !cmper(rhs, lhs); });
         insert_between(p.first, p.second, &node);
@@ -968,11 +1065,10 @@ namespace spin
        * tree; and if duplicate is permitted, the node is insert before any
        * node duplicate with this node
        */
-      static rbtree_node<void> *
-      insert(rbtree_node<void> &entry, rbtree_node &node, policy_frontmost_t)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *insert(rbtree_node<void> &entry,
+          rbtree_node &node, policy_frontmost_t) noexcept(is_comparer_noexcept)
       {
-        auto p = boundry(entry, node.get_key(), key_fetcher, cmper);
+        auto p = boundry(entry, node.get_index(), index_fetcher, cmper);
         insert_between(p.first, p.second, &node);
         return &node;
       }
@@ -986,11 +1082,10 @@ namespace spin
        * tree; and if duplicate is permitted, the node is insert with least
        * searching being done
        */
-      static rbtree_node<void> *
-      insert(rbtree_node<void> &entry, rbtree_node &node, policy_nearest_t)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *insert(rbtree_node<void> &entry,
+          rbtree_node &node, policy_nearest_t) noexcept(is_comparer_noexcept)
       {
-        auto p = search(entry, node.get_key(), key_fetcher, cmper);
+        auto p = search(entry, node.get_index(), index_fetcher, cmper);
         insert_between(p.first, p.second, &node);
         return &node;
       }
@@ -1003,11 +1098,10 @@ namespace spin
        * @note User is responsible to ensure hint_node is already attached to
        * a tree; and duplicated node is not allow
        */
-      static rbtree_node<void> *
-      insert(rbtree_node<void> &entry, rbtree_node &node, policy_unique_t)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *insert(rbtree_node<void> &entry,
+          rbtree_node &node, policy_unique_t) noexcept(is_comparer_noexcept)
       {
-        auto p = search(entry, node.get_key(), key_fetcher, cmper);
+        auto p = search(entry, node.get_index(), index_fetcher, cmper);
         insert_unique(p.first, p.second, &node);
         return node.is_linked() ? &node : p.first;
       }
@@ -1020,65 +1114,13 @@ namespace spin
        * @note User is responsible to ensure hint_node is already attached to
        * a tree; and duplicated node will be replaced by this node
        */
-      static rbtree_node<void> *
-      insert(rbtree_node<void> &entry, rbtree_node &node, policy_override_t)
-      noexcept(is_comparer_noexcept)
+      static rbtree_node<void> *insert(rbtree_node<void> &entry,
+          rbtree_node &node, policy_override_t) noexcept(is_comparer_noexcept)
       {
-        auto p = search(entry, node.get_key(), key_fetcher, cmper);
+        auto p = search(entry, node.get_index(), index_fetcher, cmper);
         insert_override(p.first, p.second, &node);
         return &node;
       }
-
-      /**
-       * @brief Default constructor, forwarding all arguments to delegated key
-       * type
-       */
-      template<typename ...Args>
-      rbtree_node(Args && ...args)
-        noexcept(noexcept(Index(std::forward<Args>(args)...)))
-        : rbtree_node<void>()
-        , m_key(std::forward<Args>(args)...)
-      { }
-
-      /** @brief Default destructor */
-      ~rbtree_node() noexcept(noexcept(std::declval<Index>().~Index())) = default;
-
-      /** @brief Move constructor */
-      rbtree_node(rbtree_node &&n)
-        noexcept(noexcept(Index(std::declval<Index>())))
-        : rbtree_node<void>(std::move(n))
-        , m_key(std::move(n.m_key))
-      { }
-
-      /** @brief Move assignment */
-      rbtree_node &operator = (rbtree_node &&n)
-        noexcept(noexcept(std::swap(n.m_key, n.m_key)))
-      {
-        std::swap(m_key, n.m_key);
-        swap(*this, n);
-        return *this;
-      }
-
-      rbtree_node(const rbtree_node &) = delete;
-      rbtree_node operator = (const rbtree_node &) = delete;
-
-      friend bool operator < (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(is_comparer_noexcept)
-      { return cmper(lhs.m_key, rhs.m_key); }
-
-      friend bool operator > (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(is_comparer_noexcept)
-      { return cmper(rhs.m_key, lhs.m_key); }
-
-      friend bool operator <= (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(is_comparer_noexcept)
-      { return !cmper(rhs.m_key, lhs.m_key); }
-
-      friend bool operator >= (const rbtree_node &lhs, const rbtree_node &rhs)
-        noexcept(is_comparer_noexcept)
-      { return !cmper(rhs.m_key, lhs.m_key); }
-
-    private:
 
       static rbtree_node *internal_cast(rbtree_node<void> *x) noexcept
       { return static_cast<rbtree_node *>(x); }
@@ -1086,24 +1128,24 @@ namespace spin
       static const rbtree_node *internal_cast(const rbtree_node<void> *x) noexcept
       { return static_cast<const rbtree_node *>(x); }
 
-      static class key_fetcher_t
+      static class index_fetcher_t
       {
       public:
         const Index &operator () (const rbtree_node<void> &x) const noexcept
-        { return internal_cast(&x)->get_key(); }
-      } key_fetcher;
+        { return internal_cast(&x)->get_index(); }
+      } index_fetcher;
 
       static Comparer cmper;
 
-      Index m_key;
+      Index m_index;
     };
 
     template<typename Index, typename Tag, typename Comparer>
     Comparer rbtree_node<Index, Tag, Comparer>::cmper;
 
     template<typename Index, typename Tag, typename Comparer>
-    typename rbtree_node<Index, Tag, Comparer>::key_fetcher_t
-    rbtree_node<Index, Tag, Comparer>::key_fetcher;
+    typename rbtree_node<Index, Tag, Comparer>::index_fetcher_t
+    rbtree_node<Index, Tag, Comparer>::index_fetcher;
 
     template<typename Index, typename Type, typename Tag, typename Comparer>
     class rbtree_iterator
@@ -1374,191 +1416,182 @@ namespace spin
       const_reference back() const noexcept
       { return *rbegin(); }
 
-      iterator find(const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
-      { return find(end(), key, policy_nearest); }
+      iterator find(const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), index, policy_nearest); }
 
-      iterator find(const Index &key, policy_nearest_t p)
-      noexcept(node_type::is_comparer_noexcept)
-      { return find(end(), key, p); }
+      iterator find(const Index &index, policy_nearest_t p)
+          noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), index, p); }
 
-      iterator find(const Index &key, policy_frontmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
-      { return find(end(), key, p); }
+      iterator find(const Index &index, policy_frontmost_t p)
+          noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), index, p); }
 
-      iterator find(const Index &key, policy_backmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
-      { return find(end(), key, p); }
+      iterator find(const Index &index, policy_backmost_t p)
+          noexcept(node_type::is_comparer_noexcept)
+      { return find(end(), index, p); }
 
-      iterator find(iterator hint, const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
-      { return find(hint, key, policy_nearest); }
+      iterator find(iterator hint, const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
+      { return find(hint, index, policy_nearest); }
 
-      iterator find(iterator hint, const Index &key, policy_nearest_t p)
-      noexcept(node_type::is_comparer_noexcept)
+      iterator find(iterator hint, const Index &index, policy_nearest_t p)
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, key, p);
+        auto *result = node_type::find(*hint, index, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
 
-      iterator find(iterator hint, const Index &key, policy_frontmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+      iterator find(iterator hint, const Index &index, policy_frontmost_t p)
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, key, p);
+        auto *result = node_type::find(*hint, index, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
 
-      iterator find(iterator hint, const Index &key, policy_backmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+      iterator find(iterator hint, const Index &index, policy_backmost_t p)
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, key, p);
+        auto *result = node_type::find(*hint, index, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
 
-      const_iterator
-      find(const_iterator hint, const Index &key, policy_nearest_t p) const
-      noexcept(node_type::is_comparer_noexcept)
+      const_iterator find(const_iterator hint, const Index &index, policy_nearest_t p) const
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, key, p);
+        auto *result = node_type::find(*hint, index, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
 
-      const_iterator
-      find(const_iterator hint, const Index &key, policy_frontmost_t p) const
-      noexcept(node_type::is_comparer_noexcept)
+      const_iterator find(const_iterator hint, const Index &index, policy_frontmost_t p) const
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, key, p);
+        auto *result = node_type::find(*hint, index, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
 
-      const_iterator
-      find(const_iterator hint, const Index &key, policy_backmost_t p) const
-      noexcept(node_type::is_comparer_noexcept)
+      const_iterator find(const_iterator hint, const Index &index, policy_backmost_t p) const
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, key, p);
+        auto *result = node_type::find(*hint, index, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
 
-      std::pair<iterator, iterator>
-      equals_range(const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
-      { return equals_range(end(), key); }
+      std::pair<iterator, iterator> equals_range(const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
+      { return equals_range(end(), index); }
 
-      std::pair<iterator, iterator>
-      equals_range(iterator hint, const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
+      std::pair<iterator, iterator> equals_range(iterator hint, const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto l = lower_bound(hint, key);
-        auto u = lower_bound(l, key);
+        auto l = lower_bound(hint, index);
+        auto u = lower_bound(l, index);
         return std::make_pair(std::move(l), std::move(u));
       }
 
-      std::pair<const_iterator, const_iterator>
-      equals_range(const Index &key) const
-      noexcept(node_type::is_comparer_noexcept)
-      { return equals_range(end(), key); }
+      std::pair<const_iterator, const_iterator> equals_range(const Index &index) const
+          noexcept(node_type::is_comparer_noexcept)
+      { return equals_range(end(), index); }
 
-      std::pair<const_iterator, const_iterator>
-      equals_range(const_iterator hint, const Index &key) const
-      noexcept(node_type::is_comparer_noexcept)
+      std::pair<const_iterator, const_iterator> equals_range(const_iterator hint, const Index &index) const
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto l = lower_bound(hint, key);
-        auto u = lower_bound(l, key);
+        auto l = lower_bound(hint, index);
+        auto u = lower_bound(l, index);
         return std::make_pair(std::move(l), std::move(u));
       }
 
-      iterator lower_bound(const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
-      { return lower_bound(end(), key); }
+      iterator lower_bound(const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
+      { return lower_bound(end(), index); }
 
-      const_iterator lower_bound(const Index &key) const
-      noexcept(node_type::is_comparer_noexcept)
-      { return lower_bound(end(), key); }
+      const_iterator lower_bound(const Index &index) const
+          noexcept(node_type::is_comparer_noexcept)
+      { return lower_bound(end(), index); }
 
-      iterator lower_bound(iterator hint, const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::lower_bound(*hint, key)); }
+      iterator lower_bound(iterator hint, const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
+      { return iterator(node_type::lower_bound(*hint, index)); }
 
-      const_iterator lower_bound(const_iterator hint, const Index &key) const
-      noexcept(node_type::is_comparer_noexcept)
-      { return const_iterator(node_type::lower_bound(*hint, key)); }
+      const_iterator lower_bound(const_iterator hint, const Index &index) const
+          noexcept(node_type::is_comparer_noexcept)
+      { return const_iterator(node_type::lower_bound(*hint, index)); }
 
-      iterator upper_bound(const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
-      { return upper_bound(end(), key); }
+      iterator upper_bound(const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
+      { return upper_bound(end(), index); }
 
-      const_iterator upper_bound(const Index &key) const
-      noexcept(node_type::is_comparer_noexcept)
-      { return upper_bound(end(), key); }
+      const_iterator upper_bound(const Index &index) const
+          noexcept(node_type::is_comparer_noexcept)
+      { return upper_bound(end(), index); }
 
-      iterator upper_bound(iterator hint, const Index &key)
-      noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::upper_bound(*hint, key)); }
+      iterator upper_bound(iterator hint, const Index &index)
+          noexcept(node_type::is_comparer_noexcept)
+      { return iterator(node_type::upper_bound(*hint, index)); }
 
-      const_iterator
-      upper_bound(const_iterator hint, const Index &key) const
-      noexcept(node_type::is_comparer_noexcept)
-      { return const_iterator(node_type::upper_bound(*hint, key)); }
+      const_iterator upper_bound(const_iterator hint, const Index &index) const
+          noexcept(node_type::is_comparer_noexcept)
+      { return const_iterator(node_type::upper_bound(*hint, index)); }
 
       // Modifier
 
-      iterator insert(node_type &val)
-      noexcept(node_type::is_comparer_noexcept)
+      iterator insert(node_type &val) noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, policy_unique); }
 
       iterator insert(node_type &val, policy_unique_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
       iterator insert(node_type &val, policy_override_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
       iterator insert(node_type &val, policy_frontmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
       iterator insert(node_type &val, policy_backmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
       iterator insert(node_type &val, policy_nearest_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, p); }
 
       iterator insert(iterator hint, node_type &val)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return insert(end(), val, policy_unique); }
 
       iterator insert(iterator hint, node_type &val, policy_unique_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
       iterator insert(iterator hint, node_type &val, policy_override_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
       iterator insert(iterator hint, node_type &val, policy_frontmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
       iterator insert(iterator hint, node_type &val, policy_backmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
       iterator insert(iterator hint, node_type &val, policy_nearest_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(*b++);
@@ -1566,7 +1599,7 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint)
-      noexcept(node_type::is_comparer_noexcept)
+          noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++);
@@ -1574,8 +1607,7 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_unique_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          policy_unique_t p) noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1583,8 +1615,7 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_override_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          policy_override_t p) noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1592,8 +1623,7 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_frontmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          policy_frontmost_t p) noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1601,8 +1631,7 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_backmost_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          policy_backmost_t p) noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1610,8 +1639,7 @@ namespace spin
 
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
-          policy_nearest_t p)
-      noexcept(node_type::is_comparer_noexcept)
+          policy_nearest_t p) noexcept(node_type::is_comparer_noexcept)
       {
         while (b != e)
           insert(hint, *b++, p);
@@ -1626,23 +1654,23 @@ namespace spin
           node_type::unlink(*i++);
       }
 
-      void remove(Index &key)
-      noexcept(node_type::is_comparer_noexcept)
+      void remove(Index &index)
+          noexcept(node_type::is_comparer_noexcept)
       {
-        auto b = upper_bound(end(), key);
-        auto e = lower_bound(b, key);
+        auto b = upper_bound(end(), index);
+        auto e = lower_bound(b, index);
         erase(b, e);
       }
 
       template<typename Predicate>
       void remove(Predicate &&predicate)
-      noexcept(noexcept(predicate(std::declval<Index>())))
+          noexcept(noexcept(predicate(std::declval<Index>())))
       {
         auto b = begin(), e = end();
         while (b != e)
         {
           auto x = b++;
-          if (predicate(x->get_key()))
+          if (predicate(x->get_index()))
             erase(x);
         }
       }
@@ -1657,10 +1685,10 @@ namespace spin
         // Can be optimize
       { erase(begin(), end()); }
 
-      const Comparer &key_comp() const noexcept
+      const Comparer &index_comp() const noexcept
       { return node_type::cmper; }
 
-      const Comparer &key_comp() noexcept
+      const Comparer &index_comp() noexcept
       { return node_type::cmper; }
 
     private:

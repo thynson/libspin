@@ -289,16 +289,15 @@ namespace spin
 
       /** @brief Construct with elements from input iterator */
       template<typename InputIterator>
-        list(InputIterator b, InputIterator e)
-          noexcept(noexcept(*b) && noexcept(b++))
-          : list()
+      list(InputIterator b, InputIterator e) noexcept(noexcept(*b) && noexcept(b++))
+        : list()
+      {
+        while (b != e)
         {
-          while (b != e)
-          {
-            auto &n = *b++;
-            push_back(n);
-          }
+          auto &n = *b++;
+          push_back(n);
         }
+      }
 
       /** @brief Destructor */
       ~list() noexcept
