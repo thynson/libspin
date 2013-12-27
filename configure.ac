@@ -38,8 +38,6 @@ AM_PROG_LIBTOOL
 LT_INIT
 AM_SILENT_RULES([yes])
 
-BOOST_REQUIRE([1.48])
-
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([example/Makefile])
