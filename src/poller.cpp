@@ -44,14 +44,14 @@ namespace spin
     }
   }
 
-  poller::context::context(main_loop &loop, system_handle &h, poll_flag flag)
-    : m_main_loop(loop)
+  poller::context::context(event_loop &loop, system_handle &h, poll_flag flag)
+    : m_event_loop(loop)
     , m_handle(h)
     , m_poller(singleton<poller>::get_instance())
     , m_lock()
     , m_current_state()
     , m_polled_state()
-    , m_poster([this] { m_main_loop.dispatch(m_dispatcher); })
+    , m_poster([this] { m_event_loop.dispatch(m_dispatcher); })
     , m_dispatcher([this]
         {
           std::unique_lock<spin_lock> guard(m_lock);
@@ -62,7 +62,7 @@ namespace spin
           on_poll_event(state);
         })
   {
-    m_main_loop.ref();
+    m_event_loop.ref();
     epoll_event epev;
     epev.data.ptr = this;
     epev.events = EPOLLET;
@@ -76,7 +76,7 @@ namespace spin
   }
 
   poller::context::~context() noexcept
-  { m_main_loop.unref(); }
+  { m_event_loop.unref(); }
 
   void poller::context::context::clear_poll_flag(
       poller::poll_flag ps) noexcept
@@ -126,7 +126,7 @@ namespace spin
           return true;
         else if (rt == nullptr)
           return false;
-        return &lt->get_main_loop() < &rt->get_main_loop();
+        return &lt->get_event_loop() < &rt->get_event_loop();
       };
 
       std::sort(begin, end, cmper);
@@ -139,18 +139,18 @@ namespace spin
         begin++;
       }
 
-      // Lock, prevent the race between main_loop.post
+      // Lock, prevent the race between event_loop.post
       // and poller::context::~context
       auto guard = lock();
       while (begin != end)
       {
-        main_loop::task_list tmplist;
+        event_loop::task_list tmplist;
         auto p = std::upper_bound(begin, end, *begin, cmper);
 
         auto get_context = [] (const epoll_event &e)
         { return static_cast<context*>(e.data.ptr); };
 
-        auto &loop = get_context(*begin)->m_main_loop;
+        auto &loop = get_context(*begin)->m_event_loop;
 
         while (begin != p)
         {

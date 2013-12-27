@@ -25,11 +25,10 @@
 #include <bitset>
 #include "utils.hpp"
 
-namespace spin {
+namespace spin
+{
 
-
-
-  class __SPIN_EXPORT__ main_loop
+  class __SPIN_EXPORT__ event_loop
   {
   public:
 
@@ -39,7 +38,7 @@ namespace spin {
      */
     class __SPIN_EXPORT__ task
     {
-      friend class main_loop;
+      friend class event_loop;
     public:
 
       /**
@@ -102,7 +101,7 @@ namespace spin {
 
       /**
        * @brief Cancel this task, if the task have not been dispatched to a
-       * main_loop, or this task already finished, this function does nothing.
+       * event_loop, or this task already finished, this function does nothing.
        * @retval true Actually cancel a posted task
        * @retval false Nothing has been done
        */
@@ -115,13 +114,13 @@ namespace spin {
 
     /**
      * @brief deadline timer can be posted to or defered with an
-     * main_loop and its handler will be called in the future when specified
+     * event_loop and its handler will be called in the future when specified
      * time just come or the future or will be called immediately if the
      * specified time has passed.
      */
     class __SPIN_EXPORT__ deadline_timer
     {
-      friend class main_loop;
+      friend class event_loop;
     public:
 
       /**
@@ -133,7 +132,7 @@ namespace spin {
        * @param check_deadline Check if specified deadline has already expired
        * and in that situation the proc will not be dispatch to execute
        */
-      deadline_timer(main_loop &loop, std::function<void()> proc,
+      deadline_timer(event_loop &loop, std::function<void()> proc,
           time::steady_time_point tp, bool check_deadline = false) noexcept;
 
       /** @brief Move constructor */
@@ -160,8 +159,8 @@ namespace spin {
       { return m_deadline; }
 
       /** @brief Get the main loop this timer attached to */
-      main_loop &get_main_loop() const noexcept
-      { return m_main_loop; }
+      event_loop &get_event_loop() const noexcept
+      { return m_event_loop; }
 
       /** @brief Get the task object */
       const task &get_task() const noexcept
@@ -185,7 +184,7 @@ namespace spin {
       { return m_task.set_proc(std::move(proc)); }
 
     private:
-      main_loop &m_main_loop;
+      event_loop &m_event_loop;
       task m_task;
       intrusive_set_node m_node;
       time::steady_time_point m_deadline;
@@ -200,10 +199,10 @@ namespace spin {
       deadline_timer_queue;
 
     /** @brief constructor */
-    main_loop() noexcept;
+    event_loop() noexcept;
 
     /** @brief destructor */
-    ~main_loop() noexcept;
+    ~event_loop() noexcept;
 
     void run();
 
@@ -261,10 +260,10 @@ namespace spin {
 
     task_list wait_for_events();
 
-    main_loop(const main_loop &) = delete;
-    main_loop &operator = (const main_loop &) = delete;
-    main_loop(main_loop &&) = delete;
-    main_loop &operator = (main_loop &&) = delete;
+    event_loop(const event_loop &) = delete;
+    event_loop &operator = (const event_loop &) = delete;
+    event_loop(event_loop &&) = delete;
+    event_loop &operator = (event_loop &&) = delete;
 
     deadline_timer_queue m_deadline_timer_queue;
     task_list m_posted_tasks;

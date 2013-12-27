@@ -34,7 +34,7 @@ namespace spin
     stream_socket_peer(const stream_socket_peer &peer) = delete;
     stream_socket_peer &operator = (const stream_socket_peer &peer) = delete;
 
-    stream_socket_peer(main_loop &loop, system_handle socket);
+    stream_socket_peer(event_loop &loop, system_handle socket);
 
     void read(char buff[], size_t size, std::function<void(size_t)> cb);
 
@@ -51,7 +51,7 @@ namespace spin
   class __SPIN_EXPORT__ stream_socket_listener
   {
   public:
-    stream_socket_listener(main_loop &loop, system_handle h);
+    stream_socket_listener(event_loop &loop, system_handle h);
     ~stream_socket_listener() noexcept;
 
     std::function<void(std::unique_ptr<stream_socket_peer>)>

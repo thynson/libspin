@@ -18,7 +18,7 @@
 #ifndef __SPIN_POLLER_HPP_INCLUDED__
 #define __SPIN_POLLER_HPP_INCLUDED__
 
-#include "main_loop.hpp"
+#include "event_loop.hpp"
 #include "system.hpp"
 #include "singleton.hpp"
 #include <bitset>
@@ -50,7 +50,7 @@ namespace spin
     {
       friend class poller;
     public:
-      context(main_loop &loop, system_handle &h, poll_flag flag);
+      context(event_loop &loop, system_handle &h, poll_flag flag);
 
       virtual ~context() noexcept;
 
@@ -58,8 +58,8 @@ namespace spin
 
       void clear_poll_flag(poll_flag ps) noexcept;
 
-      main_loop &get_main_loop() const noexcept
-      { return m_main_loop; }
+      event_loop &get_event_loop() const noexcept
+      { return m_event_loop; }
 
       poller &get_poller() const noexcept
       { return *m_poller; }
@@ -69,14 +69,14 @@ namespace spin
       { return m_handle; }
 
     private:
-      main_loop &m_main_loop;
+      event_loop &m_event_loop;
       system_handle &m_handle;
       std::shared_ptr<poller> m_poller;
       spin_lock m_lock;
       poll_flag m_current_state;
       poll_flag m_polled_state;
-      main_loop::task m_poster;
-      main_loop::task m_dispatcher;
+      event_loop::task m_poster;
+      event_loop::task m_dispatcher;
     };
 
   protected:

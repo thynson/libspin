@@ -33,7 +33,7 @@ libspin_la_HEADERS=spin/time.hpp\
 				   spin/singleton.hpp\
 				   spin/environment.hpp\
 				   spin/spin_lock.hpp\
-				   spin/main_loop.hpp\
+				   spin/event_loop.hpp\
 				   spin/system.hpp\
 				   spin/poller.hpp\
 				   spin/socket.hpp\
@@ -41,7 +41,7 @@ libspin_la_HEADERS=spin/time.hpp\
 				   spin/intruse/rbtree.hpp
 
 
-libspin_la_SOURCES=main_loop.cpp\
+libspin_la_SOURCES=event_loop.cpp\
 				   system.cpp\
 				   poller.cpp\
 				   socket.cpp\

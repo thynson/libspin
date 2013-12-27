@@ -28,7 +28,7 @@ namespace spin
   class stream_socket_peer::detail : public poller::context
   {
   public:
-    detail(main_loop &loop, system_handle &socket)
+    detail(event_loop &loop, system_handle &socket)
       : poller::context(loop, socket,
           (1 << poller::POLL_WRITABLE)
           | (1 << poller::POLL_READABLE)
@@ -43,7 +43,7 @@ namespace spin
   };
 
 
-  stream_socket_peer::stream_socket_peer(main_loop &loop, system_handle socket)
+  stream_socket_peer::stream_socket_peer(event_loop &loop, system_handle socket)
     : m_handle(std::move(socket))
     , m_detail(std::unique_ptr<detail>(new detail(loop, m_handle)))
   {
@@ -69,7 +69,7 @@ namespace spin
   class stream_socket_listener::detail : public poller::context
   {
   public:
-    detail(main_loop &loop, system_handle &h)
+    detail(event_loop &loop, system_handle &h)
       : poller::context(loop, h,
             (1 << poller::POLL_READABLE) | (1 << poller::POLL_ERROR))
       , m_callback()
@@ -97,8 +97,8 @@ namespace spin
         if (fd != -1)
         {
           m_callback(std::unique_ptr<stream_socket_peer>(
-              new stream_socket_peer(get_main_loop(), system_handle(fd))));
-          get_main_loop().dispatch(m_accept_task);
+              new stream_socket_peer(get_event_loop(), system_handle(fd))));
+          get_event_loop().dispatch(m_accept_task);
         }
         else
         {
@@ -112,10 +112,10 @@ namespace spin
     }
 
     std::function<void(std::unique_ptr<stream_socket_peer>)> m_callback;
-    main_loop::task m_accept_task;
+    event_loop::task m_accept_task;
   };
 
-  stream_socket_listener::stream_socket_listener(main_loop &loop, system_handle h)
+  stream_socket_listener::stream_socket_listener(event_loop &loop, system_handle h)
     : m_handle (std::move(h))
     , m_detail (std::unique_ptr<detail>(new detail(loop, m_handle)))
   {

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/main_loop.hpp>
+#include <spin/event_loop.hpp>
 #include <boost/iterator/transform_iterator.hpp>
 #include <mutex>
 #include <condition_variable>
@@ -23,7 +23,7 @@
 namespace spin
 {
 
-  bool main_loop::task::cancel() noexcept
+  bool event_loop::task::cancel() noexcept
   {
     if (m_node.is_linked())
     {
@@ -33,39 +33,39 @@ namespace spin
     return false;
   }
 
-  main_loop::deadline_timer::deadline_timer(main_loop &loop,
+  event_loop::deadline_timer::deadline_timer(event_loop &loop,
       std::function<void()> proc, time::steady_time_point deadline,
       bool check_deadline) noexcept
-    : m_main_loop(loop)
+    : m_event_loop(loop)
     , m_task(std::move(proc))
     , m_node()
     , m_deadline(std::move(deadline))
   {
     if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
-      m_main_loop.m_deadline_timer_queue.insert(*this);
+      m_event_loop.m_deadline_timer_queue.insert(*this);
   }
 
-  main_loop::deadline_timer::deadline_timer(
-      main_loop::deadline_timer &&t) noexcept
-    : m_main_loop(t.m_main_loop)
+  event_loop::deadline_timer::deadline_timer(
+      event_loop::deadline_timer &&t) noexcept
+    : m_event_loop(t.m_event_loop)
     , m_task(std::move(t.m_task))
     , m_node()
     , m_deadline(std::move(t.m_deadline))
   { m_node.swap_nodes(t.m_node); }
 
   time::steady_time_point
-  main_loop::deadline_timer::reset_deadline(time::steady_time_point deadline,
+  event_loop::deadline_timer::reset_deadline(time::steady_time_point deadline,
       bool check_deadline) noexcept
   {
     m_node.unlink();
-    auto &q = m_main_loop.m_deadline_timer_queue;
+    auto &q = m_event_loop.m_deadline_timer_queue;
     std::swap(deadline, m_deadline);
     if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
       q.insert(*this);
     return deadline;
   }
 
-  main_loop::main_loop() noexcept
+  event_loop::event_loop() noexcept
     : m_deadline_timer_queue()
     , m_posted_tasks()
     , m_defered_tasks()
@@ -74,12 +74,12 @@ namespace spin
     , m_ref_counter()
   { }
 
-  main_loop::~main_loop() noexcept
+  event_loop::~event_loop() noexcept
   { }
 
-  main_loop::task_list main_loop::wait_for_events()
+  event_loop::task_list event_loop::wait_for_events()
   {
-    main_loop::task_list tasks;
+    event_loop::task_list tasks;
     tasks.swap(m_defered_tasks);
 
     if (m_deadline_timer_queue.empty())
@@ -128,7 +128,7 @@ namespace spin
     return tasks;
   }
 
-  void main_loop::run()
+  void event_loop::run()
   {
     for ( ; ; )
     {
@@ -144,14 +144,14 @@ namespace spin
     }
   }
 
-  void main_loop::post(main_loop::task &t) noexcept
+  void event_loop::post(event_loop::task &t) noexcept
   {
     std::unique_lock<std::mutex> guard(m_lock);
     m_posted_tasks.push_back(t);
     m_cond.notify_one();
   }
 
-  void main_loop::post(main_loop::task_list &tl) noexcept
+  void event_loop::post(event_loop::task_list &tl) noexcept
   {
     if (tl.empty())
       return;
