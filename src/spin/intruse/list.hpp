@@ -574,7 +574,7 @@ namespace spin
        */
       void splice(iterator pos, list &&l) noexcept
       {
-        splice(pos, l, l.begin(), l.end());
+        splice(pos, l.begin(), l.end());
       }
 
       /**
@@ -703,7 +703,7 @@ namespace spin
           { ++p; }
 
         if (b != e)
-          splice(q, l, b, e);
+          splice(q, b, e);
       }
 
       /** @breif Erase duplicate elements */
