@@ -60,7 +60,7 @@ namespace spin
     template<>
     class __SPIN_EXPORT__ rbtree_node<void, void>
     {
-      template<typename Index, typename Tag, typename Comparer>
+      template<typename Index, typename Type, typename Tag, typename Comparer>
       friend class rbtree_node;
 
       template<typename Index, typename Type, typename Tag, typename Comparer>
