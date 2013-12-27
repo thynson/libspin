@@ -565,7 +565,7 @@ namespace spin
        */
       void splice(iterator pos, list &l) noexcept
       {
-        splice(pos, l, l.begin(), l.end());
+        splice(pos, l.begin(), l.end());
       }
 
       /**
@@ -578,11 +578,11 @@ namespace spin
       }
 
       /**
-       * @breif Transfer all elements ranged from b to e in l to position pos
+       * @breif Transfer all elements ranged from b to e to position pos
        * in this list
-       * @note l shall be a distinct list
+       * @note l shall in a distinct list
        */
-      void splice(iterator pos, list &l, iterator b, iterator e) noexcept
+      void splice(iterator pos, iterator b, iterator e) noexcept
       {
         if (b == e) return;
 

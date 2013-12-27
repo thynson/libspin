@@ -16,10 +16,14 @@
  */
 
 #include <spin/poller.hpp>
+
+#include <array>
+#include <algorithm>
+
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <fcntl.h>
-#include <array>
+#include <unistd.h>
 
 namespace spin
 {
@@ -144,7 +148,7 @@ namespace spin
       auto guard = lock();
       while (begin != end)
       {
-        event_loop::task_list tmplist;
+        event_loop::task_queue tmplist;
         auto p = std::upper_bound(begin, end, *begin, cmper);
 
         auto get_context = [] (const epoll_event &e)

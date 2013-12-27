@@ -46,7 +46,7 @@ int main ()
   if (::listen(h.get_raw_handle(), SOMAXCONN) == -1)
     throw std::system_error(errno, std::system_category());
 
-  main_loop loop;
+  event_loop loop;
   stream_socket_listener listener(loop, std::move(h));
   listener.accept([](std::unique_ptr<stream_socket_peer> peer)
       {

@@ -25,9 +25,9 @@ namespace spin
 
   bool event_loop::task::cancel() noexcept
   {
-    if (m_node.is_linked())
+    if (list_node::is_linked(*this))
     {
-      m_node.unlink();
+      list_node::unlink(*this);
       return true;
     }
     return false;
@@ -36,32 +36,35 @@ namespace spin
   event_loop::deadline_timer::deadline_timer(event_loop &loop,
       std::function<void()> proc, time::steady_time_point deadline,
       bool check_deadline) noexcept
-    : m_event_loop(loop)
+    : rbtree_node(std::move(deadline))
+    , m_event_loop(loop)
     , m_task(std::move(proc))
-    , m_node()
-    , m_deadline(std::move(deadline))
   {
-    if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
+    auto &dl = rbtree_node::get_index(*this);
+    if (!check_deadline || dl > decltype(deadline)::clock::now())
       m_event_loop.m_deadline_timer_queue.insert(*this);
   }
 
   event_loop::deadline_timer::deadline_timer(
       event_loop::deadline_timer &&t) noexcept
-    : m_event_loop(t.m_event_loop)
+    : rbtree_node(std::move(t))
+    , m_event_loop(t.m_event_loop)
     , m_task(std::move(t.m_task))
-    , m_node()
-    , m_deadline(std::move(t.m_deadline))
-  { m_node.swap_nodes(t.m_node); }
+  { }
 
   time::steady_time_point
   event_loop::deadline_timer::reset_deadline(time::steady_time_point deadline,
       bool check_deadline) noexcept
   {
-    m_node.unlink();
-    auto &q = m_event_loop.m_deadline_timer_queue;
-    std::swap(deadline, m_deadline);
-    if (!check_deadline || m_deadline > decltype(m_deadline)::clock::now())
-      q.insert(*this);
+    //rbtree_node::unlink(*this);
+    //auto &q = m_event_loop.m_deadline_timer_queue;
+    deadline = rbtree_node::update_index(*this, std::move(deadline),
+        intruse::policy_backmost);
+
+    if (check_deadline
+        && rbtree_node::get_index(*this) > decltype(deadline)::clock::now()
+        && rbtree_node::is_linked(*this))
+      rbtree_node::unlink(*this);
     return deadline;
   }
 
@@ -77,9 +80,9 @@ namespace spin
   event_loop::~event_loop() noexcept
   { }
 
-  event_loop::task_list event_loop::wait_for_events()
+  event_loop::task_queue event_loop::wait_for_events()
   {
-    event_loop::task_list tasks;
+    task_queue tasks;
     tasks.swap(m_defered_tasks);
 
     if (m_deadline_timer_queue.empty())
@@ -94,7 +97,7 @@ namespace spin
     }
     else
     {
-      auto tp = m_deadline_timer_queue.begin()->m_deadline;
+      auto tp = deadline_timer::get_index(m_deadline_timer_queue.front());
       std::unique_lock<std::mutex> guard(m_lock);
 
       if (m_posted_tasks.empty() && tasks.empty())
@@ -112,12 +115,14 @@ namespace spin
           // Insert all timer event that have same time point with tp and
           // remove them from loop.m_timer_event_set
           auto tf = m_deadline_timer_queue.begin();
-          auto te = m_deadline_timer_queue.upper_bound(*tf);
+          auto te = m_deadline_timer_queue.upper_bound(tf, *tf);
 
           tranform_iterator f(tf, get_task);
           tranform_iterator e(te, get_task);
 
           tasks.insert(tasks.end(), f, e);
+
+          //tasks.insert(tasks.end(), f, e);
           m_deadline_timer_queue.erase(tf, te);
 
           return tasks;
@@ -132,14 +137,14 @@ namespace spin
   {
     for ( ; ; )
     {
-      task_list tasks = wait_for_events();
-      if (tasks.empty())
+      task_queue q = wait_for_events();
+      if (q.empty())
         return;
-      while (!tasks.empty())
+      while (!q.empty())
       {
-        auto x = tasks.begin();
-        tasks.erase(x);
-        (*x)(); // Invoke it
+        auto &t = q.front();
+        intruse::list_node<task>::unlink(t);
+        t();
       }
     }
   }
@@ -151,7 +156,7 @@ namespace spin
     m_cond.notify_one();
   }
 
-  void event_loop::post(event_loop::task_list &tl) noexcept
+  void event_loop::post(event_loop::task_queue &tl) noexcept
   {
     if (tl.empty())
       return;

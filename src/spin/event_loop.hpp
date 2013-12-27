@@ -23,7 +23,7 @@
 #include <memory>
 #include <chrono>
 #include <bitset>
-#include "utils.hpp"
+#include <spin/utils.hpp>
 
 namespace spin
 {
@@ -36,7 +36,7 @@ namespace spin
      * @brief task object that can be post to event loop and its handler
      * will be called immediately
      */
-    class __SPIN_EXPORT__ task
+    class __SPIN_EXPORT__ task : public intruse::list_node<task>
     {
       friend class event_loop;
     public:
@@ -44,33 +44,22 @@ namespace spin
       /**
        * @brief Default constructor
        */
-      task() noexcept
-        : m_node()
-        , m_proc()
-      { }
+      task() noexcept = default;
 
       /**
        * @brief Constuct task object with the specified task procedure
        * @param proc The procedure for this task
        */
       task(std::function<void()> proc) noexcept
-        : m_node()
+        : list_node()
         , m_proc(std::move(proc))
       { }
 
       /** @brief Move constructor */
-      task(task &&c) noexcept
-        : m_node()
-        , m_proc(std::move(c.m_proc))
-      { m_node.swap_nodes(c.m_node); }
+      task(task &&) = default;
 
       /** @brief Assign operator */
-      task &operator = (task &&rvalue) noexcept
-      {
-        m_node.swap_nodes(rvalue.m_node);
-        std::swap(m_proc, rvalue.m_proc);
-        return *this;
-      }
+      task &operator = (task && rvalue) = default;
 
       /** @brief Copy constructor is forbidden */
       task(const task &) = delete;
@@ -97,7 +86,7 @@ namespace spin
 
       /** @breif Test if this task is under dispatching */
       bool is_dispatching() const noexcept
-      { return m_node.is_linked(); }
+      { return list_node<task>::is_linked(*this); }
 
       /**
        * @brief Cancel this task, if the task have not been dispatched to a
@@ -108,7 +97,6 @@ namespace spin
       bool cancel() noexcept;
 
     private:
-      intrusive_list_node m_node;
       std::function<void()> m_proc;
     };
 
@@ -119,6 +107,7 @@ namespace spin
      * specified time has passed.
      */
     class __SPIN_EXPORT__ deadline_timer
+      : public intruse::rbtree_node<time::steady_time_point, deadline_timer>
     {
       friend class event_loop;
     public:
@@ -144,19 +133,9 @@ namespace spin
       /** @brief Destructor */
       ~deadline_timer() = default;
 
-      /** @brief Compare the specified deadline of two deadline_timer */
-      friend bool operator < (const deadline_timer &lhs,
-                              const deadline_timer &rhs) noexcept
-      { return lhs.m_deadline < rhs.m_deadline; }
-
-      /** @brief Compare the specified deadline of two deadline_timer */
-      friend bool operator > (const deadline_timer &lhs,
-                              const deadline_timer &rhs) noexcept
-      { return lhs.m_deadline > rhs.m_deadline; }
-
       /** @brief Get the alarm time */
       const time::steady_time_point &get_deadline() const noexcept
-      { return m_deadline; }
+      { return rbtree_node::get_index(*this); }
 
       /** @brief Get the main loop this timer attached to */
       event_loop &get_event_loop() const noexcept
@@ -168,7 +147,7 @@ namespace spin
 
       /** @brief Test if this timer is expired */
       bool is_expired() const noexcept
-      { return !m_node.is_linked() && !m_task.is_dispatching(); }
+      { return rbtree_node::is_linked(*this); }
 
       /**
        * @brief Cancel this deadline_timer and reset the deadline time
@@ -186,17 +165,15 @@ namespace spin
     private:
       event_loop &m_event_loop;
       task m_task;
-      intrusive_set_node m_node;
-      time::steady_time_point m_deadline;
     };
 
     /** @brief intrusive list container of task */
-    typedef intrusive_list<task, &task::m_node> task_list;
+    using task_queue = intruse::list<task>;
 
     /** @brief priority queue of deadline_timer that implemented by intrusive
      *   multiset */
-    typedef intrusive_multiset<deadline_timer, &deadline_timer::m_node>
-      deadline_timer_queue;
+    using deadline_timer_queue
+      = intruse::rbtree<time::steady_time_point, deadline_timer>;
 
     /** @brief constructor */
     event_loop() noexcept;
@@ -224,7 +201,7 @@ namespace spin
      * #post
      * @see #post
      */
-    void dispatch(task_list &tl) noexcept
+    void dispatch(task_queue &tl) noexcept
     { m_defered_tasks.splice(m_defered_tasks.end(), tl); }
 
     /**
@@ -239,7 +216,7 @@ namespace spin
      * @note This function ensure cross-thread safety
      * @see #dispatch
      */
-    void post(task_list &t) noexcept;
+    void post(task_queue &t) noexcept;
 
     template<typename Proc>
     task set_task(Proc &&proc) noexcept
@@ -258,7 +235,7 @@ namespace spin
 
   private:
 
-    task_list wait_for_events();
+    task_queue wait_for_events();
 
     event_loop(const event_loop &) = delete;
     event_loop &operator = (const event_loop &) = delete;
@@ -266,8 +243,8 @@ namespace spin
     event_loop &operator = (event_loop &&) = delete;
 
     deadline_timer_queue m_deadline_timer_queue;
-    task_list m_posted_tasks;
-    task_list m_defered_tasks;
+    task_queue m_posted_tasks;
+    task_queue m_defered_tasks;
     std::mutex m_lock;
     std::condition_variable m_cond;
     std::atomic_size_t m_ref_counter;
