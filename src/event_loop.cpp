@@ -16,7 +16,7 @@
  */
 
 #include <spin/event_loop.hpp>
-#include <boost/iterator/transform_iterator.hpp>
+#include <spin/transform_iterator.hpp>
 #include <mutex>
 #include <condition_variable>
 
@@ -109,7 +109,7 @@ namespace spin
           auto get_task = [](deadline_timer &t) -> task &
           { return t.m_task; };
 
-          typedef boost::transform_iterator<decltype(get_task),
+          typedef spin::transform_iterator<decltype(get_task),
                 decltype(m_deadline_timer_queue.begin())> tranform_iterator;
 
           // Insert all timer event that have same time point with tp and
@@ -117,8 +117,8 @@ namespace spin
           auto tf = m_deadline_timer_queue.begin();
           auto te = m_deadline_timer_queue.upper_bound(tf, *tf);
 
-          tranform_iterator f(tf, get_task);
-          tranform_iterator e(te, get_task);
+          tranform_iterator f(get_task, tf);
+          tranform_iterator e(get_task, te);
 
           tasks.insert(tasks.end(), f, e);
 
