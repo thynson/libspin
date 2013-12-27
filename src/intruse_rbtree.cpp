@@ -472,7 +472,10 @@ namespace spin
       rbtree_node<void, void>::unlink_checked() noexcept
     {
       if (m_is_container)
+      {
+        assert (is_empty_container_node());
         return nullptr;
+      }
       if (is_linked())
         return unlink();
       else
@@ -483,7 +486,6 @@ namespace spin
       transfer_link(rbtree_node<void, void> &node) noexcept
     {
       assert(!node.m_is_container);
-      assert(!m_is_container);
       assert(!node.is_linked());
 
       if (is_linked())
@@ -766,6 +768,8 @@ namespace spin
     void rbtree_node<void, void>::insert_between(rbtree_node<void, void> *prev,
         rbtree_node<void, void> *next, rbtree_node<void, void> *node) noexcept
     {
+      assert (prev->next() == next || prev == next);
+      assert (next->prev() == prev || next == prev);
       if (prev == next)
         insert(prev, node);
       else if (prev->m_is_container)
@@ -799,7 +803,7 @@ namespace spin
           prev->insert_root_node(node);
         else
         {
-          auto *l = prev->m_l, *r = prev->m_r;
+          auto *l = prev->prev(), *r = prev->next();
           prev->unlink();
           insert_between(l, r, node);
         }
