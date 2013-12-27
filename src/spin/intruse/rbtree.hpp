@@ -1199,7 +1199,6 @@ namespace spin
 
       rbtree_iterator &operator -- () noexcept
       {
-        bool has_l = m_node->m_has_l;
         m_node = m_node->prev();
         return *this;
       }
@@ -1362,7 +1361,7 @@ namespace spin
 
       // Capacity
       bool empty() const noexcept
-      { return begin() == end(); }
+      { return m_container_node.is_empty_container_node(); }
 
       size_type size() const noexcept
       {
@@ -1688,8 +1687,8 @@ namespace spin
 
       void erase(iterator b, iterator e) noexcept
       {
-        for (auto i = b; i != e; ++i)
-          node_type::unlink(*i++);
+        for (auto i = b; i != e; )
+          erase(i++);
       }
 
       void remove(Index &index)
