@@ -69,6 +69,9 @@ namespace spin
       template<typename Index, typename Type, typename Tag, typename Comparer>
       friend class rbtree_iterator;
 
+      template<typename Index, typename Type, typename Tag, typename Comparer>
+      friend class rbtree_const_iterator;
+
     protected:
 
       /** @brief Auxilary class used for rbtree(container_tag) */
@@ -845,7 +848,7 @@ namespace spin
       /** @brief Update index of this node */
       static Index update_index(rbtree_node &node, Index index)
           noexcept(noexcept(std::swap(index, index)))
-      { update_index(std::move(index), policy_unique); }
+      { update_index(node, std::move(index), policy_unique); }
 
       /** @brief Update index of this node */
       static Index update_index(rbtree_node &node, Index index, policy_unique_t p)
@@ -1176,7 +1179,10 @@ namespace spin
       { }
 
       rbtree_iterator &operator = (const rbtree_iterator &i) noexcept
-      { m_node = i.m_node; }
+      {
+        m_node = i.m_node;
+        return *this;
+      }
 
       ~rbtree_iterator() noexcept = default;
 
@@ -1604,7 +1610,7 @@ namespace spin
 
       iterator insert(iterator hint, value_type &val)
           noexcept(node_type::is_comparer_noexcept)
-      { return insert(end(), val, policy_unique); }
+      { return insert(hint, val, policy_unique); }
 
       iterator insert(iterator hint, value_type &val, policy_unique_t p)
           noexcept(node_type::is_comparer_noexcept)

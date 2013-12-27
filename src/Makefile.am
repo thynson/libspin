@@ -32,6 +32,8 @@ libspin_la_HEADERS=spin/time.hpp\
 				   spin/utils.hpp\
 				   spin/singleton.hpp\
 				   spin/environment.hpp\
+				   spin/functional.hpp\
+				   spin/transform_iterator.hpp\
 				   spin/spin_lock.hpp\
 				   spin/event_loop.hpp\
 				   spin/system.hpp\
