@@ -42,7 +42,7 @@ namespace spin
   {
     auto &dl = rbtree_node::get_index(*this);
     if (!check_deadline || dl > decltype(deadline)::clock::now())
-      m_event_loop.m_deadline_timer_queue.insert(*this);
+      m_event_loop.m_deadline_timer_queue.insert(*this, intruse::policy_backmost);
   }
 
   event_loop::deadline_timer::deadline_timer(
