@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/main_loop.hpp>
+#include <spin/event_loop.hpp>
 #include <vector>
 #include <iostream>
 
@@ -24,9 +24,9 @@ constexpr unsigned N = 10000, M = 1000000;
 void test_01 ()
 {
   unsigned counter = 0;
-  spin::main_loop loop;
+  spin::event_loop loop;
 
-  std::vector<spin::main_loop::task> vt;
+  std::vector<spin::event_loop::task> vt;
 
   for (unsigned i = 0; i < N; i++)
     vt.push_back(loop.set_task([i, &vt, &counter, &loop]
@@ -42,9 +42,9 @@ void test_01 ()
 void test_02()
 {
   unsigned counter = 0;
-  spin::main_loop loop;
+  spin::event_loop loop;
 
-  std::vector<spin::main_loop::task> vt;
+  std::vector<spin::event_loop::task> vt;
 
   for (unsigned i = 0; i < M; i++)
     vt.push_back(loop.set_task([&counter] { counter ++; }));
@@ -59,7 +59,7 @@ void test_02()
 
 void test_03()
 {
-  spin::main_loop loop;
+  spin::event_loop loop;
   bool flag = true;
   auto x = loop.set_task([]{});
   x.cancel();
@@ -74,7 +74,7 @@ void test_timer_01()
 {
   using namespace spin::time;
   using namespace std::chrono;
-  spin::main_loop loop;
+  spin::event_loop loop;
 }
 
 int main()

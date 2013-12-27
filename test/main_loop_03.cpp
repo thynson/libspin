@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/main_loop.hpp>
+#include <spin/event_loop.hpp>
 #include <random>
 #include <vector>
 
@@ -25,8 +25,8 @@ constexpr unsigned MAX_MILLISECONDS = 2000;
 
 int main()
 {
-  spin::main_loop loop;
-  std::vector<spin::main_loop::deadline_timer> vt;
+  spin::event_loop loop;
+  std::vector<spin::event_loop::deadline_timer> vt;
   std::mt19937 random_source;
   spin::time::steady_time_point start = decltype(start)::clock::now();
   unsigned counter = 0;
@@ -39,7 +39,7 @@ int main()
             random_source() % (MAX_MILLISECONDS - MIN_MILLISECONDS));
 
     vt.push_back(
-        spin::main_loop::deadline_timer(loop, [&]{counter++;},
+        spin::event_loop::deadline_timer(loop, [&]{counter++;},
           std::move(deadline)));
   }
   loop.run();

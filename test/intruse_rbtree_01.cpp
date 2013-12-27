@@ -20,18 +20,30 @@
 #include <cassert>
 #include <algorithm>
 #include <random>
-
+#include <cstdint>
+#include <climits>
 
 using namespace std;
 
-class X : public spin::intruse::rbtree_node<int>
+class X : public spin::intruse::rbtree_node<int, X>
 {
 public:
   X(int x)
-    : rbtree_node<int>(x)
+    : rbtree_node(x)
   { }
 
 };
+
+void test_erase(spin::intruse::rbtree<int, X> &t)
+{
+
+  while (!t.empty())
+  {
+    auto b = t.begin();
+    auto e = t.upper_bound(b, *b);
+    t.erase(b, e);
+  }
+}
 
 int main()
 {
@@ -47,16 +59,17 @@ int main()
 
   auto last = t.end();
   for (auto i = vx.begin(); i != vx.end(); ++i)
-    last = t.insert(last, *i, spin::intruse::policy_nearest); // test with hint
+    last = t.insert(last, *i, spin::intruse::policy_backmost); // test with hint
+
+  for (auto &i : t)
+    cout << spin::intruse::rbtree_node<int, X>::get_index(i) << endl;
 
   std::shuffle(v.begin(), v.end(), engine);
-  cout << t.front().get_key() << endl;
-  cout << t.back().get_key() << endl;
-
-  for (auto i = v.begin(); i != v.end(); ++i)
-  {
-    spin::intruse::rbtree_node<int>::unlink(vx[*i]);
-  }
+  cout << spin::intruse::rbtree_node<int, X>::get_index(t.front()) << endl;
+  cout << spin::intruse::rbtree_node<int, X>::get_index(t.back()) << endl;
+  auto e = t.upper_bound(INT_MAX);
+  test_erase(t);
+  assert(t.empty());
 
 }
 

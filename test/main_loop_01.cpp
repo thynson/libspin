@@ -15,14 +15,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/main_loop.hpp>
+#include <spin/event_loop.hpp>
 #include <iostream>
 #include <cassert>
 
 
 void check_create_task()
 {
-  spin::main_loop loop;
+  spin::event_loop loop;
   bool flag = false;
   auto x = loop.set_task([&flag]{ flag = true; });
 
@@ -38,9 +38,9 @@ void check_create_timer()
   using namespace std::chrono;
   steady_time_point now = decltype(now)::clock::now();
   auto deadline = now + duration_cast<decltype(now)::duration>(seconds(1));
-  spin::main_loop loop;
+  spin::event_loop loop;
   bool flag = false;
-  spin::main_loop::deadline_timer x(loop, [&] { flag = true; },
+  spin::event_loop::deadline_timer x(loop, [&] { flag = true; },
       std::move(deadline));
   loop.run();
   assert (flag);

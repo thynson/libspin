@@ -127,12 +127,12 @@ int main()
   l.push_back(e);
 
   X::list l2;
-  l2.splice(l2.end(), l, ++l.begin(), --l.end());
+  l2.splice(l2.end(), ++l.begin(), --l.end());
   assert(l.front().i == 1);
   assert(l.back().i == 5);
   assert(l2.front().i == 2);
   assert(l2.back().i == 4);
-  l.splice(++l.begin(), l2, ++l2.begin(), --l2.end());
+  l.splice(++l.begin(), ++l2.begin(), --l2.end());
   assert(*++l.begin() == 3);
 
   test_sort();
