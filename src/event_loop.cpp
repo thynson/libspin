@@ -106,19 +106,16 @@ namespace spin
         std::cv_status status = m_cond.wait_until(guard, tp);
         if (status == std::cv_status::timeout)
         {
-          auto get_task = [](deadline_timer &t) -> task &
+          auto get_task = [](deadline_timer &t) noexcept -> task &
           { return t.m_task; };
-
-          typedef spin::transform_iterator<decltype(get_task),
-                decltype(m_deadline_timer_queue.begin())> tranform_iterator;
 
           // Insert all timer event that have same time point with tp and
           // remove them from loop.m_timer_event_set
           auto tf = m_deadline_timer_queue.begin();
           auto te = m_deadline_timer_queue.upper_bound(tf, *tf);
 
-          tranform_iterator f(get_task, tf);
-          tranform_iterator e(get_task, te);
+          auto f = make_transform_iterator(get_task, tf);
+          auto e = make_transform_iterator(get_task, te);
 
           tasks.insert(tasks.end(), f, e);
 
