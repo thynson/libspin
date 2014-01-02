@@ -27,7 +27,8 @@ check_PROGRAMS=test_singleton_01\
 			   test_intruse_rbtree_03\
 			   test_event_loop_01\
 			   test_event_loop_02\
-			   test_timer_01
+			   test_timer_01\
+			   test_function_01
 
 TESTS=$(check_PROGRAMS)
 
@@ -39,4 +40,5 @@ test_intruse_rbtree_03_SOURCES=intruse_rbtree_03.cpp
 test_event_loop_01_SOURCES=event_loop_01.cpp
 test_event_loop_02_SOURCES=event_loop_02.cpp
 test_timer_01_SOURCES=timer_01.cpp
+test_function_01_SOURCES=function_01.cpp
 

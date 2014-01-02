@@ -18,8 +18,8 @@
 #ifndef __SPIN_TASK_HPP_INCLUDED__
 #define __SPIN_TASK_HPP_INCLUDED__
 
-#include <spin/intruse/list.hpp>
 #include <spin/environment.hpp>
+#include <spin/intruse/list.hpp>
 
 #include <functional>
 
@@ -73,7 +73,6 @@ namespace spin
     std::function<void()> m_procedure;
   };
 }
-
 
 
 #endif
