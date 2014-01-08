@@ -88,8 +88,8 @@ namespace spin
     class base_function<Result, Argument>
     {
     public:
-      using result_type = ResultType;
-      using argument_type = ArgumentType;
+      using result_type = Result;
+      using argument_type = Argument;
     };
 
     template<typename Result, typename FirstArgument, typename SecondArgument>
@@ -98,27 +98,7 @@ namespace spin
     public:
       using result_type = Result;
       using first_argument_type = FirstArgument;
-      using second_argument_type = SecondArgument
-    };
-
-    template<typename T>
-    struct functor_type
-    {
-      using type = T;//decltype(make_functor(std::declval<T>()));
-    };
-
-    template<typename ResultType, typename Class, typename ...Arguments>
-    struct functor_type<ResultType (Class::*)(Arguments...)>
-    {
-      using type = decltype(
-          std::mem_fun(std::declval<ResultType (Class::*)(Arguments...)>()));
-    };
-
-    template<typename ResultType, typename Class, typename ...Arguments>
-    struct functor_type<ResultType (Class::*)(Arguments...) const>
-    {
-      using type = decltype(
-          std::mem_fun(std::declval<ResultType (Class::*)(Arguments...) const>()));
+      using second_argument_type = SecondArgument;
     };
 
     template<typename, typename>
