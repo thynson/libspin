@@ -77,28 +77,28 @@ namespace spin
         && (std::is_nothrow_move_constructible<T>::value);
     };
 
-    template<typename ResultType, typename ...Args>
+    template<typename Result, typename ...Args>
     class base_function
     {
     public:
-      using result_type = ResultType;
+      using result_type = Result;
     };
 
-    template<typename ResultType, typename ArgumentType>
-    class base_function<ResultType, ArgumentType>
+    template<typename Result, typename Argument>
+    class base_function<Result, Argument>
     {
     public:
       using result_type = ResultType;
       using argument_type = ArgumentType;
     };
 
-    template<typename ResultType, typename FirstArgumentType, typename SecondArgumentType>
-    class base_function<ResultType, FirstArgumentType, SecondArgumentType>
+    template<typename Result, typename FirstArgument, typename SecondArgument>
+    class base_function<Result, FirstArgument, SecondArgument>
     {
     public:
-      using result_type = ResultType;
-      using first_argument_type = FirstArgumentType;
-      using second_argument_type = SecondArgumentType;
+      using result_type = Result;
+      using first_argument_type = FirstArgument;
+      using second_argument_type = SecondArgument
     };
 
     template<typename T>
