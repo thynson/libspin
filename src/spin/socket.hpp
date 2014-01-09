@@ -18,7 +18,9 @@
 #ifndef __SPIN_SOCKET_HPP_INCLUDED__
 #define __SPIN_SOCKET_HPP_INCLUDED__
 
-#include "poller.hpp"
+#include <spin/event_loop.hpp>
+
+#include <memory>
 
 namespace spin
 {

@@ -37,7 +37,6 @@ libspin_la_HEADERS=spin/time.hpp\
 				   spin/spin_lock.hpp\
 				   spin/event_loop.hpp\
 				   spin/system.hpp\
-				   spin/poller.hpp\
 				   spin/socket.hpp\
 				   spin/intruse/list.hpp\
 				   spin/intruse/rbtree.hpp\
@@ -46,7 +45,6 @@ libspin_la_HEADERS=spin/time.hpp\
 
 libspin_la_SOURCES=event_loop.cpp\
 				   system.cpp\
-				   poller.cpp\
 				   socket.cpp\
 				   intruse_rbtree.cpp\
 				   timer.cpp
