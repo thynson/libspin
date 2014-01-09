@@ -37,7 +37,11 @@ namespace spin
 
     spin_lock(const spin_lock &) = delete;
 
-    spin_lock(spin_lock &&tmp) = delete;
+    spin_lock(spin_lock &&) = delete;
+
+    spin_lock &operator = (spin_lock &&) = delete;
+
+    spin_lock &operator = (const spin_lock &) = delete;
 
     bool try_lock() noexcept
     {

@@ -24,6 +24,7 @@
 namespace spin
 {
 
+  /*
   // @brief Implement detail of stream_socket_peer
   class stream_socket_peer::detail : public poller::context
   {
@@ -138,5 +139,6 @@ namespace spin
     return cb;
   }
 
+  */
 
 }

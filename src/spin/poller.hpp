@@ -26,6 +26,7 @@
 namespace spin
 {
 
+  /*
   class poller
   {
     friend class singleton<poller>;
@@ -91,6 +92,7 @@ namespace spin
     std::thread m_thread;
     std::mutex m_lock;
   };
+  */
 }
 
 #endif

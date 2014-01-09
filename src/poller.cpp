@@ -28,6 +28,7 @@
 namespace spin
 {
 
+
   namespace
   {
     system_handle setup_event_fd(const system_handle &epollfd)
@@ -48,6 +49,7 @@ namespace spin
     }
   }
 
+  /*
   poller::context::context(event_loop &loop, system_handle &h, poll_flag flag)
     : m_event_loop(loop)
     , m_handle(h)
@@ -180,4 +182,5 @@ namespace spin
       }
     }
   }
+*/
 }

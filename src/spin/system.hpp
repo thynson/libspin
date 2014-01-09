@@ -25,6 +25,8 @@
 
 #ifdef __unix__
 typedef int system_raw_handle;
+#else
+#error "Unsupported platform"
 #endif
 
 

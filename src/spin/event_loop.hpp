@@ -18,236 +18,81 @@
 #ifndef __SPIN_LOOP_HPP_INCLUDED__
 #define __SPIN_LOOP_HPP_INCLUDED__
 
-#include <thread>
-#include <condition_variable>
-#include <memory>
-#include <chrono>
-#include <bitset>
+#include <spin/task.hpp>
+#include <spin/system.hpp>
+#include <spin/spin_lock.hpp>
 #include <spin/utils.hpp>
 
 namespace spin
 {
 
-  class __SPIN_EXPORT__ event_loop
+  class event_loop;
+
+  class __SPIN_EXPORT__ event_source
   {
   public:
+    event_source();
+    virtual ~event_source();
+  protected:
+    virtual void on_attach(event_loop &el) = 0;
+    virtual void on_detach(event_loop &el) = 0;
+  };
 
-    /**
-     * @brief task object that can be post to event loop and its handler
-     * will be called immediately
-     */
-    class __SPIN_EXPORT__ task : public intruse::list_node<task>
-    {
-      friend class event_loop;
-    public:
+  class __SPIN_EXPORT__ event_loop
+  {
+    friend class event_source;
+  public:
 
-      /**
-       * @brief Default constructor
-       */
-      task() noexcept = default;
+    event_loop();
 
-      /**
-       * @brief Constuct task object with the specified task procedure
-       * @param proc The procedure for this task
-       */
-      task(std::function<void()> proc) noexcept
-        : list_node()
-        , m_proc(std::move(proc))
-      { }
+    ~event_loop();
 
-      /** @brief Move constructor */
-      task(task &&) = default;
+    event_loop(const event_loop &) = delete;
 
-      /** @brief Assign operator */
-      task &operator = (task && rvalue) = default;
+    event_loop(event_loop &&) = delete;
 
-      /** @brief Copy constructor is forbidden */
-      task(const task &) = delete;
+    event_loop &operator = (event_loop &&) = delete;
 
-      /** @brief Copy by lvalue is forbidden */
-      task &operator = (const task &) = delete;
-
-      /** @brief Destructor */
-      ~task() = default;
-
-      /**
-       * @brief Provide a new handler
-       * @return Return the old handler function
-       */
-      std::function<void()> set_proc(std::function<void()> proc) noexcept
-      {
-        std::swap(m_proc, proc);
-        return proc;
-      }
-
-      /** @Brief Execute this task */
-      void operator () ()
-      { if (m_proc) m_proc(); }
-
-      /** @breif Test if this task is under dispatching */
-      bool is_dispatching() const noexcept
-      { return list_node<task>::is_linked(*this); }
-
-      /**
-       * @brief Cancel this task, if the task have not been dispatched to a
-       * event_loop, or this task already finished, this function does nothing.
-       * @retval true Actually cancel a posted task
-       * @retval false Nothing has been done
-       */
-      bool cancel() noexcept;
-
-    private:
-      std::function<void()> m_proc;
-    };
-
-    /**
-     * @brief deadline timer can be posted to or defered with an
-     * event_loop and its handler will be called in the future when specified
-     * time just come or the future or will be called immediately if the
-     * specified time has passed.
-     */
-    class __SPIN_EXPORT__ deadline_timer
-      : public intruse::rbtree_node<time::steady_time_point, deadline_timer>
-    {
-      friend class event_loop;
-    public:
-
-      /**
-       * @brief Constructor that specify the alarm time and specify the
-       * task handler
-       * @param loop The main loop that this task attached to
-       * @param proc The procedure to be executed when deadline come
-       * @param deadline The deadline time point of this timer
-       * @param check_deadline Check if specified deadline has already expired
-       * and in that situation the proc will not be dispatch to execute
-       */
-      deadline_timer(event_loop &loop, std::function<void()> proc,
-          time::steady_time_point tp, bool check_deadline = false) noexcept;
-
-      /** @brief Move constructor */
-      deadline_timer(deadline_timer &&t) noexcept;
-
-      /** @brief Copy constructor is forbidden */
-      deadline_timer(const deadline_timer &) = delete;
-
-      /** @brief Destructor */
-      ~deadline_timer() = default;
-
-      /** @brief Get the alarm time */
-      const time::steady_time_point &get_deadline() const noexcept
-      { return rbtree_node::get_index(*this); }
-
-      /** @brief Get the main loop this timer attached to */
-      event_loop &get_event_loop() const noexcept
-      { return m_event_loop; }
-
-      /** @brief Get the task object */
-      const task &get_task() const noexcept
-      { return m_task; }
-
-      /** @brief Test if this timer is expired */
-      bool is_expired() const noexcept
-      { return rbtree_node::is_linked(*this); }
-
-      /**
-       * @brief Cancel this deadline_timer and reset the deadline time
-       * @param deadline The new deadline
-       * @param check_deadline Same effect with constructor
-       * @returns The original deadline
-       */
-      time::steady_time_point reset_deadline(time::steady_time_point deadline,
-          bool check_deadline = false) noexcept;
-
-      /** @brief Reset the handler */
-      std::function<void()> set_proc(std::function<void()> proc) noexcept
-      { return m_task.set_proc(std::move(proc)); }
-
-    private:
-      event_loop &m_event_loop;
-      task m_task;
-    };
-
-    /** @brief intrusive list container of task */
-    using task_queue = intruse::list<task>;
-
-    /** @brief priority queue of deadline_timer that implemented by intrusive
-     *   multiset */
-    using deadline_timer_queue
-      = intruse::rbtree<time::steady_time_point, deadline_timer>;
-
-    /** @brief constructor */
-    event_loop() noexcept;
-
-    /** @brief destructor */
-    ~event_loop() noexcept;
+    event_loop &operator = (const event_loop &) = delete;
 
     void run();
 
-    /**
-     * @brief Dispatch a task to this main loop and it will be executed at
-     * next round
-     * @note This function should not be used across thread, instead, use
-     * #post
-     * @see #post
-     */
+    void run(time::steady_time_point deadline);
+
     void dispatch(task &t) noexcept
-    { m_defered_tasks.push_back(t); }
+    { m_dispatched_queue.push_back(t); }
 
+    void dispatch(task::queue_type q) noexcept
+    { m_dispatched_queue.splice(m_dispatched_queue.end(), q); }
 
-    /**
-     * @brief Dispatch tasks batchly to this main loop and they will be
-     * executed at next round
-     * @note This function should not be used across thread, instead, use
-     * #post
-     * @see #post
-     */
-    void dispatch(task_queue &tl) noexcept
-    { m_defered_tasks.splice(m_defered_tasks.end(), tl); }
-
-    /**
-     * @brief Post a task to this main loop and it will be executed
-     * @note This function ensure cross-thread safety
-     * @see #dispatch
-     */
-    void post(task &t) noexcept;
-
-    /**
-     * @brief Post a task to this main loop and it will be executed
-     * @note This function ensure cross-thread safety
-     * @see #dispatch
-     */
-    void post(task_queue &t) noexcept;
-
-    template<typename Proc>
-    task set_task(Proc &&proc) noexcept
+    void post(task &t) noexcept
     {
-      task t(std::forward<Proc>(proc));
-      dispatch(t);
-      return t;
+      std::lock_guard<spin_lock> guard(m_lock);
+      m_posted_queue.push_back(t);
+      interrupt();
     }
 
+    void post(task::queue_type q) noexcept
+    {
+      std::lock_guard<spin_lock> guard(m_lock);
+      m_posted_queue.splice(m_posted_queue.end(), q);
+      interrupt();
+    }
 
-    void ref() noexcept
-    { m_ref_counter++; }
+    const system_handle &get_poll_handle() const noexcept;
 
-    void unref() noexcept
-    { m_ref_counter--; }
+    void interrupt();
+
+    void add_event_source(event_source &) noexcept
+    {}
+
 
   private:
-
-    task_queue wait_for_events();
-
-    event_loop(const event_loop &) = delete;
-    event_loop &operator = (const event_loop &) = delete;
-    event_loop(event_loop &&) = delete;
-    event_loop &operator = (event_loop &&) = delete;
-
-    deadline_timer_queue m_deadline_timer_queue;
-    task_queue m_posted_tasks;
-    task_queue m_defered_tasks;
-    std::mutex m_lock;
-    std::condition_variable m_cond;
-    std::atomic_size_t m_ref_counter;
+    system_handle m_epoll_handle;
+    system_handle m_interrupter;
+    task::queue_type m_dispatched_queue;
+    task::queue_type m_posted_queue;
+    spin_lock m_lock;
   };
 }
 

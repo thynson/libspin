@@ -23,6 +23,7 @@
 namespace spin
 {
 
+  /*
   bool event_loop::task::cancel() noexcept
   {
     if (list_node::is_linked(*this))
@@ -161,4 +162,5 @@ namespace spin
     m_posted_tasks.splice(m_posted_tasks.end(), tl);
     m_cond.notify_one();
   }
+  */
 }
