@@ -561,18 +561,8 @@ namespace spin
 
       /**
        * @breif Transfer all elements from l to position pos in this list
-       * @note l shall be a distinct list
        */
-      void splice(iterator pos, list &l) noexcept
-      {
-        splice(pos, l.begin(), l.end());
-      }
-
-      /**
-       * @breif Transfer all elements from l to position pos in this list
-       * @note l shall be a distinct list
-       */
-      void splice(iterator pos, list &&l) noexcept
+      void splice(iterator pos, list l) noexcept
       {
         splice(pos, l.begin(), l.end());
       }
@@ -649,17 +639,9 @@ namespace spin
        * @breif Merge sorted list
        * @param l The list to be merged
        */
-      void merge(list &l)
+      void merge(list l)
         noexcept(noexcept(l.merge(l, less<T>())))
       { merge(l, less<T>()); }
-
-      /**
-       * @breif Merge a sorted list, overload for rvalue refernece
-       * @param l The list to be merged
-       */
-      void merge(list &&l)
-        noexcept(noexcept(l.merge(l)))
-      { merge(l); }
 
       /**
        * @breif Merge sorted list l with specified strict weak ordering
@@ -668,27 +650,22 @@ namespace spin
        * @param cmper The specified strict weak ordering comparer
        */
       template<typename Comparer>
-      void merge(list &l, Comparer &&cmper)
+      void merge(list l, Comparer &&cmper)
         noexcept(noexcept(l.merge(l, l.begin(), l.end(),
                 std::forward<Comparer>(cmper))))
-      {
-        merge(l, l.begin(), l.end(),
-            std::forward<Comparer>(cmper));
-      }
+      { merge(l.begin(), l.end(), std::forward<Comparer>(cmper)); }
 
       /**
        * @breif Merge a sorted part of list l from b to e with specified
        * strict weak ordering comparer cmper
-       * @param l List to be merged
-       * @param b List to be merged
+       * @param b Begin of list to be merged
+       * @param b End of list to be merged
        * @param cmper The specified strict weak ordering comparer
        */
       template<typename Comparer>
-      void merge(list &l, iterator b, iterator e,
-          Comparer &&cmper)
+      void merge(iterator b, iterator e, Comparer &&cmper)
         noexcept(noexcept(cmper(*b, *e)))
       {
-        if (this == &l) return;
 
         auto p = begin(), q = end();
 
