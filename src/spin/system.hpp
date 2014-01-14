@@ -94,7 +94,9 @@ namespace spin
 #ifdef __unix__
       if (x == -1)
       {
-        throw std::system_error(errno, std::system_category());
+        int tmperrno = errno;
+        errno = 0;
+        throw std::system_error(tmperrno, std::system_category());
       }
       return x;
 #endif

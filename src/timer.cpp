@@ -16,6 +16,7 @@
  */
 
 #include <spin/timer.hpp>
+#include <spin/transform_iterator.hpp>
 
 #include <stdexcept>
 
@@ -28,13 +29,47 @@ namespace spin
   timer_service::instance_table;
 
   timer_service::timer_service(event_loop &el,
-      timer_service::private_constructable) noexcept
+      timer_service::private_constructable)
     : rbtree_node(&el)
     , enable_shared_from_this()
     , m_deadline_timer_queue()
-    , m_timer_fd(timerfd_create, CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC)
+    , m_timer_fd(timerfd_create, CLOCK_MONOTONIC, TFD_NONBLOCK)
+  { el.add_event_source(*this); }
+
+  void timer_service::on_attach(event_loop &el)
   {
-    // TODO: register event source
+    epoll_event epev;
+    epev.data.ptr = static_cast<event_source*>(this);
+    epev.events = EPOLLIN | EPOLLET;
+    int result = epoll_ctl(el.get_poll_handle().get_raw_handle(), EPOLL_CTL_ADD,
+        m_timer_fd.get_raw_handle(), &epev);
+
+    if (result == -1)
+    {
+      int tmperrno = errno;
+      errno = 0;
+      throw std::system_error(tmperrno, std::system_category());
+    }
+  }
+
+  void timer_service::on_detach(event_loop &el)
+  {
+    int result = epoll_ctl(el.get_poll_handle().get_raw_handle(), EPOLL_CTL_DEL,
+        m_timer_fd.get_raw_handle(), nullptr);
+
+    assert(result == 0);
+  }
+
+  void timer_service::on_active(event_loop &el)
+  {
+    auto now = time::steady_clock::now();
+    auto adapter = [](deadline_timer &t) noexcept -> task &{ return t.m_task; };
+    auto u = m_deadline_timer_queue.upper_bound(now);
+    auto b = make_transform_iterator(adapter, m_deadline_timer_queue.begin());
+    auto e = make_transform_iterator(adapter, u);
+
+    el.dispatch(task::queue_type(b, e));
+    m_deadline_timer_queue.erase(m_deadline_timer_queue.begin(), u);
   }
 
   std::shared_ptr<timer_service>

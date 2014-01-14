@@ -287,6 +287,12 @@ namespace spin
         , m_tail(&m_head, nullptr)
       { }
 
+      /** @brief Construct list and splice elements from another list */
+      list (iterator b, iterator e) noexcept
+        : list()
+      { splice(end(), b, e); }
+
+
       /** @brief Construct with elements from input iterator */
       template<typename InputIterator>
       list(InputIterator b, InputIterator e) noexcept(noexcept(*b) && noexcept(b++))

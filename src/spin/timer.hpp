@@ -36,6 +36,7 @@ namespace spin
   class __SPIN_EXPORT__ deadline_timer :
     public intruse::rbtree_node<time::steady_time_point, deadline_timer>
   {
+    friend class timer_service;
   public:
 
     explicit deadline_timer(timer_service &service,
@@ -72,7 +73,8 @@ namespace spin
 
   class __SPIN_EXPORT__ timer_service :
     public intruse::rbtree_node<event_loop *, timer_service>,
-    public std::enable_shared_from_this<timer_service>
+    public std::enable_shared_from_this<timer_service>,
+    public event_source
   {
   private:
     struct __SPIN_INTERNAL__ private_constructable {};
@@ -83,8 +85,16 @@ namespace spin
     intruse::rbtree<time::steady_time_point, deadline_timer> m_deadline_timer_queue;
     system_handle m_timer_fd;
 
+    void on_attach(event_loop &el) override;
+    void on_active(event_loop &el) override;
+    void on_detach(event_loop &el) override;
+
+
   public:
-    timer_service(event_loop &el, private_constructable) noexcept;
+    timer_service(event_loop &el, private_constructable);
+
+    virtual ~timer_service() noexcept override {};
+
     /**
      * @brief Get timer service instance for given event_loop
      */

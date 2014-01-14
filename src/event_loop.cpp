@@ -17,150 +17,86 @@
 
 #include <spin/event_loop.hpp>
 #include <spin/transform_iterator.hpp>
+
 #include <mutex>
-#include <condition_variable>
+
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
 
 namespace spin
 {
 
-  /*
-  bool event_loop::task::cancel() noexcept
+  namespace
   {
-    if (list_node::is_linked(*this))
+    system_handle setup_eventfd (const system_handle &epollfd)
     {
-      list_node::unlink(*this);
-      return true;
+      system_handle x(eventfd, 0, EFD_NONBLOCK | EFD_CLOEXEC);
+
+      epoll_event evt;
+
+      evt.events = EPOLLIN | EPOLLET;
+      evt.data.ptr = nullptr;
+
+      int ret = epoll_ctl (epollfd.get_raw_handle(), EPOLL_CTL_ADD,
+          x.get_raw_handle(), &evt);
+
+      if (ret != 0)
+        throw std::system_error(errno, std::system_category());
+      return x;
     }
-    return false;
-  }
 
-  event_loop::deadline_timer::deadline_timer(event_loop &loop,
-      std::function<void()> proc, time::steady_time_point deadline,
-      bool check_deadline) noexcept
-    : rbtree_node(std::move(deadline))
-    , m_event_loop(loop)
-    , m_task(std::move(proc))
-  {
-    auto &dl = rbtree_node::get_index(*this);
-    if (!check_deadline || dl > decltype(deadline)::clock::now())
-      m_event_loop.m_deadline_timer_queue.insert(*this, intruse::policy_backmost);
-  }
 
-  event_loop::deadline_timer::deadline_timer(
-      event_loop::deadline_timer &&t) noexcept
-    : rbtree_node(std::move(t))
-    , m_event_loop(t.m_event_loop)
-    , m_task(std::move(t.m_task))
-  { }
-
-  time::steady_time_point
-  event_loop::deadline_timer::reset_deadline(time::steady_time_point deadline,
-      bool check_deadline) noexcept
-  {
-    //rbtree_node::unlink(*this);
-    //auto &q = m_event_loop.m_deadline_timer_queue;
-    deadline = rbtree_node::update_index(*this, std::move(deadline),
-        intruse::policy_backmost);
-
-    if (check_deadline
-        && rbtree_node::get_index(*this) > decltype(deadline)::clock::now()
-        && rbtree_node::is_linked(*this))
-      rbtree_node::unlink(*this);
-    return deadline;
-  }
-
-  event_loop::event_loop() noexcept
-    : m_deadline_timer_queue()
-    , m_posted_tasks()
-    , m_defered_tasks()
-    , m_lock()
-    , m_cond()
-    , m_ref_counter()
-  { }
-
-  event_loop::~event_loop() noexcept
-  { }
-
-  event_loop::task_queue event_loop::wait_for_events()
-  {
-    task_queue tasks;
-    tasks.swap(m_defered_tasks);
-
-    if (m_deadline_timer_queue.empty())
+    task::queue_type
+    unqueue_posted_task(spin_lock &lock, task::queue_type &q) noexcept
     {
-      std::unique_lock<std::mutex> guard(m_lock);
-      if (m_posted_tasks.empty())
-      {
-        if (tasks.empty() && m_ref_counter != 0)
-        { m_cond.wait(guard); }
-      }
-      tasks.splice(tasks.end(), m_posted_tasks);
+      std::lock_guard<spin_lock> guard(lock);
+      return std::move(q);
     }
-    else
-    {
-      auto tp = deadline_timer::get_index(m_deadline_timer_queue.front());
-      std::unique_lock<std::mutex> guard(m_lock);
-
-      if (m_posted_tasks.empty() && tasks.empty())
-      {
-        // There are timers, wait until the first expire time point
-        std::cv_status status = m_cond.wait_until(guard, tp);
-        if (status == std::cv_status::timeout)
-        {
-          auto get_task = [](deadline_timer &t) noexcept -> task &
-          { return t.m_task; };
-
-          // Insert all timer event that have same time point with tp and
-          // remove them from loop.m_timer_event_set
-          auto tf = m_deadline_timer_queue.begin();
-          auto te = m_deadline_timer_queue.upper_bound(tf, *tf);
-
-          auto f = make_transform_iterator(get_task, tf);
-          auto e = make_transform_iterator(get_task, te);
-
-          tasks.insert(tasks.end(), f, e);
-
-          //tasks.insert(tasks.end(), f, e);
-          m_deadline_timer_queue.erase(tf, te);
-
-          return tasks;
-        }
-      }
-      tasks.splice(tasks.end(), m_posted_tasks);
-    }
-    return tasks;
   }
+
+  event_loop::event_loop()
+    : m_epoll_handle(epoll_create1, EPOLL_CLOEXEC)
+    , m_interrupter(setup_eventfd(m_epoll_handle))
+  { }
 
   void event_loop::run()
   {
+    std::array<epoll_event, 512> evarray;
+
     for ( ; ; )
     {
-      task_queue q = wait_for_events();
-      if (q.empty())
-        return;
-      while (!q.empty())
+      task::queue_type q(std::move(m_dispatched_queue));
+      q.splice(q.end(), unqueue_posted_task(m_lock, m_posted_queue));
+
+      int timeout = q.empty() ? -1 : 0;
+      int nfds = epoll_wait(m_epoll_handle, evarray.data(), evarray.size(), timeout);
+
+      if (nfds == -1)
       {
-        auto &t = q.front();
-        intruse::list_node<task>::unlink(t);
+        assert (errno != EBADF || errno != EINVAL || errno != EFAULT);
+        errno = 0;
+        nfds = 0;
+      }
+      else
+      {
+        assert((decltype(evarray)::size_type) nfds <= evarray.size());
+
+        for (auto i = evarray.begin(); i != evarray.begin() + nfds; ++i)
+        {
+          event_source *s = reinterpret_cast<event_source *>(i->data.ptr);
+          s->on_active(*this);
+        }
+
+        q.splice(q.end(), std::move(m_dispatched_queue));
+      }
+
+      for (task &t : q)
+      {
+        t.cancel();
         t();
       }
     }
+
   }
 
-  void event_loop::post(event_loop::task &t) noexcept
-  {
-    std::unique_lock<std::mutex> guard(m_lock);
-    m_posted_tasks.push_back(t);
-    m_cond.notify_one();
-  }
-
-  void event_loop::post(event_loop::task_queue &tl) noexcept
-  {
-    if (tl.empty())
-      return;
-    std::unique_lock<std::mutex> guard(m_lock);
-    m_posted_tasks.splice(m_posted_tasks.end(), tl);
-    m_cond.notify_one();
-  }
-  */
 }

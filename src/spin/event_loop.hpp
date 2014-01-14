@@ -23,24 +23,28 @@
 #include <spin/spin_lock.hpp>
 #include <spin/utils.hpp>
 
+#include <memory>
+
 namespace spin
 {
 
   class event_loop;
 
   class __SPIN_EXPORT__ event_source
+    : public intruse::list_node<event_source>
   {
+    friend class event_loop;
   public:
-    event_source();
-    virtual ~event_source();
+    virtual ~event_source() noexcept = default;
   protected:
     virtual void on_attach(event_loop &el) = 0;
     virtual void on_detach(event_loop &el) = 0;
+    virtual void on_active(event_loop &el) = 0;
   };
 
   class __SPIN_EXPORT__ event_loop
+    : public std::enable_shared_from_this<event_loop>
   {
-    friend class event_source;
   public:
 
     event_loop();
@@ -63,7 +67,7 @@ namespace spin
     { m_dispatched_queue.push_back(t); }
 
     void dispatch(task::queue_type q) noexcept
-    { m_dispatched_queue.splice(m_dispatched_queue.end(), q); }
+    { m_dispatched_queue.splice(m_dispatched_queue.end(), std::move(q)); }
 
     void post(task &t) noexcept
     {
@@ -75,23 +79,27 @@ namespace spin
     void post(task::queue_type q) noexcept
     {
       std::lock_guard<spin_lock> guard(m_lock);
-      m_posted_queue.splice(m_posted_queue.end(), q);
+      m_posted_queue.splice(m_posted_queue.end(), std::move(q));
       interrupt();
     }
 
-    const system_handle &get_poll_handle() const noexcept;
+    const system_handle &get_poll_handle() const noexcept
+    { return m_epoll_handle; }
 
     void interrupt();
 
-    void add_event_source(event_source &) noexcept
-    {}
-
+    void add_event_source(event_source &s)
+    { s.on_attach(*this); }
 
   private:
+
+    task::queue_type peek_events(time::steady_time_point deadline);
+
     system_handle m_epoll_handle;
     system_handle m_interrupter;
     task::queue_type m_dispatched_queue;
     task::queue_type m_posted_queue;
+    intruse::list<event_source> m_event_sources;
     spin_lock m_lock;
   };
 }
