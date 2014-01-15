@@ -72,7 +72,7 @@ namespace spin
 
   void timer_service::on_active(event_loop &el)
   {
-    auto now = time::steady_clock::now();
+    auto now = timer::clock::now();
     auto adapter = [](timer &t) noexcept -> task &{ return t.m_task; };
     auto u = m_deadline_timer_queue.upper_bound(now);
     auto b = make_transform_iterator(adapter, m_deadline_timer_queue.begin());
@@ -173,7 +173,7 @@ namespace spin
     if (!m_timer_service)
       return;
     auto &t = rbtree_node::get_index(*this);
-    if (!check_timeout || t > time::steady_clock::now())
+    if (!check_timeout || t > clock::now())
       m_timer_service->enqueue(*this);
   }
 

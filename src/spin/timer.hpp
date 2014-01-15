@@ -21,7 +21,6 @@
 #include <spin/intruse/rbtree.hpp>
 #include <spin/task.hpp>
 #include <spin/event_loop.hpp>
-#include <spin/time.hpp>
 
 #include <memory>
 #include <type_traits>
@@ -30,8 +29,6 @@ namespace spin
 {
 
   class timer_service;
-  class deadline_timer;
-  class cycle_timer;
 
   class __SPIN_EXPORT__ timer :
     public intruse::rbtree_node<std::chrono::steady_clock::time_point, timer>
@@ -45,14 +42,12 @@ namespace spin
 
     explicit timer(timer_service &service,
         std::function<void()> procedure = std::function<void()>(),
-        time_point tp = time::steady_clock::now(),
-        duration interval = duration::zero(),
+        time_point tp = clock::now(), duration interval = duration::zero(),
         bool check_timeout = false) noexcept;
 
     explicit timer(event_loop &loop,
         std::function<void()> procedure = std::function<void()>(),
-        time::steady_time_point tp = time::steady_clock::now(),
-        duration interval = duration::zero(),
+        time_point tp = clock::now(), duration interval = duration::zero(),
         bool check_timeout = false);
 
     ~timer() = default;;
@@ -91,7 +86,7 @@ namespace spin
     static intruse::rbtree<event_loop *, timer_service>
     instance_table;
 
-    intruse::rbtree<time::steady_time_point, timer> m_deadline_timer_queue;
+    intruse::rbtree<timer::time_point, timer> m_deadline_timer_queue;
     system_handle m_timer_fd;
 
     void on_attach(event_loop &el) override;

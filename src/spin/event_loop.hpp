@@ -23,6 +23,7 @@
 #include <spin/spin_lock.hpp>
 #include <spin/utils.hpp>
 
+#include <mutex>
 #include <memory>
 
 namespace spin
@@ -61,8 +62,6 @@ namespace spin
 
     void run();
 
-    void run(time::steady_time_point deadline);
-
     void dispatch(task &t) noexcept
     { m_dispatched_queue.push_back(t); }
 
@@ -95,8 +94,6 @@ namespace spin
     }
 
   private:
-
-    task::queue_type peek_events(time::steady_time_point deadline);
 
     system_handle m_epoll_handle;
     system_handle m_interrupter;

@@ -19,7 +19,6 @@
 #define __SPIN_UTILS_HPP_INCLUDED__
 
 #include <spin/environment.hpp>
-#include <spin/time.hpp>
 #include <spin/spin_lock.hpp>
 
 #include <spin/intruse/list.hpp>
