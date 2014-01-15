@@ -64,7 +64,7 @@ void test_sort()
   X::list l;
 
   static_assert(noexcept(l.sort()), "noexcept deduction failed");
-  static_assert(noexcept(l.merge(l)), "noexcept deduction failed");
+  static_assert(noexcept(l.merge(std::move(l))), "noexcept deduction failed");
   static_assert(noexcept(l.unique()), "noexcept deduction failed");
 
   for (auto i = v.begin(); i != v.end(); ++i)
@@ -75,10 +75,29 @@ void test_sort()
   assert(std::is_sorted(l.begin(), l.end()));
 }
 
+X return_x(X::list &l)
+{
+  X x(-1);
+  l.push_back(x);
+  return x;
+}
+
+void test_return (X::list &l)
+{
+  auto z = return_x(l);
+  assert(&l.front() == &z);
+  assert (z.i == -1);
+
+  assert (l.begin() != l.end());
+  l.clear();
+
+}
+
 int main()
 {
 
   X::list l;
+  test_return (l);
   X a = 1, b = 2, c = 3, d = 4, e = 5;
   l.push_back(c);
   l.push_back(b);
