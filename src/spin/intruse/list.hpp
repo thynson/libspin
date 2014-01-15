@@ -687,25 +687,22 @@ namespace spin
       void merge(list &l, Comparer &&cmper)
         noexcept(noexcept(l.merge(l, l.begin(), l.end(),
                 std::forward<Comparer>(cmper))))
-      {
-        merge(l, l.begin(), l.end(),
-            std::forward<Comparer>(cmper));
-      }
+      { merge(l.begin(), l.end(), std::forward<Comparer>(cmper)); }
 
       /**
-       * @breif Merge a sorted part of list l from b to e with specified
+       * @breif Merge a sorted part of from b to e of another list with specified
        * strict weak ordering comparer cmper
-       * @param l List to be merged
-       * @param b List to be merged
+       * @param b Begin of element to be merged
+       * @param e End of element to be merged
        * @param cmper The specified strict weak ordering comparer
+       * @note both of this list and the part to be merged should be sorted
+       * with specified comparer, and b and e should be iterators of distinct list
        */
       template<typename Comparer>
-      void merge(list &l, iterator b, iterator e,
+      void merge(iterator b, iterator e,
           Comparer &&cmper)
         noexcept(noexcept(cmper(*b, *e)))
       {
-        if (this == &l) return;
-
         auto p = begin(), q = end();
 
         while (p != q && b != e)
