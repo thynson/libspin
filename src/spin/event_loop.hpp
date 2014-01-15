@@ -49,7 +49,7 @@ namespace spin
 
     event_loop();
 
-    ~event_loop();
+    ~event_loop() = default;
 
     event_loop(const event_loop &) = delete;
 
@@ -89,7 +89,10 @@ namespace spin
     void interrupt();
 
     void add_event_source(event_source &s)
-    { s.on_attach(*this); }
+    {
+      m_event_sources.push_back(s);
+      s.on_attach(*this);
+    }
 
   private:
 

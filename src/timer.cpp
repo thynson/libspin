@@ -25,6 +25,16 @@
 
 namespace spin
 {
+  namespace
+  {
+    timer::duration check_interval(timer::duration interval)
+    {
+      if (interval < timer::duration::zero())
+        throw std::invalid_argument("interval cannot less than zero");
+      return interval;
+    }
+  }
+
   intruse::rbtree<event_loop *, timer_service>
   timer_service::instance_table;
 
@@ -63,7 +73,7 @@ namespace spin
   void timer_service::on_active(event_loop &el)
   {
     auto now = time::steady_clock::now();
-    auto adapter = [](deadline_timer &t) noexcept -> task &{ return t.m_task; };
+    auto adapter = [](timer &t) noexcept -> task &{ return t.m_task; };
     auto u = m_deadline_timer_queue.upper_bound(now);
     auto b = make_transform_iterator(adapter, m_deadline_timer_queue.begin());
     auto e = make_transform_iterator(adapter, u);
@@ -86,37 +96,98 @@ namespace spin
       return i->shared_from_this();
   }
 
-  void timer_service::enqueue(deadline_timer &t) noexcept
+  void timer_service::enqueue(timer &t) noexcept
   {
     m_deadline_timer_queue.insert(t, intruse::policy_backmost);
+    if (&m_deadline_timer_queue.front() == &t)
+    {
+      auto duration = timer::get_index(t) - timer::clock::now();
+      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+      duration -= std::chrono::seconds(seconds);
+      auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+      itimerspec itspc {
+        { 0, 0 },
+        { seconds, nanoseconds}
+      };
+
+      timerfd_settime(m_timer_fd.get_raw_handle(), 0, &itspc, nullptr);
+    }
   }
 
-  deadline_timer::deadline_timer(timer_service &service,
-      std::function<void()> procedure, time::steady_time_point tp,
-      bool check_timeout) noexcept
+  std::shared_ptr<timer_service> timer::init_timer_service(timer_service &service)
+  {
+    auto tp = get_index(*this);
+    auto duration = tp - clock::now();
+    if (duration < duration::zero())
+    {
+      if ( m_interval <= decltype(m_interval)::zero())
+        return nullptr;
+      duration %= m_interval;
+      tp = clock::now() + (-duration) % m_interval;
+      update_index(*this, std::move(tp));
+    }
+    return service.shared_from_this();
+  }
+
+  std::shared_ptr<timer_service> timer::init_timer_service()
+  {
+    auto tp = get_index(*this);
+    auto duration = tp - clock::now();
+    if (duration < duration::zero())
+    {
+      if ( m_interval <= decltype(m_interval)::zero())
+        return nullptr;
+      duration %= m_interval;
+      tp = clock::now() + (-duration) % m_interval;
+      update_index(*this, std::move(tp));
+    }
+    return timer_service::get_instance(m_event_loop);
+  }
+
+  timer::timer(timer_service &service, std::function<void()> procedure,
+      timer::time_point tp, timer::duration interval, bool check_timeout) noexcept
     : rbtree_node(std::move(tp))
-    , m_timer_service(service.shared_from_this())
-    , m_task(std::move(procedure))
+    , m_event_loop(service.get_event_loop())
+    , m_interval(check_interval(std::move(interval)))
+    , m_procedure(std::move(procedure))
+    , m_task(std::bind(&timer::invoke_procedure, this))
     , m_missed_counter(0)
+    , m_timer_service(init_timer_service(service))
   {
     enqueue_to_timer_service(check_timeout);
   }
 
-  deadline_timer::deadline_timer(event_loop &loop,
-      std::function<void()> procedure, time::steady_time_point tp,
-      bool check_timeout)
+  timer::timer(event_loop &loop, std::function<void()> procedure,
+      timer::time_point tp, timer::duration interval, bool check_timeout)
     : rbtree_node(std::move(tp))
-    , m_timer_service(timer_service::get_instance(loop))
-    , m_task(std::move(procedure))
+    , m_event_loop(loop)
+    , m_interval(std::move(interval))
+    , m_procedure(std::move(procedure))
+    , m_task(std::bind(&timer::invoke_procedure, this))
     , m_missed_counter(0)
+    , m_timer_service(init_timer_service())
   { enqueue_to_timer_service(check_timeout); }
 
-  void deadline_timer::enqueue_to_timer_service(bool check_timeout)
+  void timer::enqueue_to_timer_service(bool check_timeout)
   {
+    if (!m_timer_service)
+      return;
     auto &t = rbtree_node::get_index(*this);
     if (!check_timeout || t > time::steady_clock::now())
       m_timer_service->enqueue(*this);
   }
 
+  void timer::invoke_procedure()
+  {
+    if (m_procedure) m_procedure();
+
+    if (m_interval == duration::zero())
+      m_timer_service = nullptr;
+    else
+    {
+      update_index(*this, get_index(*this) + m_interval);
+      enqueue_to_timer_service(false);
+    }
+  }
 
 }

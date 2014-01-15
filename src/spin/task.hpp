@@ -39,7 +39,7 @@ namespace spin
     task(std::function<void()> procedure) noexcept
       : list_node()
       , m_procedure(std::move(procedure))
-    { if (m_procedure) m_procedure = noop; }
+    { if (!m_procedure) m_procedure = noop; }
 
     task(task &&) = default;
 

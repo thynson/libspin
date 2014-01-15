@@ -68,30 +68,38 @@ namespace spin
       task::queue_type q(std::move(m_dispatched_queue));
       q.splice(q.end(), unqueue_posted_task(m_lock, m_posted_queue));
 
-      int timeout = q.empty() ? -1 : 0;
-      int nfds = epoll_wait(m_epoll_handle, evarray.data(), evarray.size(), timeout);
-
-      if (nfds == -1)
+      if (!m_event_sources.empty())
       {
-        assert (errno != EBADF || errno != EINVAL || errno != EFAULT);
-        errno = 0;
-        nfds = 0;
-      }
-      else
-      {
-        assert((decltype(evarray)::size_type) nfds <= evarray.size());
+        int timeout = q.empty() ? -1 : 0;
+        int nfds = epoll_wait(m_epoll_handle.get_raw_handle(),
+            evarray.data(), evarray.size(), timeout);
 
-        for (auto i = evarray.begin(); i != evarray.begin() + nfds; ++i)
+        if (nfds == -1)
         {
-          event_source *s = reinterpret_cast<event_source *>(i->data.ptr);
-          s->on_active(*this);
+          assert (errno != EBADF || errno != EINVAL || errno != EFAULT);
+          errno = 0;
+          nfds = 0;
         }
+        else
+        {
+          assert((decltype(evarray)::size_type) nfds <= evarray.size());
 
-        q.splice(q.end(), std::move(m_dispatched_queue));
+          for (auto i = evarray.begin(); i != evarray.begin() + nfds; ++i)
+          {
+            event_source *s = reinterpret_cast<event_source *>(i->data.ptr);
+            s->on_active(*this);
+          }
+
+          q.splice(q.end(), m_dispatched_queue);
+        }
       }
 
-      for (task &t : q)
+      if (q.empty())
+        return;
+
+      for (auto i = q.begin(); i != q.end(); )
       {
+        auto &t = *i++;
         t.cancel();
         t();
       }

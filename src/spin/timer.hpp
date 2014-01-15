@@ -33,42 +33,51 @@ namespace spin
   class deadline_timer;
   class cycle_timer;
 
-  class __SPIN_EXPORT__ deadline_timer :
-    public intruse::rbtree_node<time::steady_time_point, deadline_timer>
+  class __SPIN_EXPORT__ timer :
+    public intruse::rbtree_node<std::chrono::steady_clock::time_point, timer>
   {
     friend class timer_service;
   public:
 
-    explicit deadline_timer(timer_service &service,
+    using clock = std::chrono::steady_clock;
+    using time_point = clock::time_point;
+    using duration = clock::duration;
+
+    explicit timer(timer_service &service,
         std::function<void()> procedure = std::function<void()>(),
-        time::steady_time_point tp = time::steady_clock::now(),
+        time_point tp = time::steady_clock::now(),
+        duration interval = duration::zero(),
         bool check_timeout = false) noexcept;
 
-    explicit deadline_timer(event_loop &loop,
+    explicit timer(event_loop &loop,
         std::function<void()> procedure = std::function<void()>(),
         time::steady_time_point tp = time::steady_clock::now(),
+        duration interval = duration::zero(),
         bool check_timeout = false);
 
-    ~deadline_timer();
+    ~timer() = default;;
 
-    timer_service &get_timer_service() const noexcept
-    { return *m_timer_service; }
-
-    void reset_deadline(time::steady_time_point tp,
-        bool check_timeout = false) noexcept;
+    std::shared_ptr<timer_service> get_timer_service() const noexcept
+    { return m_timer_service; }
 
     std::function<void()> reset_procedure (std::function<void()> procedure);
-
-    void cancel() noexcept
-    { reset_deadline(time::steady_clock::now(), true); }
 
   private:
 
     void enqueue_to_timer_service(bool);
 
-    std::shared_ptr<timer_service> m_timer_service;
+    void invoke_procedure();
+
+    std::shared_ptr<timer_service> init_timer_service(timer_service&);
+
+    std::shared_ptr<timer_service> init_timer_service();
+
+    event_loop &m_event_loop;
+    duration m_interval;
+    std::function<void()> m_procedure;
     task m_task;
     std::uint64_t m_missed_counter;
+    std::shared_ptr<timer_service> m_timer_service;
   };
 
   class __SPIN_EXPORT__ timer_service :
@@ -82,7 +91,7 @@ namespace spin
     static intruse::rbtree<event_loop *, timer_service>
     instance_table;
 
-    intruse::rbtree<time::steady_time_point, deadline_timer> m_deadline_timer_queue;
+    intruse::rbtree<time::steady_time_point, timer> m_deadline_timer_queue;
     system_handle m_timer_fd;
 
     void on_attach(event_loop &el) override;
@@ -95,12 +104,18 @@ namespace spin
 
     virtual ~timer_service() noexcept override {};
 
+    event_loop &get_event_loop() noexcept
+    { return *get_index(*this); }
+
+    const event_loop &get_event_loop() const noexcept
+    { return *get_index(*this); }
+
     /**
      * @brief Get timer service instance for given event_loop
      */
     static std::shared_ptr<timer_service> get_instance(event_loop &el);
 
-    void enqueue(deadline_timer &t) noexcept;
+    void enqueue(timer &t) noexcept;
   };
 
 }
