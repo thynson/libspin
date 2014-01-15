@@ -848,7 +848,7 @@ namespace spin
       /** @brief Update index of this node */
       static Index update_index(rbtree_node &node, Index index)
           noexcept(noexcept(std::swap(index, index)))
-      { update_index(node, std::move(index), policy_unique); }
+      { return update_index(node, std::move(index), policy_unique); }
 
       /** @brief Update index of this node */
       static Index update_index(rbtree_node &node, Index index, policy_unique_t p)

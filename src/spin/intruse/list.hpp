@@ -141,6 +141,10 @@ namespace spin
         : m_node (node)
       { }
 
+      list_iterator(const list_iterator &l) noexcept
+        : m_node (l.m_node)
+      { }
+
       ~list_iterator() noexcept = default;
 
       reference operator * () const noexcept { return *internal_cast(); }
@@ -198,6 +202,11 @@ namespace spin
       list_const_iterator (const node_type *node) noexcept
         : m_node (node)
       {}
+
+      list_const_iterator(const list_const_iterator &l) noexcept
+        : m_node (l.m_node)
+      { }
+
 
       ~list_const_iterator() noexcept = default;
 
@@ -311,6 +320,7 @@ namespace spin
 
       /** @brief Move constructor */
       list(list &&other) noexcept
+        : list()
       { swap(other); }
 
       /** @brief Move assign operator */
