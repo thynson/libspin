@@ -87,10 +87,16 @@ namespace spin
 
     void interrupt();
 
-    void add_event_source(event_source &s)
+    void attach_event_source(event_source &s)
     {
       m_event_sources.push_back(s);
       s.on_attach(*this);
+    }
+
+    void detach_event_source(event_source &s)
+    {
+      s.on_detach(*this);
+      event_source::unlink(s);
     }
 
   private:

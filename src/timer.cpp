@@ -27,11 +27,45 @@ namespace spin
 {
   namespace
   {
-    timer::duration check_interval(timer::duration interval)
+    timer::duration check_interval(timer::duration &interval)
     {
       if (interval < timer::duration::zero())
         throw std::invalid_argument("interval cannot less than zero");
-      return interval;
+      return std::move(interval);
+    }
+
+    auto adjust_time_point(timer::time_point &tp, const timer::time_point &now,
+        const timer::duration &duration) -> decltype((now - tp) / duration)
+    {
+      if (duration == timer::duration::zero())
+        return 0;
+      if (tp >= now)
+      {
+        return 0;
+      }
+      else
+      {
+        auto d = now - tp;
+        auto ret = d / duration;
+        tp += (d % duration) + duration;
+        return ret;
+      }
+
+    }
+
+    void update_timerfd(const system_handle &timerfd, timer::duration duration)
+    {
+      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+      duration -= std::chrono::seconds(seconds);
+      auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+      itimerspec itspc {
+        { 0, 0 },
+        { seconds, nanoseconds}
+      };
+
+      int result = timerfd_settime(timerfd.get_raw_handle(), 0, &itspc, nullptr);
+      if (result == -1)
+        throw_exception_for_last_error();
     }
   }
 
@@ -44,7 +78,7 @@ namespace spin
     , enable_shared_from_this()
     , m_deadline_timer_queue()
     , m_timer_fd(timerfd_create, CLOCK_MONOTONIC, TFD_NONBLOCK)
-  { el.add_event_source(*this); }
+  { }
 
   void timer_service::on_attach(event_loop &el)
   {
@@ -78,8 +112,19 @@ namespace spin
     auto b = make_transform_iterator(adapter, m_deadline_timer_queue.begin());
     auto e = make_transform_iterator(adapter, u);
 
-    el.dispatch(task::queue_type(b, e));
-    m_deadline_timer_queue.erase(m_deadline_timer_queue.begin(), u);
+    auto l = task::queue_type(b, e);
+
+    for (auto i = m_deadline_timer_queue.begin(); i != u; )
+    {
+      timer &t = *i++;
+      t.relay(now);
+    }
+    el.dispatch(std::move(l));
+    if (m_deadline_timer_queue.empty())
+      get_index(*this)->detach_event_source(*this);
+    else
+      update_timerfd(m_timer_fd, timer::get_index(m_deadline_timer_queue.front()) - now);
+
   }
 
   std::shared_ptr<timer_service>
@@ -98,95 +143,70 @@ namespace spin
 
   void timer_service::enqueue(timer &t) noexcept
   {
+    if (m_deadline_timer_queue.empty())
+      get_index(*this)->attach_event_source(*this);
     m_deadline_timer_queue.insert(t, intruse::policy_backmost);
     if (&m_deadline_timer_queue.front() == &t)
     {
-      auto duration = timer::get_index(t) - timer::clock::now();
-      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
-      duration -= std::chrono::seconds(seconds);
-      auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
-      itimerspec itspc {
-        { 0, 0 },
-        { seconds, nanoseconds}
-      };
-
-      timerfd_settime(m_timer_fd.get_raw_handle(), 0, &itspc, nullptr);
+      update_timerfd(m_timer_fd, timer::get_index(t) - timer::clock::now());
     }
-  }
-
-  std::shared_ptr<timer_service> timer::init_timer_service(timer_service &service)
-  {
-    auto tp = get_index(*this);
-    auto duration = tp - clock::now();
-    if (duration < duration::zero())
-    {
-      if ( m_interval <= decltype(m_interval)::zero())
-        return nullptr;
-      duration %= m_interval;
-      tp = clock::now() + (-duration) % m_interval;
-      update_index(*this, std::move(tp));
-    }
-    return service.shared_from_this();
-  }
-
-  std::shared_ptr<timer_service> timer::init_timer_service()
-  {
-    auto tp = get_index(*this);
-    auto duration = tp - clock::now();
-    if (duration < duration::zero())
-    {
-      if ( m_interval <= decltype(m_interval)::zero())
-        return nullptr;
-      duration %= m_interval;
-      tp = clock::now() + (-duration) % m_interval;
-      update_index(*this, std::move(tp));
-    }
-    return timer_service::get_instance(m_event_loop);
   }
 
   timer::timer(timer_service &service, std::function<void()> procedure,
-      timer::time_point tp, timer::duration interval, bool check_timeout) noexcept
+      timer::duration interval)
+    : timer(service, std::move(procedure), clock::now(), std::move(interval))
+  { }
+
+  timer::timer(event_loop &loop, std::function<void()> procedure,
+      timer::duration interval)
+    : timer(loop, std::move(procedure), clock::now(), std::move(interval))
+  { }
+
+  timer::timer(timer_service &service, std::function<void()> procedure,
+      timer::time_point tp, timer::duration interval)
     : rbtree_node(std::move(tp))
     , m_event_loop(service.get_event_loop())
-    , m_interval(check_interval(std::move(interval)))
-    , m_procedure(std::move(procedure))
-    , m_task(std::bind(&timer::invoke_procedure, this))
-    , m_missed_counter(0)
-    , m_timer_service(init_timer_service(service))
+    , m_interval(check_interval(interval))
+    , m_task(std::move(procedure))
+    , m_missed_counter(adjust_time_point(get_index(*this), clock::now(), m_interval))
+    , m_timer_service(service.shared_from_this())
   {
-    enqueue_to_timer_service(check_timeout);
+    start();
   }
 
   timer::timer(event_loop &loop, std::function<void()> procedure,
-      timer::time_point tp, timer::duration interval, bool check_timeout)
+      timer::time_point tp, timer::duration interval)
     : rbtree_node(std::move(tp))
     , m_event_loop(loop)
-    , m_interval(std::move(interval))
-    , m_procedure(std::move(procedure))
-    , m_task(std::bind(&timer::invoke_procedure, this))
-    , m_missed_counter(0)
-    , m_timer_service(init_timer_service())
-  { enqueue_to_timer_service(check_timeout); }
+    , m_interval(check_interval(interval))
+    , m_task(std::move(procedure))
+    , m_missed_counter(adjust_time_point(get_index(*this), clock::now(), m_interval))
+    , m_timer_service(timer_service::get_instance(m_event_loop))
+  {
+    start();
+  }
 
-  void timer::enqueue_to_timer_service(bool check_timeout)
+  void timer::start()
   {
     if (!m_timer_service)
       return;
     auto &t = rbtree_node::get_index(*this);
-    if (!check_timeout || t > clock::now())
+    if (m_interval != duration::zero() || t > clock::now())
       m_timer_service->enqueue(*this);
   }
 
-  void timer::invoke_procedure()
+  void timer::relay(const time_point &now)
   {
-    if (m_procedure) m_procedure();
-
-    if (m_interval == duration::zero())
+    if (m_interval == timer::duration::zero())
+    {
       m_timer_service = nullptr;
+      unlink(*this);
+    }
     else
     {
-      update_index(*this, get_index(*this) + m_interval);
-      enqueue_to_timer_service(false);
+      auto next_tp = get_index(*this);
+      m_missed_counter = adjust_time_point(next_tp, now, m_interval);
+      update_index(*this, std::move(next_tp));
     }
   }
 

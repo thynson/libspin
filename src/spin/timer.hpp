@@ -42,13 +42,19 @@ namespace spin
 
     explicit timer(timer_service &service,
         std::function<void()> procedure = std::function<void()>(),
-        time_point tp = clock::now(), duration interval = duration::zero(),
-        bool check_timeout = false) noexcept;
+        duration interval = duration::zero());
 
     explicit timer(event_loop &loop,
         std::function<void()> procedure = std::function<void()>(),
-        time_point tp = clock::now(), duration interval = duration::zero(),
-        bool check_timeout = false);
+        duration interval = duration::zero());
+
+    explicit timer(timer_service &service,
+        std::function<void()> procedure = std::function<void()>(),
+        time_point tp = clock::now(), duration interval = duration::zero());
+
+    explicit timer(event_loop &loop,
+        std::function<void()> procedure = std::function<void()>(),
+        time_point tp = clock::now(), duration interval = duration::zero());
 
     ~timer() = default;;
 
@@ -59,17 +65,12 @@ namespace spin
 
   private:
 
-    void enqueue_to_timer_service(bool);
+    void start();
 
-    void invoke_procedure();
-
-    std::shared_ptr<timer_service> init_timer_service(timer_service&);
-
-    std::shared_ptr<timer_service> init_timer_service();
+    void relay(const time_point &now);
 
     event_loop &m_event_loop;
     duration m_interval;
-    std::function<void()> m_procedure;
     task m_task;
     std::uint64_t m_missed_counter;
     std::shared_ptr<timer_service> m_timer_service;

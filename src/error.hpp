@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 LAN Xingcan
+ * Copyright (C) 2014 LAN Xingcan
  * All right reserved
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -15,47 +15,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/system.hpp>
-#ifdef __unix__
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#endif
+#ifndef __ERROR_HPP_INCLUDED__
+#define __ERROR_HPP_INCLUDED__
 
-namespace spin
-{
-
-#ifdef __unix__
-  system_handle::system_handle(system_raw_handle x) noexcept
-    : m_raw_handle(x)
-  {  }
-
-  system_handle::~system_handle() noexcept
-  {
-    close();
-  }
-
-  void system_handle::close() noexcept
-  {
-    if (this->operator bool())
-      ::close(m_raw_handle);
-    m_raw_handle = 0;
-  }
-
-  system_handle::operator bool() const noexcept
-  {
-    return m_raw_handle > 0;
-  }
+#include <stdexcept>
 
 #endif
-
-  void throw_exception_for_last_error()
-  {
-    if (errno != 0)
-    {
-      int tmperrno = errno;
-      errno = 0;
-      throw std::system_error(tmperrno, std::system_category());
-    }
-  }
-}
