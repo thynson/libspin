@@ -21,6 +21,7 @@
 #include <spin/intruse/rbtree.hpp>
 #include <spin/task.hpp>
 #include <spin/event_loop.hpp>
+#include <spin/service_template.hpp>
 
 #include <memory>
 #include <type_traits>
@@ -76,42 +77,34 @@ namespace spin
     std::shared_ptr<timer_service> m_timer_service;
   };
 
+
   class __SPIN_EXPORT__ timer_service :
-    public intruse::rbtree_node<event_loop *, timer_service>,
-    public std::enable_shared_from_this<timer_service>,
+    public service_template<timer_service, event_loop *>,
     public event_source
   {
-  private:
-    struct __SPIN_INTERNAL__ private_constructable {};
-
-    static intruse::rbtree<event_loop *, timer_service>
-    instance_table;
-
-    intruse::rbtree<timer::time_point, timer> m_deadline_timer_queue;
-    system_handle m_timer_fd;
-
-    void on_attach(event_loop &el) override;
-    void on_active(event_loop &el) override;
-    void on_detach(event_loop &el) override;
-
-
   public:
-    timer_service(event_loop &el, private_constructable);
+    timer_service(event_loop &el, service_tag);
 
     virtual ~timer_service() noexcept override {};
 
     event_loop &get_event_loop() noexcept
-    { return *get_index(*this); }
+    { return *get_identity(); }
 
     const event_loop &get_event_loop() const noexcept
-    { return *get_index(*this); }
-
-    /**
-     * @brief Get timer service instance for given event_loop
-     */
-    static std::shared_ptr<timer_service> get_instance(event_loop &el);
+    { return *get_identity(); }
 
     void enqueue(timer &t) noexcept;
+
+  protected:
+    void on_attach(event_loop &el) override;
+    void on_active(event_loop &el) override;
+    void on_detach(event_loop &el) override;
+
+  private:
+
+    intruse::rbtree<timer::time_point, timer> m_deadline_timer_queue;
+    system_handle m_timer_fd;
+
   };
 
 }

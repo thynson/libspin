@@ -69,13 +69,11 @@ namespace spin
     }
   }
 
-  intruse::rbtree<event_loop *, timer_service>
-  timer_service::instance_table;
+  //intruse::rbtree<event_loop *, timer_service>
+  //timer_service::instance_table;
 
-  timer_service::timer_service(event_loop &el,
-      timer_service::private_constructable)
-    : rbtree_node(&el)
-    , enable_shared_from_this()
+  timer_service::timer_service(event_loop &el, timer_service::service_tag)
+    : service_template(&el)
     , m_deadline_timer_queue()
     , m_timer_fd(timerfd_create, CLOCK_MONOTONIC, TFD_NONBLOCK)
   { }
@@ -127,20 +125,6 @@ namespace spin
 
   }
 
-  std::shared_ptr<timer_service>
-  timer_service::get_instance(event_loop &el)
-  {
-    auto i = instance_table.find(&el);
-    if (i == instance_table.end())
-    {
-      auto s = std::make_shared<timer_service>(el, private_constructable());
-      instance_table.insert(*s);
-      return s;
-    }
-    else
-      return i->shared_from_this();
-  }
-
   void timer_service::enqueue(timer &t) noexcept
   {
     if (m_deadline_timer_queue.empty())
@@ -181,7 +165,7 @@ namespace spin
     , m_interval(check_interval(interval))
     , m_task(std::move(procedure))
     , m_missed_counter(adjust_time_point(get_index(*this), clock::now(), m_interval))
-    , m_timer_service(timer_service::get_instance(m_event_loop))
+    , m_timer_service(timer_service::get(m_event_loop))
   {
     start();
   }
