@@ -39,13 +39,15 @@ libspin_la_HEADERS=spin/utils.hpp\
 				   spin/socket.hpp\
 				   spin/intruse/list.hpp\
 				   spin/intruse/rbtree.hpp\
-				   spin/timer.hpp
+				   spin/timer.hpp\
+				   spin/thread_pool.hpp
 
 
 libspin_la_SOURCES=event_loop.cpp\
 				   system.cpp\
 				   socket.cpp\
 				   intruse_rbtree.cpp\
-				   timer.cpp
+				   timer.cpp\
+				   thread_pool.cpp
 
 

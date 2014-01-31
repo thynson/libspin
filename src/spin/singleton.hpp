@@ -18,6 +18,8 @@
 #ifndef __SPIN_SINGLETON_HELPER_HPP_INCLUDED__
 #define __SPIN_SINGLETON_HELPER_HPP_INCLUDED__
 
+#include <spin/environment.hpp>
+
 #include <mutex>
 #include <memory>
 #include <type_traits>
@@ -42,7 +44,10 @@ namespace spin
   template<typename T>
   class singleton
   {
+  protected:
+    struct __SPIN_INTERNAL__ singleton_tag {};
 
+  private:
     // SFINAE to check if volatility is present
 
     // If a T that its volatility member is a static constexpr member with
@@ -62,7 +67,7 @@ namespace spin
     {
       // Construct shared pointer first to ensure exception safety
       std::shared_ptr<T> x;
-      x.reset(new T);
+      x.reset(new T(singleton_tag()));
       return x;
     }
 
