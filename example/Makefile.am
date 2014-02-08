@@ -14,12 +14,13 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-bin_PROGRAMS=example_socket_server
+bin_PROGRAMS=example_timer example_thread_pool
 
 AM_CPPFLAGS=-I$(top_srcdir)/src
 AM_LDFLAGS=../src/libspin.la
 
-example_socket_server_SOURCES=socket_server.cpp
+example_timer_SOURCES=timer.cpp
+example_thread_pool_SOURCES=thread_pool.cpp
 
 
 
