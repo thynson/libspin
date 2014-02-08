@@ -104,7 +104,7 @@ namespace spin
     system_raw_handle m_raw_handle;
   };
 
-  void throw_exception_for_last_error();
+  void __SPIN_EXPORT__ throw_exception_for_last_error();
 
 }
 

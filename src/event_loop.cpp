@@ -76,9 +76,11 @@ namespace spin
 
         if (nfds == -1)
         {
+          // Interrupted
           assert (errno != EBADF || errno != EINVAL || errno != EFAULT);
           errno = 0;
           nfds = 0;
+          continue;
         }
         else
         {
