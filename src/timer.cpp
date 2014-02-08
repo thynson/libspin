@@ -35,7 +35,7 @@ namespace spin
     }
 
     auto adjust_time_point(timer::time_point &tp, const timer::time_point &now,
-        const timer::duration &duration) -> decltype((now - tp) / duration)
+        const timer::duration &duration) noexcept -> decltype((now - tp) / duration)
     {
       if (duration == timer::duration::zero())
         return 0;
@@ -47,7 +47,7 @@ namespace spin
       {
         auto d = now - tp;
         auto ret = d / duration;
-        tp += (d % duration) + duration;
+        tp += (ret + 1) * duration;
         return ret;
       }
 
@@ -190,7 +190,7 @@ namespace spin
     {
       auto next_tp = get_index(*this);
       m_missed_counter = adjust_time_point(next_tp, now, m_interval);
-      update_index(*this, std::move(next_tp));
+      update_index(*this, std::move(next_tp), intruse::policy_backmost);
     }
   }
 
