@@ -685,7 +685,7 @@ namespace spin
        */
       template<typename Comparer>
       void merge(list &l, Comparer &&cmper)
-        noexcept(noexcept(l.merge(l, l.begin(), l.end(),
+        noexcept(noexcept(l.merge(l.begin(), l.end(),
                 std::forward<Comparer>(cmper))))
       { merge(l.begin(), l.end(), std::forward<Comparer>(cmper)); }
 
