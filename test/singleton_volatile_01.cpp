@@ -26,13 +26,13 @@
 #include <condition_variable>
 
 
-class X
+class X : public spin::singleton<X>
 {
 public:
   static std::atomic_long count_construct_times;
   constexpr static bool volatility = true;
 
-  X()
+  X(singleton_tag)
     : flag(true)
   {
     count_construct_times++;
@@ -65,7 +65,7 @@ void mt_access()
   while (std::chrono::steady_clock::now() < tp)
   {
     {
-      std::shared_ptr<X> x = spin::singleton<X>::get_instance();
+      std::shared_ptr<X> x = X::get_instance();
       assert(x);
       x->f();
       count_access_times++;
@@ -103,7 +103,7 @@ void mt_test(int n)
 int main ()
 {
   {
-    std::shared_ptr<X> x = spin::singleton<X>::get_instance();
+    std::shared_ptr<X> x = X::get_instance();
     assert (x); // assert x is not null
   }
 

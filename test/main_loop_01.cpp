@@ -24,31 +24,18 @@ void check_create_task()
 {
   spin::event_loop loop;
   bool flag = false;
-  auto x = loop.set_task([&flag]{ flag = true; });
+  spin::task t {[&flag] { flag = true; } };
+  //auto x = loop.set_task([&flag]{ flag = true; });
+  loop.dispatch(t);
 
   loop.run();
 
   assert (flag);
 }
 
-
-void check_create_timer()
-{
-  using namespace spin::time;
-  using namespace std::chrono;
-  steady_time_point now = decltype(now)::clock::now();
-  auto deadline = now + duration_cast<decltype(now)::duration>(seconds(1));
-  spin::event_loop loop;
-  bool flag = false;
-  spin::event_loop::deadline_timer x(loop, [&] { flag = true; },
-      std::move(deadline));
-  loop.run();
-  assert (flag);
-}
 
 int main()
 {
   check_create_task();
-  check_create_timer();
 }
 

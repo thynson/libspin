@@ -16,8 +16,10 @@
  */
 
 #include <spin/event_loop.hpp>
+#include <spin/timer.hpp>
 #include <random>
-#include <vector>
+#include <set>
+#include <iostream>
 
 constexpr unsigned N = 10000;
 constexpr unsigned MIN_MILLISECONDS = 1000;
@@ -25,24 +27,26 @@ constexpr unsigned MAX_MILLISECONDS = 2000;
 
 int main()
 {
+  using namespace std;
   spin::event_loop loop;
-  std::vector<spin::event_loop::deadline_timer> vt;
+  std::set<spin::steady_timer> vt;
   std::mt19937 random_source;
-  spin::time::steady_time_point start = decltype(start)::clock::now();
+  spin::steady_timer::time_point start = decltype(start)::clock::now();
   unsigned counter = 0;
 
   for (int i = 0; i < N; i++)
   {
-    spin::time::steady_time_point deadline
+    //spin::time::steady_time_point deadline
+    spin::steady_timer::time_point deadline
       = decltype(deadline)::clock::now()
         + std::chrono::milliseconds(MIN_MILLISECONDS +
             random_source() % (MAX_MILLISECONDS - MIN_MILLISECONDS));
 
-    vt.push_back(
-        spin::event_loop::deadline_timer(loop, [&]{counter++;},
-          std::move(deadline)));
+    vt.emplace(loop, [&]{counter++;}, std::move(deadline));
   }
+  cout << "Begin of event loop" << endl;
   loop.run();
+  cout << "End of event loop" << endl;
   assert (counter == N);
   assert ((decltype(start)::clock::now() - start)
       > std::chrono::milliseconds(MIN_MILLISECONDS));

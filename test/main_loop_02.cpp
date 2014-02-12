@@ -26,14 +26,17 @@ void test_01 ()
   unsigned counter = 0;
   spin::event_loop loop;
 
-  std::vector<spin::event_loop::task> vt;
+  std::vector<spin::task> vt;
 
   for (unsigned i = 0; i < N; i++)
-    vt.push_back(loop.set_task([i, &vt, &counter, &loop]
-          {
-            if (counter ++ < M - N)
-              loop.dispatch(vt[i]);
-          }));
+  {
+    vt.emplace_back([i, &vt, &counter, &loop] {
+          if (counter ++ < M - N)
+            loop.dispatch(vt[i]);
+        });
+    loop.dispatch(*vt.rbegin());
+
+  }
 
   loop.run();
   assert (counter == M);
@@ -44,10 +47,13 @@ void test_02()
   unsigned counter = 0;
   spin::event_loop loop;
 
-  std::vector<spin::event_loop::task> vt;
+  std::vector<spin::task> vt;
 
   for (unsigned i = 0; i < M; i++)
-    vt.push_back(loop.set_task([&counter] { counter ++; }));
+  {
+    vt.emplace_back([&counter] { counter ++; });
+    loop.dispatch(*vt.rbegin());
+  }
 
   for (unsigned i = 0; i < M; i++)
     if (i % 2)
@@ -61,20 +67,15 @@ void test_03()
 {
   spin::event_loop loop;
   bool flag = true;
-  auto x = loop.set_task([]{});
+  spin::task x { [] {} };
+  //auto x = loop.set_task([]{});
   x.cancel();
   loop.dispatch(x);
-  x.set_proc([&]{ flag = true; });
+  //x.set_proc([&]{ flag = true; });
+  x.reset_procedure([&] { flag = true; });
   loop.run();
-  assert (!x.is_dispatching());
+  assert (x.is_canceled());
   assert (flag);
-}
-
-void test_timer_01()
-{
-  using namespace spin::time;
-  using namespace std::chrono;
-  spin::event_loop loop;
 }
 
 int main()

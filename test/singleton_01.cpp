@@ -18,13 +18,15 @@
 #include <spin/singleton.hpp>
 #include <cassert>
 
-class X
+class X : public spin::singleton<X>
 {
+public:
+  X(singleton_tag) {}
 };
 
 int main()
 {
-  std::shared_ptr<X> x = spin::singleton<X>::get_instance();
+  std::shared_ptr<X> x = X::get_instance();
   assert(x);
   return 0;
 }
