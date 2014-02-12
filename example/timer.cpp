@@ -24,24 +24,27 @@ int main()
   //auto hello = [] () { std::cout << "hello world" << std::endl; };
   spin::event_loop loop;
   int i = 0;;
-  auto now = spin::timer::clock::now();
-  spin::timer a(loop, [&i]()
+  auto now = spin::steady_timer::clock::now();
+  spin::steady_timer a(loop, [&i]()
       {
         std::cout << "this is timer A: "  << i++ << std::endl;
-      }, spin::timer::clock::now() + std::chrono::seconds(1),
+      }, spin::steady_timer::clock::now() + std::chrono::seconds(1),
       std::chrono::seconds(2));
 
-  spin::timer b(loop, []()
+  spin::steady_timer b(loop, []()
       {
         std::cout << "this is timer B" << std::endl;
-      }, spin::timer::clock::now() + std::chrono::seconds(3),
+      }, spin::steady_timer::clock::now() + std::chrono::seconds(3),
       std::chrono::seconds(1));
 
-  spin::timer c(loop, []()
+  spin::steady_timer c(loop, [&]()
       {
         std::cout << "this is timer C" << std::endl;
-      }, spin::timer::clock::now() + std::chrono::seconds(3));
+        a.reset(spin::steady_timer::clock::now() + std::chrono::seconds(3), std::chrono::seconds(1));
+        b.reset(std::chrono::seconds(2));
+
+      }, spin::steady_timer::clock::now() + std::chrono::seconds(8));
   loop.run();
-  std::cout << (spin::timer::clock::now() - now).count() << std::endl;
+  std::cout << (spin::steady_timer::clock::now() - now).count() << std::endl;
   return 0;
 }
