@@ -34,7 +34,7 @@ namespace spin
    * This class need constructor of proxied class be accessible, this is
    * usually done by declare friend class. Furthermore, proxied class can
    * define a constexpr static member named volatility to specify singleton
-   * object life-time policy. Different from volatile keywords in C\C++, here
+   * object life-time policy. Different from volatile keywords in C, C++, here
    * volatility means whether the object is stored with shared pointer or weak
    * pointer, for volatility is true, weak pointer is used to hold the
    * instance thus once there is no shared pointer hold a reference to this

@@ -47,10 +47,10 @@ namespace spin
     /** @brief Constructor */
     system_handle(system_raw_handle rawhandle) noexcept;
 
-    /** @breif Destructor */
+    /** @brief Destructor */
     ~system_handle() noexcept;
 
-    /** @breif Move constructor */
+    /** @brief Move constructor */
     system_handle(system_handle &&x) noexcept
       : m_raw_handle(0)
     { std::swap(x.m_raw_handle, m_raw_handle); }
@@ -72,7 +72,7 @@ namespace spin
     /** @brief Close the system_handle */
     void close() noexcept;
 
-    /** @breif Test if the managed system_handle is valid */
+    /** @brief Test if the managed system_handle is valid */
     operator bool() const noexcept;
 
   private:

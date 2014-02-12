@@ -63,7 +63,7 @@ namespace spin
         return ret;
       }
 
-      /** @breif Test a node is linked into a list */
+      /** @brief Test a node is linked into a list */
       static bool is_linked(const list_node &node) noexcept
       { return node.m_next != nullptr && node.m_prev != nullptr; }
 
@@ -215,7 +215,7 @@ namespace spin
       pointer operator -> () const noexcept { return internal_cast(); }
 
       /**
-       * @breif Iterate forward
+       * @brief Iterate forward
        * @returns Iterator itself
        */
       list_const_iterator &operator ++ () const noexcept
@@ -229,25 +229,25 @@ namespace spin
       { m_node = m_node->m_prev; return *this; }
 
       /**
-       * @breif Iterate forward
+       * @brief Iterate forward
        * @returns An iterator has the origin position
        */
       list_const_iterator operator ++ (int) const noexcept
       { return iterator(m_node->m_next); }
 
       /**
-       * @breif Iterate backward
+       * @brief Iterate backward
        * @returns An iterator has the origin position
        */
       list_const_iterator operator -- (int) const noexcept
       { return iterator(m_node->m_prev); }
 
-      /** @breif Test whether the two iterator is equal */
+      /** @brief Test whether the two iterator is equal */
       friend bool operator == (const list_const_iterator &l,
           const list_const_iterator &r) noexcept
       { return l->m_node == r->m_node; }
 
-      /** @breif Test whether the two iterator is not equal */
+      /** @brief Test whether the two iterator is not equal */
       friend bool operator != (const list_const_iterator &l,
           const list_const_iterator &r) noexcept
       { return !(l == r); }
@@ -399,7 +399,7 @@ namespace spin
       // Modifier
 
       /**
-       * @breif Insert given value to specified position
+       * @brief Insert given value to specified position
        * @param pos The specified position
        * @param ref Reference to the element to be inserted
        */
@@ -485,7 +485,7 @@ namespace spin
       }
 
       /**
-       * @breif Remove elements accepted by specified predicate
+       * @brief Remove elements accepted by specified predicate
        * @param pred The specified predicate
        */
       template<typename Predicate>
@@ -545,7 +545,7 @@ namespace spin
         }
       }
 
-      /** @param Reverse the order of this list */
+      /** @brief Reverse the order of this list */
       void reverse() noexcept
       {
         list x;
@@ -576,7 +576,7 @@ namespace spin
       }
 
       /**
-       * @breif Transfer all elements from l to position pos in this list
+       * @brief Transfer all elements from l to position pos in this list
        * @note l shall be a distinct list
        */
       void splice(iterator pos, list &l) noexcept
@@ -585,7 +585,7 @@ namespace spin
       }
 
       /**
-       * @breif Transfer all elements from l to position pos in this list
+       * @brief Transfer all elements from l to position pos in this list
        * @note l shall be a distinct list
        */
       void splice(iterator pos, list &&l) noexcept
@@ -594,7 +594,7 @@ namespace spin
       }
 
       /**
-       * @breif Transfer all elements ranged from b to e to position pos
+       * @brief Transfer all elements ranged from b to e to position pos
        * in this list
        * @note l shall in a distinct list
        */
@@ -662,7 +662,7 @@ namespace spin
       { sort(less<T>()); }
 
       /**
-       * @breif Merge sorted list
+       * @brief Merge sorted list
        * @param l The list to be merged
        */
       void merge(list &l)
@@ -670,7 +670,7 @@ namespace spin
       { merge(l, less<T>()); }
 
       /**
-       * @breif Merge a sorted list, overload for rvalue refernece
+       * @brief Merge a sorted list, overload for rvalue refernece
        * @param l The list to be merged
        */
       void merge(list &&l)
@@ -678,7 +678,7 @@ namespace spin
       { merge(l); }
 
       /**
-       * @breif Merge sorted list l with specified strict weak ordering
+       * @brief Merge sorted list l with specified strict weak ordering
        * comparer cmper
        * @param l List to be merged
        * @param cmper The specified strict weak ordering comparer
@@ -690,7 +690,7 @@ namespace spin
       { merge(l.begin(), l.end(), std::forward<Comparer>(cmper)); }
 
       /**
-       * @breif Merge a sorted part of from b to e of another list with specified
+       * @brief Merge a sorted part of from b to e of another list with specified
        * strict weak ordering comparer cmper
        * @param b Begin of element to be merged
        * @param e End of element to be merged
@@ -719,13 +719,13 @@ namespace spin
           splice(q, b, e);
       }
 
-      /** @breif Erase duplicate elements */
+      /** @brief Erase duplicate elements */
       void unique()
         noexcept(noexcept(std::declval<list>().unique(less<T>())))
       { unique(less<T>()); }
 
       /**
-       * @breif Erase duplicate elements in range [b,e)
+       * @brief Erase duplicate elements in range [b,e)
        * @param b Begin of the range
        * @param e End of the range
        */
@@ -734,7 +734,7 @@ namespace spin
       { unique(b, e, less<T>()); }
 
       /**
-       * @breif Erase duplicate elements with specified binary predicate
+       * @brief Erase duplicate elements with specified binary predicate
        * @param binpred The specified binary predicate
        */
       template<typename BinaryPredicate>
@@ -748,7 +748,7 @@ namespace spin
       }
 
       /**
-       * @breif Erase duplicate elements with specified binary predicate in
+       * @brief Erase duplicate elements with specified binary predicate in
        * rnage [b, e)
        * @param b Begin of the range
        * @param e End of the range

@@ -231,7 +231,7 @@ namespace spin
       /** @brief Insert a node as successor of this node */
       void insert_after(rbtree_node *node) noexcept;
 
-      /** @breif Do clean up work after unlink */
+      /** @brief Do clean up work after unlink */
       void unlink_cleanup() noexcept;
 
       /**
@@ -245,7 +245,7 @@ namespace spin
       rbtree_node *unlink() noexcept;
 
       /**
-       * @breif Unlink this node from the tree if this node is already linked
+       * @brief Unlink this node from the tree if this node is already linked
        * @returns the successor of this node, or nullptr if this node is not
        * linked into a rbtree
        * @note However it doesn't not check if this node is container node of
@@ -263,10 +263,10 @@ namespace spin
       static void insert(rbtree_node *parent, rbtree_node *node) noexcept;
 
       /**
-       * @brief Insert a node between prev and #next
-       * @param prev The node will become predecessor of #node after insertion
+       * @brief Insert a node between prev and next
+       * @param prev The node will become predecessor of node after insertion
        * is done
-       * @param next The node will be successor of #node after insertion is
+       * @param next The node will be successor of node after insertion is
        * done
        * @param node The node want to be inserted
        * @note User code should ensure that #prev is predecessor of #next
@@ -282,7 +282,7 @@ namespace spin
        * @param next The node will be successor of the node after insertion is
        * done
        * @param node The node want to be inserted
-       * @note User code should ensure that prev is predecessor of #next
+       * @note User code should ensure that prev is predecessor of next
        */
       static void insert_unique(rbtree_node *prev,
           rbtree_node *next, rbtree_node *node) noexcept;
@@ -580,7 +580,7 @@ namespace spin
        * instances of Index type
        * @param entry The entry node of tree
        * @param index The specified index depends on which the boundry is find
-       * @param caster An instance of caster
+       * @param indexfetcher An instance of IndexFetcher
        * @param comparer An instance of Comparer
        */
       template<typename Index, typename IndexFetcher, typename Comparer>
@@ -691,7 +691,7 @@ namespace spin
        * instances of Index type
        * @param entry The entry node of tree
        * @param index The specified index depends on which the boundry is find
-       * @param caster An instance of caster
+       * @param indexfetcher An instance of IndexFetcher
        * @param comparer An instance of Comparer
        */
       template<typename Index, typename IndexFetcher, typename Comparer>

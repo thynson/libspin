@@ -66,7 +66,8 @@ namespace spin
     /**
      * @brief Create a timer from an event loop, attaching to an existing
      * timer_service or create an instance of timer_service if needed
-     * @param service the timer_service to be attached to
+     * @param loop the event loop that this timer and corresponding
+     * timer_service will be attached to
      * @param procedure The callback function
      * @param interval The time duration between each call to procedure, a
      * zero interval result in one-shot behaviour
@@ -91,7 +92,8 @@ namespace spin
     /**
      * @brief Create a timer from an event loop, attaching to an existing
      * timer_service or create an instance of timer_service if needed
-     * @param service the timer_service to be attached to
+     * @param loop the event loop that this timer and corresponding
+     * timer_service will be attached to
      * @param procedure The callback function
      * @param initial The time duration between now and the time first call to
      * procedure
@@ -102,7 +104,7 @@ namespace spin
         std::function<void()> procedure = std::function<void()>(),
         time_point initial = clock::now(), duration interval = duration::zero());
 
-    /** @breif Destructor */
+    /** @brief Destructor */
     ~timer() = default;
 
     /** @brief Get the attaching timer service */
