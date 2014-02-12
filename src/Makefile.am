@@ -40,6 +40,8 @@ libspin_la_HEADERS=spin/utils.hpp\
 				   spin/intruse/list.hpp\
 				   spin/intruse/rbtree.hpp\
 				   spin/timer.hpp\
+				   spin/task.hpp\
+				   spin/service_template.hpp\
 				   spin/thread_pool.hpp
 
 
