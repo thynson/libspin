@@ -57,6 +57,10 @@ namespace spin
   event_loop::event_loop()
     : m_epoll_handle(epoll_create1, EPOLL_CLOEXEC)
     , m_interrupter(setup_eventfd(m_epoll_handle))
+    , m_dispatched_queue()
+    , m_posted_queue()
+    , m_event_sources()
+    , m_lock()
   { }
 
   void event_loop::run()

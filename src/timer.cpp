@@ -127,29 +127,29 @@ namespace spin
     int result = epoll_ctl(el.get_poll_handle().get_raw_handle(), EPOLL_CTL_DEL,
         m_timer_fd.get_raw_handle(), nullptr);
 
-    assert(result == 0);
+    if (result == -1)
+    {
+      errno = 0;
+      std::terminate(); // Don't know how to handle this error
+    }
   }
 
   template<typename Clock>
   void timer_service<Clock>::on_active(event_loop &el)
   {
     auto now = timer::clock::now();
-    auto adapter = [](timer &t) noexcept -> task &{ return t.m_task; };
-    auto u = m_deadline_timer_queue.upper_bound(now);
-    auto b = make_transform_iterator(adapter, m_deadline_timer_queue.begin());
-    auto e = make_transform_iterator(adapter, u);
+    task::queue_type l;
 
-    auto l = task::queue_type(b, e);
-
-    for (auto i = m_deadline_timer_queue.begin(); i != u; )
+    while (!m_deadline_timer_queue.empty() && m_deadline_timer_queue.front() <= now)
     {
-      timer &t = *i++;
+      auto &t = m_deadline_timer_queue.front();
+      l.push_back(t.m_task);
       t.relay(now);
     }
+
     el.dispatch(std::move(l));
-    if (m_deadline_timer_queue.empty())
-      timer_service::get_index(*this)->detach_event_source(*this);
-    else
+
+    if (!m_deadline_timer_queue.empty())
       update_timerfd<Clock>(m_timer_fd, timer::get_index(m_deadline_timer_queue.front()) - now);
 
   }
@@ -231,7 +231,7 @@ namespace spin
           timer::get_index(*this), std::move(m_interval));
       if (timer::is_linked(*this))
         timer::unlink(*this);
-      timer::update_index(*this, std::move(initial));
+      timer::update_index(*this, std::move(initial), intruse::policy_backmost);
       m_interval = std::move(interval);
       return ret;
     }
@@ -248,7 +248,7 @@ namespace spin
         // timer should already stopped
         assert(m_interval == Clock::duration::zero());
         assert(timer::get_index(*this) < Clock::now());
-        timer::update_index(*this, std::move(initial));
+        timer::update_index(*this, std::move(initial), intruse::policy_backmost);
         m_interval = std::move(interval);
         start();
       }
@@ -256,7 +256,7 @@ namespace spin
       {
         auto &front = m_timer_service->m_deadline_timer_queue.front();
         bool needs_update = (&front == this || initial < ret.first);
-        timer::update_index(*this, std::move(initial));
+        timer::update_index(*this, std::move(initial), intruse::policy_backmost);
         m_interval = std::move(interval);
         if (needs_update)
           m_timer_service->update_wakeup_time();
@@ -268,7 +268,7 @@ namespace spin
       assert(m_interval == Clock::duration::zero());
       assert(timer::get_index(*this) < Clock::now());
 
-      timer::update_index(*this, std::move(initial));
+      timer::update_index(*this, std::move(initial), intruse::policy_backmost);
       m_interval = std::move(interval);
       start();
     }
@@ -298,8 +298,13 @@ namespace spin
   {
     if (m_interval == timer::duration::zero())
     {
-      m_timer_service = nullptr;
+      // We must do unlink first, if we release a shared_ptr first, which
+      // would result in its destructor called, this timer may be unlink
+      // twice. And second call to unlink will result in crash, althrouh we
+      // can test if this timer is still linked, do unlink first without
+      // checking must be right.
       timer::unlink(*this);
+      m_timer_service = nullptr;
     }
     else
     {
