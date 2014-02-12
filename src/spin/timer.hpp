@@ -105,7 +105,7 @@ namespace spin
         time_point initial = clock::now(), duration interval = duration::zero());
 
     /** @brief Destructor */
-    ~timer() = default;
+    ~timer();
 
     /** @brief Get the attaching timer service */
     std::shared_ptr<timer_service> get_timer_service() const noexcept
@@ -183,7 +183,7 @@ namespace spin
 
     timer_service(event_loop &el, typename timer_service<Clock>::service_tag);
 
-    virtual ~timer_service() noexcept override {};
+    virtual ~timer_service() override;
 
     event_loop &get_event_loop() noexcept
     { return *timer_service::get_identity(); }

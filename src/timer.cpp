@@ -105,6 +105,9 @@ namespace spin
   { }
 
   template<typename Clock>
+  timer_service<Clock>::~timer_service() = default;
+
+  template<typename Clock>
   void timer_service<Clock>::on_attach(event_loop &el)
   {
     epoll_event epev;
@@ -214,6 +217,9 @@ namespace spin
   {
     start();
   }
+
+  template<typename Clock>
+  timer<Clock>::~timer() = default;
 
   template<typename Clock>
   std::pair<typename Clock::time_point, typename Clock::duration>
