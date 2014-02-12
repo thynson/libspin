@@ -25,7 +25,7 @@
 
 namespace spin
 {
-  namespace __SPIN_INTERNAL__
+  namespace
   {
 
     template<typename Clock>

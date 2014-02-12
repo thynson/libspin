@@ -47,7 +47,7 @@ namespace spin
     friend class timer_service<Clock>;
   public:
 
-    using timer_service = timer_service<Clock>;
+    using timer_service = ::spin::timer_service<Clock>;
     using clock = Clock;
     using time_point = typename Clock::time_point;
     using duration = typename Clock::duration;
@@ -177,7 +177,7 @@ namespace spin
   public:
     friend class timer<Clock>;
     using clock = Clock;
-    using timer = timer<Clock>;
+    using timer = ::spin::timer<Clock>;
     using time_point = typename clock::time_point;
     using duration = typename clock::duration;
 
