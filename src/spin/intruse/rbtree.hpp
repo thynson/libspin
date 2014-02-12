@@ -1159,8 +1159,6 @@ namespace spin
     template<typename Index, typename Type, typename Tag, typename Comparer>
     class rbtree_iterator
     {
-      static_assert(std::is_base_of<rbtree_node<Index, Type, Tag, Comparer>, Type>::value,
-          "Type should be child class of rbtree_node<Index>");
     public:
       // Nested type similar with STL
       using iterator_category = std::bidirectional_iterator_tag;
@@ -1235,8 +1233,6 @@ namespace spin
     template<typename Index, typename Type, typename Tag, typename Comparer>
     class rbtree_const_iterator
     {
-      static_assert(std::is_base_of<rbtree_node<Index, Type, Tag, Comparer>, Type>::value,
-          "Type should be child class of rbtree_node<Index>");
     public:
       // Nested type similar with STL
       using iterator_category = std::bidirectional_iterator_tag;
@@ -1318,8 +1314,6 @@ namespace spin
     template<typename Index, typename Type, typename Tag, typename Comparer>
     class rbtree
     {
-      static_assert(std::is_base_of<rbtree_node<Index, Type, Tag, Comparer>, Type>::value,
-          "Type should be child class of rbtree_node<Index>");
     public:
       // Nested type, similar with STL
       using iterator                = rbtree_iterator<Index, Type, Tag, Comparer>;
