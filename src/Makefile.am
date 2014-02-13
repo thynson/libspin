@@ -42,7 +42,8 @@ libspin_la_HEADERS=spin/utils.hpp\
 				   spin/timer.hpp\
 				   spin/task.hpp\
 				   spin/service_template.hpp\
-				   spin/thread_pool.hpp
+				   spin/thread_pool.hpp\
+				   spin/poll.hpp
 
 
 libspin_la_SOURCES=event_loop.cpp\
@@ -50,6 +51,7 @@ libspin_la_SOURCES=event_loop.cpp\
 				   socket.cpp\
 				   intruse_rbtree.cpp\
 				   timer.cpp\
-				   thread_pool.cpp
+				   thread_pool.cpp\
+				   poll.cpp
 
 

@@ -24,6 +24,48 @@
 
 namespace spin
 {
+#if 0
+  template<typename Protocol>
+  class stream_socket_acceptor;
+
+  template<typename Protocol>
+  class stream_socket;
+
+  template<typename Protocol>
+  class stream_socket_acceptor
+  {
+  public:
+
+    using address_type = void; //TODO:
+    using peer_handler = std::function<void(stream_socket)>;
+    using error_handler = std::function<void(std::exception_ptr)>;
+
+    stream_socket_acceptor(handler handle, address_type listen_addr);
+
+    ~stream_socket_acceptor();
+
+    void close();
+  private:
+    system_handle m_acceptor_handle;
+  };
+
+  template<typename Protocol>
+  class stream_socket
+  {
+    friend class stream_socket_acceptor<Protocol>;
+  public:
+
+    using acceptor = stream_socket_acceptor<Protocol>;
+    using address_type = typename acceptor::address_type;
+
+    stream_socket();
+
+    ~stream_socket();
+  private:
+
+    system_handle m_socket_handle;
+  };
+
   class __SPIN_EXPORT__ stream_socket_peer
   {
     friend class stream_socket_server;
@@ -64,7 +106,9 @@ namespace spin
     system_handle m_handle;
     std::unique_ptr<detail> m_detail;
   };
+  timerfd_settime
 
+#endif
 }
 
 #endif

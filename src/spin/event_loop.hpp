@@ -44,7 +44,6 @@ namespace spin
   };
 
   class __SPIN_EXPORT__ event_loop
-    : public std::enable_shared_from_this<event_loop>
   {
   public:
 
