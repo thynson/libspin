@@ -47,11 +47,11 @@ namespace spin
     struct poll_argument_writable_t {  } poll_argument_writable;
     struct poll_argument_duplex_t   {  } poll_argument_duplex;
 
-    pollable(poller &p, system_handle handle, poll_argument_readable_t);
+    pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_readable_t);
 
-    pollable(poller &p, system_handle handle, poll_argument_writable_t);
+    pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_writable_t);
 
-    pollable(poller &p, system_handle handle, poll_argument_duplex_t);
+    pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_duplex_t);
 
     virtual void on_readable() { };
     virtual void on_writable() { };
@@ -65,8 +65,7 @@ namespace spin
     system_handle m_handle;
   };
 
-  class poller : public std::enable_shared_from_this<poller>
-               , private basic_pollable
+  class poller : private basic_pollable
   {
   public:
 

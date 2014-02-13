@@ -28,24 +28,6 @@ namespace spin
 
   namespace
   {
-    system_handle setup_eventfd (const system_handle &epollfd)
-    {
-      system_handle x(eventfd, 0, EFD_NONBLOCK | EFD_CLOEXEC);
-
-      epoll_event evt;
-
-      evt.events = EPOLLIN | EPOLLET;
-      evt.data.ptr = nullptr;
-
-      int ret = epoll_ctl (epollfd.get_raw_handle(), EPOLL_CTL_ADD,
-          x.get_raw_handle(), &evt);
-
-      if (ret != 0)
-        throw std::system_error(errno, std::system_category());
-      return x;
-    }
-
-
     task::queue_type
     unqueue_posted_task(spin_lock &lock, task::queue_type &q) noexcept
     {
@@ -55,49 +37,38 @@ namespace spin
   }
 
   event_loop::event_loop()
-    : m_epoll_handle(epoll_create1, EPOLL_CLOEXEC)
-    , m_interrupter(setup_eventfd(m_epoll_handle))
+    : m_poller_ptr()
     , m_dispatched_queue()
     , m_posted_queue()
-    , m_event_sources()
     , m_lock()
   { }
 
+  std::shared_ptr<poller> event_loop::get_poller()
+  {
+    auto p = m_poller_ptr.lock();
+    if (p) return p;
+    p = std::make_shared<poller>();
+    m_poller_ptr = p;
+    return p;
+  }
+
+  void event_loop::interrupt()
+  {
+    if (auto p = m_poller_ptr.lock())
+      p->interrupt();
+  }
+
   void event_loop::run()
   {
-    std::array<epoll_event, 512> evarray;
-
     for ( ; ; )
     {
       task::queue_type q(std::move(m_dispatched_queue));
       q.splice(q.end(), unqueue_posted_task(m_lock, m_posted_queue));
 
-      if (!m_event_sources.empty())
+      if (auto p = m_poller_ptr.lock())
       {
-        int timeout = q.empty() ? -1 : 0;
-        int nfds = epoll_wait(m_epoll_handle.get_raw_handle(),
-            evarray.data(), evarray.size(), timeout);
-
-        if (nfds == -1)
-        {
-          // Interrupted
-          assert (errno != EBADF || errno != EINVAL || errno != EFAULT);
-          errno = 0;
-          nfds = 0;
-          continue;
-        }
-        else
-        {
-          assert((decltype(evarray)::size_type) nfds <= evarray.size());
-
-          for (auto i = evarray.begin(); i != evarray.begin() + nfds; ++i)
-          {
-            event_source *s = reinterpret_cast<event_source *>(i->data.ptr);
-            s->on_active(*this);
-          }
-
-          q.splice(q.end(), m_dispatched_queue);
-        }
+        p->poll(q.empty());
+        q.splice(q.end(), m_dispatched_queue);
       }
 
       if (q.empty())

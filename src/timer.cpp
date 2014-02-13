@@ -95,50 +95,21 @@ namespace spin
       if (result == -1)
         throw_exception_for_last_error();
     }
+
   }
 
   template<typename Clock>
   timer_service<Clock>::timer_service(event_loop &el, typename timer_service<Clock>::service_tag)
     : service_template<timer_service<Clock>, event_loop *>(&el)
+    , pollable(el.get_poller(), clock_spec<Clock>::create_device(), pollable::poll_argument_readable)
     , m_deadline_timer_queue()
-    , m_timer_fd(clock_spec<Clock>::create_device())
   { }
 
   template<typename Clock>
   timer_service<Clock>::~timer_service() = default;
 
   template<typename Clock>
-  void timer_service<Clock>::on_attach(event_loop &el)
-  {
-    epoll_event epev;
-    epev.data.ptr = static_cast<event_source*>(this);
-    epev.events = EPOLLIN | EPOLLET;
-    int result = epoll_ctl(el.get_poll_handle().get_raw_handle(), EPOLL_CTL_ADD,
-        m_timer_fd.get_raw_handle(), &epev);
-
-    if (result == -1)
-    {
-      int tmperrno = errno;
-      errno = 0;
-      throw std::system_error(tmperrno, std::system_category());
-    }
-  }
-
-  template<typename Clock>
-  void timer_service<Clock>::on_detach(event_loop &el)
-  {
-    int result = epoll_ctl(el.get_poll_handle().get_raw_handle(), EPOLL_CTL_DEL,
-        m_timer_fd.get_raw_handle(), nullptr);
-
-    if (result == -1)
-    {
-      errno = 0;
-      std::terminate(); // Don't know how to handle this error
-    }
-  }
-
-  template<typename Clock>
-  void timer_service<Clock>::on_active(event_loop &el)
+  void timer_service<Clock>::on_readable()
   {
     auto now = timer::clock::now();
     task::queue_type l;
@@ -150,30 +121,27 @@ namespace spin
       t.relay(now);
     }
 
-    el.dispatch(std::move(l));
+    event_loop *el = timer_service::get_index(*this);
+    el->dispatch(std::move(l));
 
     if (!m_deadline_timer_queue.empty())
-      update_timerfd<Clock>(m_timer_fd, timer::get_index(m_deadline_timer_queue.front()) - now);
+      update_timerfd<Clock>(get_handle(), timer::get_index(m_deadline_timer_queue.front()) - now);
 
   }
 
   template<typename Clock>
   void timer_service<Clock>::enqueue(timer &t) noexcept
   {
-    if (m_deadline_timer_queue.empty())
-      timer_service::get_index(*this)->attach_event_source(*this);
     m_deadline_timer_queue.insert(t, intruse::policy_backmost);
     if (&m_deadline_timer_queue.front() == &t)
-    {
       update_wakeup_time();
-    }
   }
 
   template<typename Clock>
   void timer_service<Clock>::update_wakeup_time() noexcept
   {
     auto &t = m_deadline_timer_queue.front();
-    update_timerfd<Clock>(m_timer_fd, timer::get_index(t) - timer::clock::now());
+    update_timerfd<Clock>(get_handle(), timer::get_index(t) - timer::clock::now());
   }
 
   template<typename Clock>
@@ -196,11 +164,14 @@ namespace spin
     , m_event_loop(service.get_event_loop())
     , m_interval(check_interval<Clock>(interval))
     , m_task(std::move(procedure))
-    , m_missed_counter(adjust_time_point<Clock>(
-          timer::get_index(*this), clock::now(), m_interval))
-    , m_timer_service(service.shared_from_this())
+    , m_missed_counter()
+    , m_timer_service(nullptr)
   {
-    start();
+    auto now = clock::now();
+    auto &next_time_point = timer::get_index(*this);
+    adjust_time_point<Clock>(next_time_point, now, m_interval);
+    if (next_time_point >= now)
+      start();
   }
 
   template<typename Clock>
@@ -211,11 +182,14 @@ namespace spin
     , m_event_loop(loop)
     , m_interval(check_interval<Clock>(interval))
     , m_task(std::move(procedure))
-    , m_missed_counter(adjust_time_point<Clock>(
-          timer::get_index(*this), clock::now(), m_interval))
-    , m_timer_service(timer_service::get(m_event_loop))
+    , m_missed_counter()
+    , m_timer_service(nullptr)
   {
-    start();
+    auto now = clock::now();
+    auto &next_time_point = timer::get_index(*this);
+    adjust_time_point<Clock>(next_time_point, now, m_interval);
+    if (next_time_point >= now)
+      start();
   }
 
   template<typename Clock>
@@ -247,36 +221,28 @@ namespace spin
     std::pair<typename Clock::time_point, typename Clock::duration> ret(
         timer::get_index(*this), std::move(m_interval));
 
-    if (!m_timer_service->m_deadline_timer_queue.empty())
+    bool stopped = m_timer_service == nullptr;
+
+    if (stopped)
     {
-      if (!timer::is_linked(*this))
-      {
-        // timer should already stopped
-        assert(m_interval == Clock::duration::zero());
-        assert(timer::get_index(*this) < Clock::now());
-        timer::update_index(*this, std::move(initial), intruse::policy_backmost);
-        m_interval = std::move(interval);
-        start();
-      }
-      else
-      {
-        auto &front = m_timer_service->m_deadline_timer_queue.front();
-        bool needs_update = (&front == this || initial < ret.first);
-        timer::update_index(*this, std::move(initial), intruse::policy_backmost);
-        m_interval = std::move(interval);
-        if (needs_update)
-          m_timer_service->update_wakeup_time();
-      }
-    }
-    else
-    {
-      // timer should already stopped
+      assert (!timer::is_linked(*this));
       assert(m_interval == Clock::duration::zero());
       assert(timer::get_index(*this) < Clock::now());
-
       timer::update_index(*this, std::move(initial), intruse::policy_backmost);
       m_interval = std::move(interval);
       start();
+    }
+    else
+    {
+      assert (timer::is_linked(*this));
+      assert (!m_timer_service->m_deadline_timer_queue.empty());
+
+      auto &front = m_timer_service->m_deadline_timer_queue.front();
+      bool needs_update = (&front == this || initial < ret.first);
+      timer::update_index(*this, std::move(initial), intruse::policy_backmost);
+      m_interval = std::move(interval);
+      if (needs_update)
+        m_timer_service->update_wakeup_time();
     }
     return ret;
   }
@@ -294,9 +260,11 @@ namespace spin
   template<typename Clock>
   void timer<Clock>::start()
   {
+    if (!m_timer_service)
+      m_timer_service = timer_service::get(m_event_loop);
+
     // Client code should ensure t is greater than or equals to clock::now()
-    //if (m_interval != duration::zero())
-      m_timer_service->enqueue(*this);
+    m_timer_service->enqueue(*this);
   }
 
   template<typename Clock>

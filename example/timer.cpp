@@ -23,7 +23,7 @@ int main()
 {
   //auto hello = [] () { std::cout << "hello world" << std::endl; };
   spin::event_loop loop;
-  int i = 0;;
+  int i = 0;
   auto now = spin::steady_timer::clock::now();
   spin::steady_timer a(loop, [&i]()
       {

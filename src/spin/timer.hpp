@@ -172,7 +172,7 @@ namespace spin
   template<typename Clock>
   class timer_service :
     public service_template<timer_service<Clock>, event_loop *>,
-    public event_source
+    public pollable
   {
   public:
     friend class timer<Clock>;
@@ -192,16 +192,15 @@ namespace spin
     { return *timer_service::get_identity(); }
 
   protected:
-    void on_attach(event_loop &el) override;
-    void on_active(event_loop &el) override;
-    void on_detach(event_loop &el) override;
+    void on_readable() override;
+    //void on_attach(event_loop &el) override;
+    //void on_active(event_loop &el) override;
+    //void on_detach(event_loop &el) override;
 
   private:
     void enqueue(timer &t) noexcept;
     void update_wakeup_time() noexcept;
     intruse::rbtree<time_point, timer> m_deadline_timer_queue;
-    system_handle m_timer_fd;
-
   };
 
   extern template class __SPIN_EXPORT__ timer<std::chrono::steady_clock>;

@@ -21,6 +21,7 @@
 #include <spin/task.hpp>
 #include <spin/system.hpp>
 #include <spin/spin_lock.hpp>
+#include <spin/poll.hpp>
 #include <spin/utils.hpp>
 
 #include <mutex>
@@ -30,18 +31,6 @@ namespace spin
 {
 
   class event_loop;
-
-  class __SPIN_EXPORT__ event_source
-    : public intruse::list_node<event_source>
-  {
-    friend class event_loop;
-  public:
-    virtual ~event_source() noexcept = default;
-  protected:
-    virtual void on_attach(event_loop &el) = 0;
-    virtual void on_detach(event_loop &el) = 0;
-    virtual void on_active(event_loop &el) = 0;
-  };
 
   class __SPIN_EXPORT__ event_loop
   {
@@ -81,11 +70,11 @@ namespace spin
       interrupt();
     }
 
-    const system_handle &get_poll_handle() const noexcept
-    { return m_epoll_handle; }
+    std::shared_ptr<poller> get_poller();
 
     void interrupt();
 
+    /*
     void attach_event_source(event_source &s)
     {
       m_event_sources.push_back(s);
@@ -97,14 +86,13 @@ namespace spin
       s.on_detach(*this);
       event_source::unlink(s);
     }
+    */
 
   private:
 
-    system_handle m_epoll_handle;
-    system_handle m_interrupter;
+    std::weak_ptr<poller> m_poller_ptr;
     task::queue_type m_dispatched_queue;
     task::queue_type m_posted_queue;
-    intruse::list<event_source> m_event_sources;
     spin_lock m_lock;
   };
 }

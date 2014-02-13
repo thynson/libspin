@@ -46,46 +46,45 @@ namespace spin
 
   basic_pollable::~basic_pollable() = default;
 
-  pollable::pollable(poller &p, system_handle handle,
+  pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
       pollable::poll_argument_readable_t)
-    : m_poller(p.shared_from_this())
+    : m_poller(std::move(p))
     , m_handle(std::move(handle))
   {
     if (!m_handle)
       throw std::logic_error("handle is invalid for pollable object");
 
-    register_pollable(*this, p.get_poll_handle().get_raw_handle(),
+    register_pollable(*this, m_poller->get_poll_handle().get_raw_handle(),
         m_handle.get_raw_handle(), EPOLLIN);
   }
 
-  pollable::pollable(poller &p, system_handle handle,
+  pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
       pollable::poll_argument_writable_t)
-    : m_poller(p.shared_from_this())
+    : m_poller(std::move(p))
     , m_handle(std::move(handle))
   {
     if (!m_handle)
       throw std::logic_error("handle is invalid for pollable object");
 
-    register_pollable(*this, p.get_poll_handle().get_raw_handle(),
+    register_pollable(*this, m_poller->get_poll_handle().get_raw_handle(),
         m_handle.get_raw_handle(), EPOLLOUT);
   }
 
-  pollable::pollable(poller &p, system_handle handle,
+  pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
       pollable::poll_argument_duplex_t)
-    : m_poller(p.shared_from_this())
+    : m_poller(std::move(p))
     , m_handle(std::move(handle))
   {
     if (!m_handle)
       throw std::logic_error("handle is invalid for pollable object");
 
-    register_pollable(*this, p.get_poll_handle().get_raw_handle(),
+    register_pollable(*this, m_poller->get_poll_handle().get_raw_handle(),
         m_handle.get_raw_handle(), EPOLLIN | EPOLLOUT);
   }
 
 
   poller::poller()
-    : enable_shared_from_this()
-    , m_poll_handle{ epoll_create1, EPOLL_CLOEXEC }
+    : m_poll_handle{ epoll_create1, EPOLL_CLOEXEC }
     , m_interrupter{ eventfd, 0, EFD_NONBLOCK | EFD_CLOEXEC }
   {
     register_pollable(*this, m_poll_handle.get_raw_handle(),
@@ -93,6 +92,11 @@ namespace spin
   }
 
   poller::~poller() = default;
+
+  void poller::interrupt()
+  {
+    eventfd_write(m_interrupter.get_raw_handle(), 1);
+  }
 
   void poller::poll(bool allow_blocking)
   {
