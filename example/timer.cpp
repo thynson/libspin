@@ -31,9 +31,9 @@ int main()
       }, spin::steady_timer::clock::now() + std::chrono::seconds(1),
       std::chrono::seconds(2));
 
-  spin::steady_timer b(loop, []()
+  spin::steady_timer b(loop, [&b]()
       {
-        std::cout << "this is timer B" << std::endl;
+        std::cout << "this is timer B: " << b.reset_missed_counter() << std::endl;
       }, spin::steady_timer::clock::now() + std::chrono::seconds(3),
       std::chrono::seconds(1));
 
@@ -44,6 +44,11 @@ int main()
         b.reset(std::chrono::seconds(2));
 
       }, spin::steady_timer::clock::now() + std::chrono::seconds(8));
+  spin::system_timer d(loop, [&d]()
+      {
+        std::cout << "this is timer D: " << d.reset_missed_counter() << std::endl;
+      }, spin::system_timer::clock::now() + std::chrono::seconds(3),
+      std::chrono::seconds(1));
   loop.run();
   std::cout << (spin::steady_timer::clock::now() - now).count() << std::endl;
   return 0;
