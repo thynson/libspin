@@ -68,10 +68,8 @@ void test_03()
   spin::event_loop loop;
   bool flag = true;
   spin::task x { [] {} };
-  //auto x = loop.set_task([]{});
   x.cancel();
   loop.dispatch(x);
-  //x.set_proc([&]{ flag = true; });
   x.reset_procedure([&] { flag = true; });
   loop.run();
   assert (x.is_canceled());

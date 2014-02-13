@@ -16,17 +16,100 @@
  */
 
 #include <spin/singleton.hpp>
+
+#include <iostream>
+#include <thread>
 #include <cassert>
+#include <atomic>
+#include <vector>
+#include <mutex>
+#include <condition_variable>
+
 
 class X : public spin::singleton<X>
 {
 public:
-  X(singleton_tag) {}
+  static std::atomic_long count_construct_times;
+  constexpr static bool volatility = true;
+
+  X(singleton_tag)
+    : flag(true)
+  {
+    count_construct_times++;
+  }
+
+  void f()
+  {
+    assert (flag);
+  }
+
+  ~X()
+  {
+    flag = false;
+  }
+protected:
+
+  std::atomic_bool flag;
 };
 
-int main()
+std::atomic_long X::count_construct_times{0};
+
+std::mutex lock;
+std::condition_variable cv;
+std::chrono::steady_clock::time_point tp;
+std::atomic_long count_access_times;
+
+
+void mt_access()
 {
-  std::shared_ptr<X> x = X::get_instance();
-  assert(x);
+  while (std::chrono::steady_clock::now() < tp)
+  {
+    {
+      std::shared_ptr<X> x = X::get_instance();
+      assert(x);
+      x->f();
+      count_access_times++;
+    }
+    std::chrono::steady_clock::now();
+  }
+}
+
+
+void mt_test(int n)
+{
+  // Clear counter
+  X::count_construct_times = 0;
+  count_access_times = 0;
+
+  std::vector<std::thread> vt;
+
+
+  tp = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  for (int i = 0; i < n; i++)
+  { vt.emplace_back(mt_access); }
+
+  for (auto &i : vt)
+    i.join();
+
+  std::cout << "Multi-threading test for " << n << "concurrent thread:"
+    << std::endl
+    << " X's singlethon class was constructed "
+    << X::count_construct_times
+    << " times" << std::endl
+    << " while instance be accessed " << count_access_times
+    << " times" << std::endl;
+}
+
+int main ()
+{
+  {
+    std::shared_ptr<X> x = X::get_instance();
+    assert (x); // assert x is not null
+  }
+
+  mt_test(4);
+  mt_test(16);
+  mt_test(64);
+
   return 0;
 }
