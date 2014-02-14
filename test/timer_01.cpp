@@ -25,9 +25,10 @@ constexpr unsigned N = 10000;
 constexpr unsigned MIN_MILLISECONDS = 1000;
 constexpr unsigned MAX_MILLISECONDS = 2000;
 
-int main()
+using namespace std;
+
+void stress_test()
 {
-  using namespace std;
   spin::event_loop loop;
   std::set<spin::steady_timer> vt;
   std::mt19937 random_source;
@@ -50,4 +51,39 @@ int main()
   assert (counter == N);
   assert ((decltype(start)::clock::now() - start)
       > std::chrono::milliseconds(MIN_MILLISECONDS));
+}
+
+
+void behaviour_test()
+{
+  spin::event_loop loop;
+  int counter = 0;
+  spin::steady_timer a(loop,
+      [&] {
+        if (counter == 0)
+        {
+          cout << "a first alarm" << endl;
+          a.reset(spin::steady_timer::duration::zero());
+        }
+        else
+        {
+          cout << "a alarm again" << endl;
+          a.reset(spin::steady_timer::duration::zero());
+        }
+      }, spin::steady_timer::clock::now() + chrono::milliseconds(100));
+  spin::steady_timer b(loop,
+      [&] {
+        counter = 1;
+        cout << "reset a" << endl;
+        a.reset(spin::steady_timer::clock::now() + chrono::seconds(1));
+      }, spin::steady_timer::clock::now() + chrono::milliseconds(500));
+  cout << "Begin of behaviour test" << endl;
+  loop.run();
+  cout << "End of behaviour test" << endl;
+}
+
+int main()
+{
+  behaviour_test();
+  stress_test();
 }
