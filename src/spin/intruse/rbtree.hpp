@@ -932,7 +932,7 @@ namespace spin
       { }
 
       /** @brief Move assignment */
-      rbtree_node & operator = (rbtree_node &&n)
+      rbtree_node &operator = (rbtree_node &&n)
           noexcept(noexcept(std::swap(n.m_index, n.m_index)))
       {
         std::swap(m_index, n.m_index);
@@ -941,7 +941,7 @@ namespace spin
       }
 
       rbtree_node(const rbtree_node &) = delete;
-      rbtree_node operator = (const rbtree_node &) = delete;
+      rbtree_node &operator = (const rbtree_node &) = delete;
 
       friend bool operator < (const rbtree_node &lhs, const rbtree_node &rhs)
         noexcept(is_comparer_noexcept)

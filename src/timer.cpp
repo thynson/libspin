@@ -147,13 +147,17 @@ namespace spin
   template<typename Clock>
   timer<Clock>::timer(timer_service &service, std::function<void()> procedure,
       typename timer<Clock>::duration interval)
-    : timer(service, std::move(procedure), clock::now(), std::move(interval))
+    : timer(service, std::move(procedure),
+        interval == duration::zero() ? time_point::min() : clock::now(),
+        std::move(interval))
   { }
 
   template<typename Clock>
   timer<Clock>::timer(event_loop &loop, std::function<void()> procedure,
       typename timer<Clock>::duration interval)
-    : timer(loop, std::move(procedure), clock::now(), std::move(interval))
+    : timer(loop, std::move(procedure),
+        interval == duration::zero() ? time_point::min() : clock::now(),
+        std::move(interval))
   { }
 
   template<typename Clock>
@@ -166,13 +170,7 @@ namespace spin
     , m_task(std::move(procedure))
     , m_missed_counter()
     , m_timer_service(nullptr)
-  {
-    auto now = clock::now();
-    auto &next_time_point = timer::get_index(*this);
-    adjust_time_point<Clock>(next_time_point, now, m_interval);
-    if (next_time_point >= now)
-      start();
-  }
+  { start(); }
 
   template<typename Clock>
   timer<Clock>::timer(event_loop &loop, std::function<void()> procedure,
@@ -184,31 +182,26 @@ namespace spin
     , m_task(std::move(procedure))
     , m_missed_counter()
     , m_timer_service(nullptr)
-  {
-    auto now = clock::now();
-    auto &next_time_point = timer::get_index(*this);
-    adjust_time_point<Clock>(next_time_point, now, m_interval);
-    if (next_time_point >= now)
-      start();
-  }
+  { start(); }
 
   template<typename Clock>
   timer<Clock>::~timer() = default;
 
   template<typename Clock>
-  std::pair<typename Clock::time_point, typename Clock::duration>
+  std::tuple<typename Clock::time_point, typename Clock::duration, std::uint64_t>
   timer<Clock>::reset(
       typename timer::time_point initial,
       typename timer::duration interval)
   {
-    reset_missed_counter();
+    auto missed_counter = reset_missed_counter();
     auto now = Clock::now();
-    bool will_stop = initial < now && interval == Clock::duration::zero();
+
+    bool will_stop = initial == time_point::min() && interval == duration::zero();
 
     if (will_stop)
     {
-      std::pair<typename Clock::time_point, typename Clock::duration> ret(
-          timer::get_index(*this), std::move(m_interval));
+      auto ret = std::make_tuple(timer::get_index(*this),
+          std::move(m_interval), missed_counter);
       if (timer::is_linked(*this))
         timer::unlink(*this);
       timer::update_index(*this, std::move(initial), intruse::policy_backmost);
@@ -218,27 +211,28 @@ namespace spin
 
     m_missed_counter = adjust_time_point<Clock>(initial, now, interval);
 
-    std::pair<typename Clock::time_point, typename Clock::duration> ret(
-        timer::get_index(*this), std::move(m_interval));
+    auto ret = std::make_tuple(timer::get_index(*this),
+        std::move(m_interval), missed_counter);
 
     bool stopped = m_timer_service == nullptr;
 
     if (stopped)
     {
-      assert (!timer::is_linked(*this));
-      assert(m_interval == Clock::duration::zero());
-      assert(timer::get_index(*this) < Clock::now());
+      assert (!timer::is_linked(*this)); // timer should not in the queue
+      assert(m_interval == Clock::duration::zero()); // interval should be zero
+      assert(timer::get_index(*this) == time_point::min());
+
       timer::update_index(*this, std::move(initial), intruse::policy_backmost);
       m_interval = std::move(interval);
       start();
     }
     else
     {
-      assert (timer::is_linked(*this));
+      assert (timer::is_linked(*this)); // timer should still in the queue
       assert (!m_timer_service->m_deadline_timer_queue.empty());
 
       auto &front = m_timer_service->m_deadline_timer_queue.front();
-      bool needs_update = (&front == this || initial < ret.first);
+      bool needs_update = (&front == this || initial < std::get<0>(ret));
       timer::update_index(*this, std::move(initial), intruse::policy_backmost);
       m_interval = std::move(interval);
       if (needs_update)
@@ -248,7 +242,7 @@ namespace spin
   }
 
   template<typename Clock>
-  std::pair<typename Clock::time_point, typename Clock::duration>
+  std::tuple<typename Clock::time_point, typename Clock::duration, std::uint64_t>
   timer<Clock>::reset(typename timer::duration interval)
   {
     return reset(get_time_point(), interval);
@@ -260,6 +254,11 @@ namespace spin
   template<typename Clock>
   void timer<Clock>::start()
   {
+    if (timer::get_index(*this) == time_point::min()
+        && m_interval == duration::zero())
+      // Don't start the timer
+      return;
+
     if (!m_timer_service)
       m_timer_service = timer_service::get(m_event_loop);
 
@@ -272,18 +271,20 @@ namespace spin
   {
     if (m_interval == timer::duration::zero())
     {
+      // Stop the timer
       // We must do unlink first, if we release a shared_ptr first, which
       // would result in its destructor called, this timer may be unlink
       // twice. And second call to unlink will result in crash, althrouh we
       // can test if this timer is still linked, do unlink first without
       // checking must be right.
       timer::unlink(*this);
+      timer::update_index(*this, time_point::min());
       m_timer_service = nullptr;
     }
     else
     {
       auto next_tp = timer::get_index(*this);
-      m_missed_counter = adjust_time_point<Clock>(next_tp, now, m_interval);
+      m_missed_counter += adjust_time_point<Clock>(next_tp, now, m_interval);
       timer::update_index(*this, std::move(next_tp), intruse::policy_backmost);
     }
   }

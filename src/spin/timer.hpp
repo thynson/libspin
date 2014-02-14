@@ -56,12 +56,11 @@ namespace spin
      * @brief Create a timer from timer_service
      * @param service the timer_service to be attached to
      * @param procedure The callback function
-     * @param interval The time duration between each call to procedure, a
-     * zero interval result in one-shot behaviour
+     * @param interval The time duration between each call to procedure, if
+     * it's equals to @a duration::zero(), then the timer will not start
      */
-    explicit timer(timer_service &service,
-        std::function<void()> procedure = std::function<void()>(),
-        duration interval = duration::zero());
+    explicit timer(timer_service &service, std::function<void()> procedure,
+        duration interval);
 
     /**
      * @brief Create a timer from an event loop, attaching to an existing
@@ -69,12 +68,11 @@ namespace spin
      * @param loop the event loop that this timer and corresponding
      * timer_service will be attached to
      * @param procedure The callback function
-     * @param interval The time duration between each call to procedure, a
-     * zero interval result in one-shot behaviour
+     * @param interval The time duration between each call to procedure, if
+     * it's equals to @a duration::zero(), then the timer will not start
      */
-    explicit timer(event_loop &loop,
-        std::function<void()> procedure = std::function<void()>(),
-        duration interval = duration::zero());
+    explicit timer(event_loop &loop, std::function<void()> procedure,
+        duration interval);
 
     /**
      * @brief Create a timer from timer_service
@@ -84,10 +82,11 @@ namespace spin
      * procedure
      * @param interval The time duration between each call to procedure, a
      * zero interval result in one-shot behaviour
+     * @note If @p initial is equals to @a time_point::min(), then the timer
+     * will not start
      */
-    explicit timer(timer_service &service,
-        std::function<void()> procedure = std::function<void()>(),
-        time_point initial = clock::now(), duration interval = duration::zero());
+    explicit timer(timer_service &service, std::function<void()> procedure,
+        time_point initial, duration interval = duration::zero());
 
     /**
      * @brief Create a timer from an event loop, attaching to an existing
@@ -99,10 +98,11 @@ namespace spin
      * procedure
      * @param interval The time duration between each call to procedure, a
      * zero interval result in one-shot behaviour
+     * @note If @p initial is equals to @a time_point::min(), then the timer
+     * will not start
      */
-    explicit timer(event_loop &loop,
-        std::function<void()> procedure = std::function<void()>(),
-        time_point initial = clock::now(), duration interval = duration::zero());
+    explicit timer(event_loop &loop, std::function<void()> procedure,
+        time_point initial, duration interval = duration::zero());
 
     /** @brief Destructor */
     ~timer();
@@ -118,18 +118,18 @@ namespace spin
      * procedure is called
      * @param interval The new time duration between each call to procedure
      * @returns Return the original time point of next time procedure is
-     * called and the original timer interval
+     * called, the original timer interval and the original missed counter
      */
-    std::pair<time_point, duration>
+    std::tuple<time_point, duration, std::uint64_t>
     reset(time_point initial, duration interval = duration::zero());
 
     /**
      * @brief Reset this timer with its interval changed
      * @param interval The new time duration between each call to procedure
      * @returns Return the original time point of next time procedure is
-     * called and the original timer interval
+     * called and the original timer interval and the original missed counter
      */
-    std::pair<time_point, duration>
+    std::tuple<time_point, duration, std::uint64_t>
     reset(duration interval);
 
     /** @brief Get the interval of this timer */
@@ -193,9 +193,6 @@ namespace spin
 
   protected:
     void on_readable() override;
-    //void on_attach(event_loop &el) override;
-    //void on_active(event_loop &el) override;
-    //void on_detach(event_loop &el) override;
 
   private:
     void enqueue(timer &t) noexcept;
