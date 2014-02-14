@@ -60,7 +60,7 @@ namespace spin
      * it's equals to @a duration::zero(), then the timer will not start
      */
     explicit timer(timer_service &service, std::function<void()> procedure,
-        duration interval);
+        duration interval = duration::zero());
 
     /**
      * @brief Create a timer from an event loop, attaching to an existing
@@ -72,7 +72,7 @@ namespace spin
      * it's equals to @a duration::zero(), then the timer will not start
      */
     explicit timer(event_loop &loop, std::function<void()> procedure,
-        duration interval);
+        duration interval = duration::zero());
 
     /**
      * @brief Create a timer from timer_service
@@ -129,8 +129,14 @@ namespace spin
      * @returns Return the original time point of next time procedure is
      * called and the original timer interval and the original missed counter
      */
-    std::tuple<time_point, duration, std::uint64_t>
-    reset(duration interval);
+    std::tuple<time_point, duration, std::uint64_t> reset(duration interval);
+
+    /**
+     * @brief Stop the timer
+     * @returns Return the original time point of next time procedure is
+     * called and the original timer interval and the original missed counter
+     */
+    std::tuple<time_point, duration, std::uint64_t> stop();
 
     /** @brief Get the interval of this timer */
     const duration &get_interval() const noexcept

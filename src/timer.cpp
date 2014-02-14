@@ -25,9 +25,9 @@
 
 namespace spin
 {
+  using namespace std::chrono;
   namespace
   {
-
     template<typename Clock>
     struct clock_spec;
 
@@ -49,6 +49,10 @@ namespace spin
       }
     };
 
+    /**
+     * @brief Check whether interval, throws exception if interval is a
+     * nagative time duration.
+     */
     template<typename Clock>
     typename timer<Clock>::duration
     check_interval(typename timer<Clock>::duration &interval)
@@ -58,21 +62,25 @@ namespace spin
       return std::move(interval);
     }
 
+    /**
+     * @brief Adjust @p tp according to @p base_time and @p duration
+     * @returns An interger value suitable to be added to missed counter
+     */
     template<typename Clock>
     auto adjust_time_point(typename timer<Clock>::time_point &tp,
-        const typename timer<Clock>::time_point &now,
+        const typename timer<Clock>::time_point &base_time,
         const typename timer<Clock>::duration &duration)
-      noexcept -> decltype((now - tp) / duration)
+      noexcept -> decltype((base_time - tp) / duration)
     {
       if (duration == timer<Clock>::duration::zero())
         return 0;
-      if (tp >= now)
+      if (tp >= base_time)
       {
         return 0;
       }
       else
       {
-        auto d = now - tp;
+        auto d = base_time - tp;
         auto ret = d / duration;
         tp += (ret + 1) * duration;
         return ret;
@@ -80,18 +88,21 @@ namespace spin
 
     }
 
+    /** @brief Set alarm time for @p timerfd */
     template<typename Clock>
-    void update_timerfd(const system_handle &timerfd, typename timer<Clock>::duration duration)
+    void update_timerfd(const system_handle &timerfd,
+        typename timer<Clock>::duration duration)
     {
-      auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
-      duration -= std::chrono::seconds(seconds);
-      auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration).count();
+      auto secs = duration_cast<seconds>(duration).count();
+      duration -= seconds(secs);
+      auto nanosecs = duration_cast<nanoseconds>(duration).count();
       itimerspec itspc {
         { 0, 0 },
-        { seconds, nanoseconds}
+        { secs, nanosecs}
       };
 
-      int result = timerfd_settime(timerfd.get_raw_handle(), 0, &itspc, nullptr);
+      int result = timerfd_settime(timerfd.get_raw_handle(), 0,
+          &itspc, nullptr);
       if (result == -1)
         throw_exception_for_last_error();
     }
@@ -99,9 +110,11 @@ namespace spin
   }
 
   template<typename Clock>
-  timer_service<Clock>::timer_service(event_loop &el, typename timer_service<Clock>::service_tag)
+  timer_service<Clock>::timer_service(event_loop &el,
+      typename timer_service<Clock>::service_tag)
     : service_template<timer_service<Clock>, event_loop *>(&el)
-    , pollable(el.get_poller(), clock_spec<Clock>::create_device(), pollable::poll_argument_readable)
+    , pollable(el.get_poller(), clock_spec<Clock>::create_device(),
+        pollable::poll_argument_readable)
     , m_deadline_timer_queue()
   { }
 
@@ -114,7 +127,8 @@ namespace spin
     auto now = timer::clock::now();
     task::queue_type l;
 
-    while (!m_deadline_timer_queue.empty() && m_deadline_timer_queue.front() <= now)
+    while (!m_deadline_timer_queue.empty()
+        && m_deadline_timer_queue.front() <= now)
     {
       auto &t = m_deadline_timer_queue.front();
       l.push_back(t.m_task);
@@ -125,7 +139,8 @@ namespace spin
     el->dispatch(std::move(l));
 
     if (!m_deadline_timer_queue.empty())
-      update_timerfd<Clock>(get_handle(), timer::get_index(m_deadline_timer_queue.front()) - now);
+      update_timerfd<Clock>(get_handle(),
+          timer::get_index(m_deadline_timer_queue.front()) - now);
 
   }
 
@@ -244,9 +259,12 @@ namespace spin
   template<typename Clock>
   std::tuple<typename Clock::time_point, typename Clock::duration, std::uint64_t>
   timer<Clock>::reset(typename timer::duration interval)
-  {
-    return reset(get_time_point(), interval);
-  }
+  { return reset(get_time_point(), interval); }
+
+  template<typename Clock>
+  std::tuple<typename Clock::time_point, typename Clock::duration, std::uint64_t>
+  timer<Clock>::stop()
+  { return reset(time_point::min(), duration::zero()); }
 
   /**
    * @brief Start a timer
