@@ -26,74 +26,20 @@
 namespace spin
 {
 
-  namespace
-  {
-    void register_pollable(basic_pollable &target, system_raw_handle epollfd,
-        system_raw_handle targetfd, int events)
-    {
-      ::epoll_event evt;
-      evt.data.ptr = &target;
-      evt.events = events | EPOLLET;
-
-      int result = epoll_ctl(epollfd,
-          EPOLL_CTL_ADD, targetfd, &evt);
-
-      if (result == -1)
-        throw_exception_for_last_error();
-    }
-
-  }
-
-  basic_pollable::~basic_pollable() = default;
-
-  pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
-      pollable::poll_argument_readable_t)
-    : basic_pollable()
-    , m_poller(std::move(p))
-    , m_handle(std::move(handle))
-  {
-    if (!m_handle)
-      throw std::logic_error("handle is invalid for pollable object");
-
-    register_pollable(*this, m_poller->get_poll_handle().get_raw_handle(),
-        m_handle.get_raw_handle(), EPOLLIN);
-  }
-
-  pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
-      pollable::poll_argument_writable_t)
-    : basic_pollable()
-    , m_poller(std::move(p))
-    , m_handle(std::move(handle))
-  {
-    if (!m_handle)
-      throw std::logic_error("handle is invalid for pollable object");
-
-    register_pollable(*this, m_poller->get_poll_handle().get_raw_handle(),
-        m_handle.get_raw_handle(), EPOLLOUT);
-  }
-
-  pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
-      pollable::poll_argument_duplex_t)
-    : basic_pollable()
-    , m_poller(std::move(p))
-    , m_handle(std::move(handle))
-  {
-    if (!m_handle)
-      throw std::logic_error("handle is invalid for pollable object");
-
-    register_pollable(*this, m_poller->get_poll_handle().get_raw_handle(),
-        m_handle.get_raw_handle(), EPOLLIN | EPOLLOUT);
-  }
+  poll_handler::~poll_handler() = default;
 
   poller::poller()
     : m_poll_handle{ epoll_create1, EPOLL_CLOEXEC }
     , m_interrupter{ eventfd, 0, EFD_NONBLOCK | EFD_CLOEXEC }
   {
-    register_pollable(*this, m_poll_handle.get_raw_handle(),
-        m_interrupter.get_raw_handle(), EPOLLIN);
+    ::epoll_event epev;
+    epev.events = EPOLLIN | EPOLLET;
+    epev.data.ptr = this;
+    int ret = epoll_ctl (m_poll_handle.get_raw_handle(),
+        EPOLL_CTL_ADD, m_interrupter.get_raw_handle(), &epev);
+    if (ret != 0)
+      throw_exception_for_last_error();
   }
-
-  poller::~poller() = default;
 
   void poller::interrupt()
   {
@@ -122,7 +68,7 @@ namespace spin
 
         for (auto i = evarray.begin(); i != evarray.begin() + nfds; ++i)
         {
-          basic_pollable *p = reinterpret_cast<basic_pollable *>(i->data.ptr);
+          poll_handler *p = reinterpret_cast<poll_handler *>(i->data.ptr);
 
           if (i->events & EPOLLERR)
             p->on_error();

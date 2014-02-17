@@ -22,6 +22,7 @@
 #include <spin/task.hpp>
 #include <spin/event_loop.hpp>
 #include <spin/service_template.hpp>
+#include <spin/pollable.hpp>
 
 #include <memory>
 #include <type_traits>
@@ -198,7 +199,7 @@ namespace spin
     { return *timer_service::get_identity(); }
 
   protected:
-    void on_readable() override;
+    void on_readable() noexcept override;
 
   private:
     void enqueue(timer &t) noexcept;

@@ -31,81 +31,27 @@ namespace spin
   /**
    * @brief Abstract pollable interface
    */
-  class __SPIN_EXPORT__ basic_pollable
+  class __SPIN_EXPORT__ poll_handler
   {
     friend class poller;
   public:
-    basic_pollable(basic_pollable&&) = delete;
-    basic_pollable(const basic_pollable&) = delete;
+    poll_handler(poll_handler&&) = delete;
+    poll_handler(const poll_handler&) = delete;
   protected:
-    basic_pollable() = default;
-    virtual ~basic_pollable() = 0;
-    virtual void on_readable() = 0;
-    virtual void on_writable() = 0;
-    virtual void on_error() = 0;
+    poll_handler() = default;
+    virtual ~poll_handler() = 0;
+    virtual void on_readable() noexcept = 0;
+    virtual void on_writable() noexcept = 0;
+    virtual void on_error() noexcept = 0;
   };
 
-  /**
-   * @brief General pollable object
-   */
-  class __SPIN_EXPORT__ pollable : public basic_pollable
-  {
-  protected:
-
-    struct poll_argument_readable_t {  } poll_argument_readable;
-    struct poll_argument_writable_t {  } poll_argument_writable;
-    struct poll_argument_duplex_t   {  } poll_argument_duplex;
-
-    /** @brief Construct a read only pollable instance */
-    pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_readable_t);
-
-    /** @brief Construct a write only pollable instance */
-    pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_writable_t);
-
-    /** @brief Construct a pollable instance that is both readable and
-     * writable */
-    pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_duplex_t);
-
-    pollable(pollable &&) = delete;
-
-    pollable &operator = (pollable &&) = delete;
-
-    ~pollable() = default;
-
-    /**
-     * @brief A noop implement the basic_pollable::on_readable
-     * @note If this pollable is readable, this member function should be
-     * overrided by its child class
-     */
-    void on_readable() override {}
-
-    /**
-     * @brief A noop implement the basic_pollable::on_writable
-     * @note If this pollable is readable, this member function should be
-     * overrided by its child class
-     */
-    void on_writable() override {}
-
-    /**
-     * @todo its behaviour is undesigned
-     */
-    void on_error() override {}
-
-    const system_handle &get_handle() const noexcept
-    { return m_handle; }
-
-  private:
-    std::shared_ptr<poller> m_poller;
-    system_handle m_handle;
-  };
-
-  class __SPIN_EXPORT__ poller : private basic_pollable
+  class __SPIN_EXPORT__ poller : private poll_handler
   {
   public:
 
     poller();
 
-    virtual ~poller() override;
+    ~poller() = default;
 
     system_handle &get_poll_handle() noexcept
     { return m_poll_handle; }
@@ -116,9 +62,11 @@ namespace spin
 
   private:
 
-    void on_readable() override { }
-    void on_writable() override { }
-    void on_error() override { }
+    void on_readable() noexcept override { }
+
+    void on_writable() noexcept override { }
+
+    void on_error() noexcept override { }
 
     system_handle m_poll_handle;
     system_handle m_interrupter;

@@ -113,7 +113,7 @@ namespace spin
   timer_service<Clock>::timer_service(event_loop &el,
       typename timer_service<Clock>::service_tag)
     : service_template<timer_service<Clock>, event_loop *>(&el)
-    , pollable(el.get_poller(), clock_spec<Clock>::create_device(),
+    , pollable(el, clock_spec<Clock>::create_device(),
         pollable::poll_argument_readable)
     , m_deadline_timer_queue()
   { }
@@ -122,7 +122,7 @@ namespace spin
   timer_service<Clock>::~timer_service() = default;
 
   template<typename Clock>
-  void timer_service<Clock>::on_readable()
+  void timer_service<Clock>::on_readable() noexcept
   {
     auto now = timer::clock::now();
     task::queue_type l;
