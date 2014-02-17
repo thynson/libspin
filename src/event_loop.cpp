@@ -69,9 +69,7 @@ namespace spin
       {
         p->poll(q.empty());
         q.splice(q.end(), m_dispatched_queue);
-      }
-
-      if (q.empty())
+      } else if (q.empty())
         return;
 
       for (auto i = q.begin(); i != q.end(); )

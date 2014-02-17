@@ -48,7 +48,8 @@ namespace spin
 
   pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
       pollable::poll_argument_readable_t)
-    : m_poller(std::move(p))
+    : basic_pollable()
+    , m_poller(std::move(p))
     , m_handle(std::move(handle))
   {
     if (!m_handle)
@@ -60,7 +61,8 @@ namespace spin
 
   pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
       pollable::poll_argument_writable_t)
-    : m_poller(std::move(p))
+    : basic_pollable()
+    , m_poller(std::move(p))
     , m_handle(std::move(handle))
   {
     if (!m_handle)
@@ -72,7 +74,8 @@ namespace spin
 
   pollable::pollable(std::shared_ptr<poller> p, system_handle handle,
       pollable::poll_argument_duplex_t)
-    : m_poller(std::move(p))
+    : basic_pollable()
+    , m_poller(std::move(p))
     , m_handle(std::move(handle))
   {
     if (!m_handle)
@@ -81,7 +84,6 @@ namespace spin
     register_pollable(*this, m_poller->get_poll_handle().get_raw_handle(),
         m_handle.get_raw_handle(), EPOLLIN | EPOLLOUT);
   }
-
 
   poller::poller()
     : m_poll_handle{ epoll_create1, EPOLL_CLOEXEC }
@@ -120,7 +122,7 @@ namespace spin
 
         for (auto i = evarray.begin(); i != evarray.begin() + nfds; ++i)
         {
-          pollable *p = reinterpret_cast<pollable *>(i->data.ptr);
+          basic_pollable *p = reinterpret_cast<basic_pollable *>(i->data.ptr);
 
           if (i->events & EPOLLERR)
             p->on_error();

@@ -28,34 +28,68 @@ namespace spin
   class poller;
 
 
-  class basic_pollable
+  /**
+   * @brief Abstract pollable interface
+   */
+  class __SPIN_EXPORT__ basic_pollable
   {
+    friend class poller;
+  public:
+    basic_pollable(basic_pollable&&) = delete;
+    basic_pollable(const basic_pollable&) = delete;
   protected:
+    basic_pollable() = default;
     virtual ~basic_pollable() = 0;
     virtual void on_readable() = 0;
     virtual void on_writable() = 0;
     virtual void on_error() = 0;
   };
 
-  class pollable : public basic_pollable
-                 , public intruse::list_node<pollable>
+  /**
+   * @brief General pollable object
+   */
+  class __SPIN_EXPORT__ pollable : public basic_pollable
   {
-    friend class poller;
   protected:
 
     struct poll_argument_readable_t {  } poll_argument_readable;
     struct poll_argument_writable_t {  } poll_argument_writable;
     struct poll_argument_duplex_t   {  } poll_argument_duplex;
 
+    /** @brief Construct a read only pollable instance */
     pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_readable_t);
 
+    /** @brief Construct a write only pollable instance */
     pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_writable_t);
 
+    /** @brief Construct a pollable instance that is both readable and
+     * writable */
     pollable(std::shared_ptr<poller> p, system_handle handle, poll_argument_duplex_t);
 
-    virtual void on_readable() { };
-    virtual void on_writable() { };
-    virtual void on_error() { };
+    pollable(pollable &&) = delete;
+
+    pollable &operator = (pollable &&) = delete;
+
+    ~pollable() = default;
+
+    /**
+     * @brief A noop implement the basic_pollable::on_readable
+     * @note If this pollable is readable, this member function should be
+     * overrided by its child class
+     */
+    void on_readable() override {}
+
+    /**
+     * @brief A noop implement the basic_pollable::on_writable
+     * @note If this pollable is readable, this member function should be
+     * overrided by its child class
+     */
+    void on_writable() override {}
+
+    /**
+     * @todo its behaviour is undesigned
+     */
+    void on_error() override {}
 
     const system_handle &get_handle() const noexcept
     { return m_handle; }
@@ -65,7 +99,7 @@ namespace spin
     system_handle m_handle;
   };
 
-  class poller : private basic_pollable
+  class __SPIN_EXPORT__ poller : private basic_pollable
   {
   public:
 
