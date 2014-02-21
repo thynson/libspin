@@ -101,7 +101,7 @@ namespace spin
         { secs, nanosecs}
       };
 
-      int result = timerfd_settime(timerfd.get_raw_handle(), 0,
+      int result = timerfd_settime(timerfd.get_raw_handle(), TFD_TIMER_ABSTIME,
           &itspc, nullptr);
       if (result == -1)
         throw_exception_for_last_error();
@@ -140,7 +140,7 @@ namespace spin
 
     if (!m_deadline_timer_queue.empty())
       update_timerfd<Clock>(get_handle(),
-          timer::get_index(m_deadline_timer_queue.front()) - now);
+          timer::get_index(m_deadline_timer_queue.front()).time_since_epoch());
 
   }
 
@@ -156,14 +156,14 @@ namespace spin
   void timer_service<Clock>::update_wakeup_time() noexcept
   {
     auto &t = m_deadline_timer_queue.front();
-    update_timerfd<Clock>(get_handle(), timer::get_index(t) - timer::clock::now());
+    update_timerfd<Clock>(get_handle(), timer::get_index(t).time_since_epoch());
   }
 
   template<typename Clock>
   timer<Clock>::timer(timer_service &service, std::function<void()> procedure,
       typename timer<Clock>::duration interval)
     : timer(service, std::move(procedure),
-        interval == duration::zero() ? time_point::min() : clock::now(),
+        interval == duration::zero() ? time_point::min() : clock::now() + interval,
         std::move(interval))
   { }
 
@@ -171,7 +171,7 @@ namespace spin
   timer<Clock>::timer(event_loop &loop, std::function<void()> procedure,
       typename timer<Clock>::duration interval)
     : timer(loop, std::move(procedure),
-        interval == duration::zero() ? time_point::min() : clock::now(),
+        interval == duration::zero() ? time_point::min() : clock::now() + interval,
         std::move(interval))
   { }
 
