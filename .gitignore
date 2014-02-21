@@ -27,3 +27,4 @@ config.status
 libtool
 stamp-h1
 *.tar.*
+*.pyc

@@ -47,3 +47,4 @@ autocmd BufNewFile *.hpp call s:license_for_source()
 autocmd FileType make call s:makefile_style()
 autocmd FileType automake call s:makefile_style()
 
+let g:ycm_confirm_extra_conf=0
