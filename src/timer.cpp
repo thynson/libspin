@@ -110,9 +110,9 @@ namespace spin
   }
 
   template<typename Clock>
-  timer_service<Clock>::timer_service(event_loop &el,
-      typename timer_service<Clock>::service_tag)
-    : service_template<timer_service<Clock>, event_loop *>(&el)
+  timer_service<Clock>::timer_service(event_loop &el)
+    : std::enable_shared_from_this<timer_service>()
+    , intruse::rbtree_node<event_loop *, timer_service>(&el)
     , pollable(el, clock_spec<Clock>::create_device(),
         pollable::poll_argument_readable)
     , m_deadline_timer_queue()

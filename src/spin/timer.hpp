@@ -21,7 +21,6 @@
 #include <spin/intruse/rbtree.hpp>
 #include <spin/task.hpp>
 #include <spin/event_loop.hpp>
-#include <spin/service_template.hpp>
 #include <spin/pollable.hpp>
 
 #include <memory>
@@ -178,7 +177,8 @@ namespace spin
 
   template<typename Clock>
   class timer_service :
-    public service_template<timer_service<Clock>, event_loop *>,
+    public std::enable_shared_from_this<timer_service<Clock>>,
+    public intruse::rbtree_node<event_loop *, timer_service<Clock>>,
     public pollable
   {
   public:
@@ -188,24 +188,43 @@ namespace spin
     using time_point = typename clock::time_point;
     using duration = typename clock::duration;
 
-    timer_service(event_loop &el, typename timer_service<Clock>::service_tag);
-
     virtual ~timer_service() override;
 
+    static std::shared_ptr<timer_service> get(event_loop &el)
+    {
+      auto i = instance_table.find(&el);
+      if (i == instance_table.end())
+      {
+        std::shared_ptr<timer_service> ret;
+        ret.reset(new timer_service(el));
+        instance_table.insert(*ret);
+        return ret;
+      }
+      else
+        return i->shared_from_this();
+    }
+
     event_loop &get_event_loop() noexcept
-    { return *timer_service::get_identity(); }
+    { return *timer_service::get_index(*this); }
 
     const event_loop &get_event_loop() const noexcept
-    { return *timer_service::get_identity(); }
+    { return *timer_service::get_index(*this); }
 
   protected:
     void on_readable() noexcept override;
 
   private:
+
+    static intruse::rbtree<event_loop *, timer_service> instance_table;
+    timer_service(event_loop &el);
     void enqueue(timer &t) noexcept;
     void update_wakeup_time() noexcept;
     intruse::rbtree<time_point, timer> m_deadline_timer_queue;
   };
+
+  template<typename Clock>
+  intruse::rbtree<event_loop*, timer_service<Clock>>
+  timer_service<Clock>::instance_table;
 
   extern template class __SPIN_EXPORT__ timer<std::chrono::steady_clock>;
   extern template class __SPIN_EXPORT__ timer<std::chrono::system_clock>;
