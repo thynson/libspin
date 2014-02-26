@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/event_loop.hpp>
+#include <spin/scheduler.hpp>
 #include <vector>
 #include <iostream>
 
@@ -24,7 +24,7 @@ constexpr unsigned N = 10000, M = 1000000;
 void test_01 ()
 {
   unsigned counter = 0;
-  spin::event_loop loop;
+  spin::scheduler loop;
 
   std::vector<spin::task> vt;
 
@@ -45,7 +45,7 @@ void test_01 ()
 void test_02()
 {
   unsigned counter = 0;
-  spin::event_loop loop;
+  spin::scheduler loop;
 
   std::vector<spin::task> vt;
 
@@ -65,7 +65,7 @@ void test_02()
 
 void test_03()
 {
-  spin::event_loop loop;
+  spin::scheduler loop;
   bool flag = true;
   spin::task x { [] {} };
   x.cancel();

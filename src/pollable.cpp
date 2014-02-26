@@ -39,7 +39,7 @@ namespace spin
     }
   }
 
-  pollable::pollable(event_loop &el, system_handle handle,
+  pollable::pollable(scheduler &el, system_handle handle,
       pollable::poll_argument_readable_t)
     : poll_handler()
     , m_poller(el.get_poller())
@@ -52,7 +52,7 @@ namespace spin
         m_handle.get_raw_handle(), EPOLLIN);
   }
 
-  pollable::pollable(event_loop &el, system_handle handle,
+  pollable::pollable(scheduler &el, system_handle handle,
       pollable::poll_argument_writable_t)
     : poll_handler()
     , m_poller(el.get_poller())
@@ -65,7 +65,7 @@ namespace spin
         m_handle.get_raw_handle(), EPOLLOUT);
   }
 
-  pollable::pollable(event_loop &el, system_handle handle,
+  pollable::pollable(scheduler &el, system_handle handle,
       pollable::poll_argument_duplex_t)
     : poll_handler()
     , m_poller(el.get_poller())

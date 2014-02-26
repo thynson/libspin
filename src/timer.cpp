@@ -110,9 +110,9 @@ namespace spin
   }
 
   template<typename Clock>
-  timer_service<Clock>::timer_service(event_loop &el)
+  timer_service<Clock>::timer_service(scheduler &el)
     : std::enable_shared_from_this<timer_service>()
-    , intruse::rbtree_node<event_loop *, timer_service>(&el)
+    , intruse::rbtree_node<scheduler *, timer_service>(&el)
     , pollable(el, clock_spec<Clock>::create_device(),
         pollable::poll_argument_readable)
     , m_deadline_timer_queue()
@@ -135,7 +135,7 @@ namespace spin
       t.relay(now);
     }
 
-    event_loop *el = timer_service::get_index(*this);
+    scheduler *el = timer_service::get_index(*this);
     el->dispatch(std::move(l));
 
     if (!m_deadline_timer_queue.empty())
@@ -168,7 +168,7 @@ namespace spin
   { }
 
   template<typename Clock>
-  timer<Clock>::timer(event_loop &loop, std::function<void()> procedure,
+  timer<Clock>::timer(scheduler &loop, std::function<void()> procedure,
       typename timer<Clock>::duration interval)
     : timer(loop, std::move(procedure),
         interval == duration::zero() ? time_point::min() : clock::now() + interval,
@@ -180,7 +180,7 @@ namespace spin
       typename timer<Clock>::time_point tp,
       typename timer<Clock>::duration interval)
     : intruse::rbtree_node<typename Clock::time_point, timer>(std::move(tp))
-    , m_event_loop(service.get_event_loop())
+    , m_scheduler(service.get_scheduler())
     , m_interval(check_interval<Clock>(interval))
     , m_task(std::move(procedure))
     , m_missed_counter()
@@ -188,11 +188,11 @@ namespace spin
   { start(); }
 
   template<typename Clock>
-  timer<Clock>::timer(event_loop &loop, std::function<void()> procedure,
+  timer<Clock>::timer(scheduler &loop, std::function<void()> procedure,
       typename timer<Clock>::time_point tp,
       typename timer<Clock>::duration interval)
     : intruse::rbtree_node<typename Clock::time_point, timer>(std::move(tp))
-    , m_event_loop(loop)
+    , m_scheduler(loop)
     , m_interval(check_interval<Clock>(interval))
     , m_task(std::move(procedure))
     , m_missed_counter()
@@ -278,7 +278,7 @@ namespace spin
       return;
 
     if (!m_timer_service)
-      m_timer_service = timer_service::get(m_event_loop);
+      m_timer_service = timer_service::get(m_scheduler);
 
     // Client code should ensure t is greater than or equals to clock::now()
     m_timer_service->enqueue(*this);

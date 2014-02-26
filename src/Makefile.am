@@ -34,7 +34,7 @@ libspin_la_HEADERS=spin/utils.hpp\
 				   spin/functional.hpp\
 				   spin/transform_iterator.hpp\
 				   spin/spin_lock.hpp\
-				   spin/event_loop.hpp\
+				   spin/scheduler.hpp\
 				   spin/system.hpp\
 				   spin/socket.hpp\
 				   spin/intruse/list.hpp\
@@ -46,7 +46,7 @@ libspin_la_HEADERS=spin/utils.hpp\
 				   spin/pollable.hpp
 
 
-libspin_la_SOURCES=event_loop.cpp\
+libspin_la_SOURCES=scheduler.cpp\
 				   system.cpp\
 				   socket.cpp\
 				   intruse_rbtree.cpp\

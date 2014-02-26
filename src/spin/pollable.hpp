@@ -19,7 +19,7 @@
 #ifndef __SPIN_POLLABLE_HPP_INCLUDED__
 #define __SPIN_POLLABLE_HPP_INCLUDED__
 
-#include <spin/event_loop.hpp>
+#include <spin/scheduler.hpp>
 
 namespace spin
 {
@@ -36,10 +36,10 @@ namespace spin
     struct poll_argument_duplex_t   {  } poll_argument_duplex;
 
     /** @brief Construct a read only pollable instance */
-    pollable(event_loop &el, system_handle handle, poll_argument_readable_t);
+    pollable(scheduler &schd, system_handle handle, poll_argument_readable_t);
 
     /** @brief Construct a write only pollable instance */
-    pollable(event_loop &el, system_handle handle, poll_argument_writable_t);
+    pollable(scheduler &schd, system_handle handle, poll_argument_writable_t);
 
     /** @brief Construct a pollable instance that is both readable and
      * writable */
@@ -53,7 +53,7 @@ namespace spin
 
     /** @brief Construct a pollable instance that is both readable and
      * writable */
-    pollable(event_loop &el, system_handle handle, poll_argument_duplex_t);
+    pollable(scheduler &schd, system_handle handle, poll_argument_duplex_t);
 
     pollable(pollable &&) = delete;
 

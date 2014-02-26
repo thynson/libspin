@@ -20,7 +20,7 @@
 
 #include <spin/intruse/rbtree.hpp>
 #include <spin/task.hpp>
-#include <spin/event_loop.hpp>
+#include <spin/scheduler.hpp>
 #include <spin/pollable.hpp>
 
 #include <memory>
@@ -71,7 +71,7 @@ namespace spin
      * @param interval The time duration between each call to procedure, if
      * it's equals to @a duration::zero(), then the timer will not start
      */
-    explicit timer(event_loop &loop, std::function<void()> procedure,
+    explicit timer(scheduler &loop, std::function<void()> procedure,
         duration interval = duration::zero());
 
     /**
@@ -101,7 +101,7 @@ namespace spin
      * @note If @p initial is equals to @a time_point::min(), then the timer
      * will not start
      */
-    explicit timer(event_loop &loop, std::function<void()> procedure,
+    explicit timer(scheduler &loop, std::function<void()> procedure,
         time_point initial, duration interval = duration::zero());
 
     /** @brief Destructor */
@@ -167,7 +167,7 @@ namespace spin
 
     void relay(const time_point &now);
 
-    event_loop &m_event_loop;
+    scheduler &m_scheduler;
     duration m_interval;
     task m_task;
     std::uint64_t m_missed_counter;
@@ -178,7 +178,7 @@ namespace spin
   template<typename Clock>
   class timer_service :
     public std::enable_shared_from_this<timer_service<Clock>>,
-    public intruse::rbtree_node<event_loop *, timer_service<Clock>>,
+    public intruse::rbtree_node<scheduler *, timer_service<Clock>>,
     public pollable
   {
   public:
@@ -190,13 +190,13 @@ namespace spin
 
     virtual ~timer_service() override;
 
-    static std::shared_ptr<timer_service> get(event_loop &el)
+    static std::shared_ptr<timer_service> get(scheduler &schd)
     {
-      auto i = instance_table.find(&el);
+      auto i = instance_table.find(&schd);
       if (i == instance_table.end())
       {
         std::shared_ptr<timer_service> ret;
-        ret.reset(new timer_service(el));
+        ret.reset(new timer_service(schd));
         instance_table.insert(*ret);
         return ret;
       }
@@ -204,10 +204,10 @@ namespace spin
         return i->shared_from_this();
     }
 
-    event_loop &get_event_loop() noexcept
+    scheduler &get_scheduler() noexcept
     { return *timer_service::get_index(*this); }
 
-    const event_loop &get_event_loop() const noexcept
+    const scheduler &get_scheduler() const noexcept
     { return *timer_service::get_index(*this); }
 
   protected:
@@ -215,15 +215,15 @@ namespace spin
 
   private:
 
-    static intruse::rbtree<event_loop *, timer_service> instance_table;
-    timer_service(event_loop &el);
+    static intruse::rbtree<scheduler *, timer_service> instance_table;
+    timer_service(scheduler &schd);
     void enqueue(timer &t) noexcept;
     void update_wakeup_time() noexcept;
     intruse::rbtree<time_point, timer> m_deadline_timer_queue;
   };
 
   template<typename Clock>
-  intruse::rbtree<event_loop*, timer_service<Clock>>
+  intruse::rbtree<scheduler*, timer_service<Clock>>
   timer_service<Clock>::instance_table;
 
   extern template class __SPIN_EXPORT__ timer<std::chrono::steady_clock>;

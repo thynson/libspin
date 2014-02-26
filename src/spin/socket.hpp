@@ -18,7 +18,7 @@
 #ifndef __SPIN_SOCKET_HPP_INCLUDED__
 #define __SPIN_SOCKET_HPP_INCLUDED__
 
-#include <spin/event_loop.hpp>
+#include <spin/scheduler.hpp>
 
 #include <memory>
 
@@ -78,7 +78,7 @@ namespace spin
     stream_socket_peer(const stream_socket_peer &peer) = delete;
     stream_socket_peer &operator = (const stream_socket_peer &peer) = delete;
 
-    stream_socket_peer(event_loop &loop, system_handle socket);
+    stream_socket_peer(scheduler &loop, system_handle socket);
 
     void read(char buff[], size_t size, std::function<void(size_t)> cb);
 
@@ -95,7 +95,7 @@ namespace spin
   class __SPIN_EXPORT__ stream_socket_listener
   {
   public:
-    stream_socket_listener(event_loop &loop, system_handle h);
+    stream_socket_listener(scheduler &loop, system_handle h);
     ~stream_socket_listener() noexcept;
 
     std::function<void(std::unique_ptr<stream_socket_peer>)>

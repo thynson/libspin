@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/event_loop.hpp>
+#include <spin/scheduler.hpp>
 #include <spin/timer.hpp>
 #include <random>
 #include <set>
@@ -29,7 +29,7 @@ using namespace std;
 
 void stress_test()
 {
-  spin::event_loop loop;
+  spin::scheduler loop;
   std::set<spin::steady_timer> vt;
   std::mt19937 random_source;
   spin::steady_timer::time_point start = decltype(start)::clock::now();
@@ -56,7 +56,7 @@ void stress_test()
 
 void behaviour_test()
 {
-  spin::event_loop loop;
+  spin::scheduler loop;
   int counter = 0;
   spin::steady_timer a(loop,
       [&] {

@@ -15,7 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/event_loop.hpp>
+#include <spin/scheduler.hpp>
 #include <spin/transform_iterator.hpp>
 
 #include <mutex>
@@ -36,14 +36,14 @@ namespace spin
     }
   }
 
-  event_loop::event_loop()
+  scheduler::scheduler()
     : m_poller_ptr()
     , m_dispatched_queue()
     , m_posted_queue()
     , m_lock()
   { }
 
-  std::shared_ptr<poller> event_loop::get_poller()
+  std::shared_ptr<poller> scheduler::get_poller()
   {
     auto p = m_poller_ptr.lock();
     if (p) return p;
@@ -52,13 +52,13 @@ namespace spin
     return p;
   }
 
-  void event_loop::interrupt()
+  void scheduler::interrupt()
   {
     if (auto p = m_poller_ptr.lock())
       p->interrupt();
   }
 
-  void event_loop::run()
+  void scheduler::run()
   {
     for ( ; ; )
     {

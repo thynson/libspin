@@ -15,14 +15,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <spin/event_loop.hpp>
+#include <spin/scheduler.hpp>
 #include <iostream>
 #include <cassert>
 
 
 void check_create_task()
 {
-  spin::event_loop loop;
+  spin::scheduler loop;
   bool flag = false;
   spin::task t {[&flag] { flag = true; } };
   //auto x = loop.set_task([&flag]{ flag = true; });
