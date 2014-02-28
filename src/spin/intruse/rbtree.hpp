@@ -1225,7 +1225,8 @@ namespace spin
     private:
 
       pointer internal_cast() const noexcept
-      { return static_cast<pointer>(m_node); }
+      { return static_cast<pointer>(
+          static_cast<rbtree_node<Index, Type, Tag, Comparer>*>(m_node)); }
 
       node_type *m_node;
     };
@@ -1444,7 +1445,8 @@ namespace spin
       iterator find(iterator hint, const Index &index, policy_nearest_t p)
           noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, index, p);
+        node_type &ref = *hint;
+        auto *result = node_type::find(ref, index, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
@@ -1452,7 +1454,8 @@ namespace spin
       iterator find(iterator hint, const Index &index, policy_frontmost_t p)
           noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, index, p);
+        node_type &ref = *hint;
+        auto *result = node_type::find(ref, index, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
@@ -1460,7 +1463,8 @@ namespace spin
       iterator find(iterator hint, const Index &index, policy_backmost_t p)
           noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, index, p);
+        node_type &ref = *hint;
+        auto *result = node_type::find(ref, index, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
@@ -1468,7 +1472,8 @@ namespace spin
       const_iterator find(const_iterator hint, const Index &index, policy_nearest_t p) const
           noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, index, p);
+        node_type &ref = *hint;
+        auto *result = node_type::find(ref, index, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
@@ -1476,7 +1481,8 @@ namespace spin
       const_iterator find(const_iterator hint, const Index &index, policy_frontmost_t p) const
           noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, index, p);
+        node_type &ref = *hint;
+        auto *result = node_type::find(ref, index, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
@@ -1484,7 +1490,8 @@ namespace spin
       const_iterator find(const_iterator hint, const Index &index, policy_backmost_t p) const
           noexcept(node_type::is_comparer_noexcept)
       {
-        auto *result = node_type::find(*hint, index, p);
+        node_type &ref = *hint;
+        auto *result = node_type::find(ref, index, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
@@ -1501,11 +1508,13 @@ namespace spin
         return std::make_pair(std::move(l), std::move(u));
       }
 
-      std::pair<const_iterator, const_iterator> equals_range(const Index &index) const
+      std::pair<const_iterator, const_iterator>
+      equals_range(const Index &index) const
           noexcept(node_type::is_comparer_noexcept)
       { return equals_range(end(), index); }
 
-      std::pair<const_iterator, const_iterator> equals_range(const_iterator hint, const Index &index) const
+      std::pair<const_iterator, const_iterator>
+      equals_range(const_iterator hint, const Index &index) const
           noexcept(node_type::is_comparer_noexcept)
       {
         auto l = lower_bound(hint, index);
@@ -1523,15 +1532,25 @@ namespace spin
 
       iterator lower_bound(iterator hint, const value_type &val)
           noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::lower_bound(*hint, node_type::get_index(val))); }
+      {
+        node_type &ref = *hint;
+        return iterator(node_type::lower_bound(ref,
+              node_type::get_index(val)));
+      }
 
       const_iterator lower_bound(iterator hint, const value_type &val) const
           noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::lower_bound(*hint, node_type::get_index(val))); }
+      {
+        node_type &ref = *hint;
+        return const_iterator(node_type::lower_bound(ref,
+              node_type::get_index(val)));
+      }
 
       iterator lower_bound(const Index &index)
           noexcept(node_type::is_comparer_noexcept)
-      { return lower_bound(end(), index); }
+      {
+        return lower_bound(end(), index);
+      }
 
       const_iterator lower_bound(const Index &index) const
           noexcept(node_type::is_comparer_noexcept)
@@ -1539,11 +1558,17 @@ namespace spin
 
       iterator lower_bound(iterator hint, const Index &index)
           noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::lower_bound(*hint, index)); }
+      {
+        node_type &ref = *hint;
+        return iterator(node_type::lower_bound(ref, index));
+      }
 
       const_iterator lower_bound(const_iterator hint, const Index &index) const
           noexcept(node_type::is_comparer_noexcept)
-      { return const_iterator(node_type::lower_bound(*hint, index)); }
+      {
+        node_type &ref = *hint;
+        return const_iterator(node_type::lower_bound(ref, index));
+      }
 
       iterator upper_bound(const value_type &val)
           noexcept(node_type::is_comparer_noexcept)
@@ -1555,11 +1580,17 @@ namespace spin
 
       iterator upper_bound(iterator hint, const value_type &val)
           noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::upper_bound(*hint, node_type::get_index(val))); }
+      {
+        node_type &ref = *hint;
+        return iterator(node_type::upper_bound(ref, node_type::get_index(val)));
+      }
 
       const_iterator upper_bound(iterator hint, const value_type &val) const
           noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::upper_bound(*hint, node_type::get_index(val))); }
+      {
+        node_type &ref = *hint;
+        return iterator(node_type::upper_bound(ref, node_type::get_index(val)));
+      }
 
       iterator upper_bound(const Index &index)
           noexcept(node_type::is_comparer_noexcept)
@@ -1608,7 +1639,10 @@ namespace spin
 
       iterator insert(iterator hint, value_type &val, policy_unique_t p)
           noexcept(node_type::is_comparer_noexcept)
-      { return iterator(node_type::insert(*hint, val, p)); }
+      {
+        node_type &ref = *hint;
+        return iterator(node_type::insert(ref, val, p));
+      }
 
       iterator insert(iterator hint, value_type &val, policy_override_t p)
           noexcept(node_type::is_comparer_noexcept)

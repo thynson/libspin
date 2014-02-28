@@ -437,7 +437,8 @@ namespace spin
        */
       void erase(iterator pos) noexcept
       {
-        node_type::unlink(*pos);
+        node_type &ref = *pos;
+        node_type::unlink(ref);
       }
 
       /**
@@ -552,7 +553,7 @@ namespace spin
         auto b = begin(), e = end();
         while (b != e)
         {
-          auto &n = *b++;
+          node_type &n = *b++;
           node_type::unlink(n);
           x.push_front(n);
         }
