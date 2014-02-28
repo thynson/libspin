@@ -115,6 +115,20 @@ namespace spin
      */
     void interrupt();
 
+    /**
+     * @brief Test if this scheduler has tasks to execute
+     * @note A task is being executed after it has been unqueued from the
+     * scheduler, so this function will return false for the last task of this
+     * scheduler
+     */
+    bool has_tasks() noexcept
+    {
+      bool ret = !m_dispatched_queue.empty();
+      if (ret) return ret;
+      std::lock_guard<spin_lock> guard(m_lock);
+      return !m_posted_queue.empty();
+    }
+
     std::shared_ptr<poller> get_poller();
 
   private:
