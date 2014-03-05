@@ -617,8 +617,8 @@ namespace spin
        * @brief Sort this list with specified strict weak ordering comparer
        * @param cmp The specified weak ordering comparer
        */
-      template<typename StrictWeakOrderingComparer>
-        void sort(StrictWeakOrderingComparer &&cmp)
+      template<typename StrictWeakOrderingComparator>
+        void sort(StrictWeakOrderingComparator &&cmp)
           noexcept(noexcept(cmp(std::declval<T>(), std::declval<T>())))
         {
           if (empty() || ++begin() == end()) return;
@@ -641,7 +641,7 @@ namespace spin
                 ++counter)
             {
               counter->merge(carry,
-                  std::forward<StrictWeakOrderingComparer>(cmp));
+                  std::forward<StrictWeakOrderingComparator>(cmp));
               counter->swap(carry);
             }
 
@@ -653,7 +653,7 @@ namespace spin
 
           for (counter = &tmp[1]; counter != fill; ++counter)
             counter->merge(*(counter - 1),
-                std::forward<StrictWeakOrderingComparer>(cmp));
+                std::forward<StrictWeakOrderingComparator>(cmp));
           swap(*(fill - 1));
         }
 
@@ -684,11 +684,11 @@ namespace spin
        * @param l List to be merged
        * @param cmper The specified strict weak ordering comparer
        */
-      template<typename Comparer>
-      void merge(list &l, Comparer &&cmper)
+      template<typename Comparator>
+      void merge(list &l, Comparator &&cmper)
         noexcept(noexcept(l.merge(l.begin(), l.end(),
-                std::forward<Comparer>(cmper))))
-      { merge(l.begin(), l.end(), std::forward<Comparer>(cmper)); }
+                std::forward<Comparator>(cmper))))
+      { merge(l.begin(), l.end(), std::forward<Comparator>(cmper)); }
 
       /**
        * @brief Merge a sorted part of from b to e of another list with specified
@@ -699,15 +699,15 @@ namespace spin
        * @note both of this list and the part to be merged should be sorted
        * with specified comparer, and b and e should be iterators of distinct list
        */
-      template<typename Comparer>
+      template<typename Comparator>
       void merge(iterator b, iterator e,
-          Comparer &&cmper)
+          Comparator &&cmper)
         noexcept(noexcept(cmper(*b, *e)))
       {
         auto p = begin(), q = end();
 
         while (p != q && b != e)
-          if (std::forward<Comparer>(cmper)(*b, *p))
+          if (std::forward<Comparator>(cmper)(*b, *p))
           {
             auto &n = *b++;
             node_type::unlink(n);

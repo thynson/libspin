@@ -128,7 +128,7 @@ namespace spin
     task::queue_type l;
 
     while (!m_deadline_timer_queue.empty()
-        && m_deadline_timer_queue.front() <= now)
+        && timer::get_index(m_deadline_timer_queue.front()) <= now)
     {
       auto &t = m_deadline_timer_queue.front();
       l.push_back(t.m_task);
