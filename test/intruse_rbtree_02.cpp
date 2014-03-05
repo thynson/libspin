@@ -31,7 +31,11 @@ public:
   X(int x = 0)
     : rbtree_node(x)
   {}
+
+  friend bool operator < (const X &l, const X &r) noexcept
+  { return get_index(l) < get_index(r); }
 };
+
 
 int main()
 {

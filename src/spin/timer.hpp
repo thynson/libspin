@@ -161,6 +161,22 @@ namespace spin
     std::uint64_t get_missed_counter() const
     { return m_missed_counter; }
 
+    friend bool
+      operator < (const timer &l, const timer &r) noexcept
+    { return timer::get_index(l) < timer::get_index(r); }
+
+    friend bool
+      operator > (const timer &l, const timer &r) noexcept
+    { return r < l; }
+
+    friend bool
+      operator <= (const timer &l, const timer &r) noexcept
+    { return !(l > r); }
+
+    friend bool
+      operator >= (const timer &l, const timer &r) noexcept
+    { return !(l < r); }
+
   private:
 
     void start();

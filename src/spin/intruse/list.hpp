@@ -553,7 +553,7 @@ namespace spin
         auto b = begin(), e = end();
         while (b != e)
         {
-          node_type &n = *b++;
+          value_type &n = *b++;
           node_type::unlink(n);
           x.push_front(n);
         }

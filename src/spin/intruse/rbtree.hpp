@@ -801,96 +801,118 @@ namespace spin
     public:
 
       template<typename Tag, typename Comparator>
-      struct cononcial_node_argument
+      struct args
       {
         using tag = Tag;
         using comparator = Comparator;
       };
 
       template<typename ...Arguments>
-      struct arguments;
+      struct args_list;
+
+      template<typename Tag, typename ArgsList>
+      struct select_argument;
+
+      template<typename Tag>
+      struct select_argument<Tag, args_list<>>
+      {
+        static constexpr bool found = false;
+        using argument = void;
+      };
+
+      template<typename Tag, typename Current, typename ...ArgsList>
+      struct select_argument<Tag, args_list<Current, ArgsList...>>
+      {
+        static constexpr bool found = select_argument<Tag, args_list<ArgsList...>>::found;
+        using argument = typename select_argument<Tag, args_list<ArgsList...>>::argument;
+      };
+
+      template<typename Tag, typename Comparator, typename ...ArgsList>
+      struct select_argument<Tag, args_list<args<Tag, Comparator>, ArgsList...>>
+      {
+        static constexpr bool found = true;
+        using argument = args<Tag, Comparator>;
+      };
+
+      // Test select_argument
+      static_assert(select_argument<void, args_list<args<void, spin::less<int>>>>::found, "");
+      static_assert(!select_argument<int, args_list<args<void, void>>>::found, "");
+      static_assert(select_argument<int, args_list<args<void, void>, args<int, void>>>::found, "");
+      static_assert(select_argument<void, args_list<args<void, spin::less<int>>, args<int, spin::less<int>>>>::found, "");
+      static_assert(!select_argument<float, args_list<args<void, void>, args<int, void>>>::found, "");
 
       template<typename A, typename B>
-      struct concat_arguments
+      struct concat_args_list;
+
+      template<typename A, typename C, typename ...B>
+      struct concat_args_list<args<A, C>, args_list<B...>>
       {
-        using type = arguments<A, B>;
+        static_assert(select_argument<A, args_list<B...>>::found == false,
+            "Tag conflict");
+        using type = args_list<args<A, C>, B...>;
       };
 
-      template<typename ...A, typename B>
-      struct concat_arguments<arguments<A...>, B>
-      {
-        using type = arguments<A..., B>;
-      };
-
-      template<typename A, typename ...B>
-      struct concat_arguments<A, arguments<B...>>
-      {
-        using type = arguments<A, B...>;
-      };
-
-      template<typename ...A, typename ...B>
-      struct concat_arguments<arguments<A...>, arguments<B...>>
-      {
-        using type = arguments<A..., B...>;
-      };
 
       template<typename DefaultComparator, typename ...Arguments>
-      struct make_arguments;
+      struct make_args_list;
 
       template<typename DefaultComparator>
-      struct make_arguments<DefaultComparator>
+      struct make_args_list<DefaultComparator>
       {
-        using type = arguments<cononcial_node_argument<void, DefaultComparator>>;
+        using type = args_list<args<void, DefaultComparator>>;
       };
 
       template<typename DefaultComparator, typename Tag>
-      struct make_arguments<DefaultComparator, Tag>
+      struct make_args_list<DefaultComparator, Tag>
       {
-        using type = arguments<cononcial_node_argument<Tag, DefaultComparator>>;
+        using type = args_list<args<Tag, DefaultComparator>>;
       };
 
       template<typename DefaultComparator, typename Tag, typename PendingArgument>
-      struct make_arguments<DefaultComparator, Tag, PendingArgument>
+      struct make_args_list<DefaultComparator, Tag, PendingArgument>
       {
+        static constexpr bool pending_argument_is_comparator
+          = std::is_default_constructible<PendingArgument>::value;
         using type = typename std::conditional<
 
             // if
-            std::is_default_constructible<PendingArgument>::value,
+            pending_argument_is_comparator,
 
             // then
-            arguments<cononcial_node_argument<Tag, PendingArgument>>,
+            args_list<args<Tag, PendingArgument>>,
 
             // else
-            typename concat_arguments<
-              arguments<cononcial_node_argument<Tag, DefaultComparator>>,
-              typename make_arguments<DefaultComparator, PendingArgument>::type
-            >::type // make_arguments
+            typename concat_args_list<
+              args<Tag, DefaultComparator>,
+              typename make_args_list<DefaultComparator, PendingArgument>::type
+            >::type // make_args_list
 
           >::type; // std::conditional
       };
 
       template<typename DefaultComparator, typename Tag,
-        typename Remain, typename ...ExtraRemains>
-      struct make_arguments<DefaultComparator, Tag, Remain, ExtraRemains...>
+        typename PendingArgument, typename ...ExtraRemains>
+      struct make_args_list<DefaultComparator, Tag, PendingArgument, ExtraRemains...>
       {
+        static constexpr bool pending_argument_is_comparator
+          = std::is_default_constructible<PendingArgument>::value;
         using type = typename std::conditional<
 
             // if
-            std::is_default_constructible<Remain>::value,
+            pending_argument_is_comparator,
 
             // then
-            typename concat_arguments<cononcial_node_argument<Tag, Remain>,
-              typename make_arguments<DefaultComparator, ExtraRemains...>::type
+            typename concat_args_list<args<Tag, PendingArgument>,
+              typename make_args_list<DefaultComparator, ExtraRemains...>::type
             >::type,
 
             // else
-            typename concat_arguments<cononcial_node_argument<Tag, DefaultComparator>,
-              typename make_arguments<DefaultComparator, Remain, ExtraRemains...>::type
-            >::type // make_arguments
+            typename concat_args_list<args<Tag, DefaultComparator>,
+              typename make_args_list<DefaultComparator, PendingArgument, ExtraRemains...>::type
+            >::type // make_args_list
 
           >::type; // std::conditoinal
       };
-
 
       template<typename Index, bool is_class=std::is_class<Index>::value>
       class index_holder
@@ -941,12 +963,12 @@ namespace spin
       struct base_node;
 
       template<typename Index, typename Type, typename Argument>
-      struct base_node<Index, Type, arguments<Argument>>
+      struct base_node<Index, Type, args_list<Argument>>
         : public rbtree_node<Index, Type, Argument>
       { };
 
       template<typename Index, typename Type, typename ...Arguments>
-      struct base_node<Index, Type, arguments<Arguments...>>
+      struct base_node<Index, Type, args_list<Arguments...>>
         : public rbtree_node<Index, Type, Arguments>...
       { };
 
@@ -954,7 +976,7 @@ namespace spin
 
     template<typename Index, typename Type, typename Tag, typename Comparator>
     class rbtree_node<Index, Type,
-          rbtree_node<void, void>::cononcial_node_argument<Tag, Comparator>>
+          rbtree_node<void, void>::args<Tag, Comparator>>
       : public rbtree_node<void, void>
     {
       friend class rbtree<Index, Type, Tag, Comparator>;
@@ -1254,13 +1276,13 @@ namespace spin
 
     template<typename Index, typename Type, typename Tag, typename Comparator>
     Comparator rbtree_node<Index, Type,
-      rbtree_node<void, void>::cononcial_node_argument<Tag, Comparator>>::cmper;
+      rbtree_node<void, void>::args<Tag, Comparator>>::cmper;
 
     template<typename Index, typename Type, typename Tag, typename Comparator>
     typename rbtree_node<Index, Type,
-      rbtree_node<void, void>::cononcial_node_argument<Tag, Comparator>>::index_fetcher_t
+      rbtree_node<void, void>::args<Tag, Comparator>>::index_fetcher_t
     rbtree_node<Index, Type,
-      rbtree_node<void, void>::cononcial_node_argument<Tag, Comparator>>::index_fetcher;
+      rbtree_node<void, void>::args<Tag, Comparator>>::index_fetcher;
 
     /**
      * @brief Definition of rbtree_node
@@ -1303,7 +1325,9 @@ namespace spin
      *
      * @endcode
      *
-     * where a Tag should be a incomplete class or non-default-nconstructible
+     * There should not be same tag in options, or a static_assert will
+     * failed.
+     * And a Tag should be a incomplete class or non-default-nconstructible
      * class while a Comparator is should not be. Be care about this,
      * otherwise the compiler may complains you with a horrible error message.
      *
@@ -1312,15 +1336,16 @@ namespace spin
     class rbtree_node
       : public rbtree_node<void, void>::index_holder<Index>
       , public rbtree_node<void, void>::base_node<Index, Type,
-          typename rbtree_node<void, void>::make_arguments<
+          typename rbtree_node<void, void>::make_args_list<
           spin::less<Index>, Arguments...>::type
         >
     {
       using index_holder = rbtree_node<void, void>::index_holder<Index>;
+      using args_list = typename rbtree_node<void, void>::make_args_list<
+          spin::less<Index>, Arguments...>::type;
+
       using base_node = rbtree_node<void, void>::base_node<Index, Type,
-          typename rbtree_node<void, void>::make_arguments<
-          spin::less<Index>, Arguments...>::type
-        >;
+            args_list>;
 
     public:
 
@@ -1330,7 +1355,119 @@ namespace spin
         , base_node()
       { }
 
+      rbtree_node(rbtree_node &&node)
+        noexcept(std::is_nothrow_move_constructible<index_holder>::value)
+        : index_holder(std::move(node))
+        , base_node(std::move(node))
+      { }
+
+
       ~rbtree_node() = default;
+
+      template<typename Tag=void>
+      static void update_index(rbtree_node &node, Index index)
+      {
+        static_assert(rbtree_node<void, void>
+            ::select_argument<Tag, args_list>::found,
+            "Tag was not found in this node");
+
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+
+        node_type &ref = node;
+        node_type::update_index(ref, std::move(index));
+      }
+
+      template<typename Tag=void>
+      static void update_index(rbtree_node &node, Index index, policy_override_t p)
+      {
+        static_assert(rbtree_node<void, void>
+            ::select_argument<Tag, args_list>::found,
+            "Tag was not found in this node");
+
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+
+        node_type &ref = node;
+        node_type::update_index(ref, std::move(index), p);
+      }
+
+      template<typename Tag=void>
+      static void update_index(rbtree_node &node, Index index, policy_unique_t p)
+      {
+        static_assert(rbtree_node<void, void>
+            ::select_argument<Tag, args_list>::found,
+            "Tag was not found in this node");
+
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+
+        node_type &ref = node;
+        node_type::update_index(ref, std::move(index), p);
+      }
+
+      template<typename Tag=void>
+      static void update_index(rbtree_node &node, Index index, policy_nearest_t p)
+      {
+        static_assert(rbtree_node<void, void>
+            ::select_argument<Tag, args_list>::found,
+            "Tag was not found in this node");
+
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+
+        node_type &ref = node;
+        node_type::update_index(ref, std::move(index), p);
+      }
+
+      template<typename Tag=void>
+      static void update_index(rbtree_node &node, Index index, policy_backmost_t p)
+      {
+        static_assert(rbtree_node<void, void>
+            ::select_argument<Tag, args_list>::found,
+            "Tag was not found in this node");
+
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+
+        node_type &ref = node;
+        node_type::update_index(ref, std::move(index), p);
+      }
+
+      template<typename Tag=void>
+      static void update_index(rbtree_node &node, Index index, policy_frontmost_t p)
+      {
+        static_assert(rbtree_node<void, void>
+            ::select_argument<Tag, args_list>::found,
+            "Tag was not found in this node");
+
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+
+        node_type &ref = node;
+        node_type::update_index(ref, std::move(index), p);
+      }
+
+      template<typename Tag=void>
+      static void unlink(rbtree_node &node)
+      {
+        static_assert(rbtree_node<void, void>
+            ::select_argument<Tag, args_list>::found,
+            "Tag was not found in this node");
+
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+
+        node_type &ref = node;
+        node_type::unlink(ref);
+      }
 
     };
 
@@ -1343,7 +1480,7 @@ namespace spin
       using iterator_category = std::bidirectional_iterator_tag;
       using node_type         =
         rbtree_node<Index, Type,
-          rbtree_node<void, void>::cononcial_node_argument<Tag, Comparator>>;
+          rbtree_node<void, void>::args<Tag, Comparator>>;
 
       using value_type        = Type;
       using reference         = value_type &;
@@ -1495,7 +1632,6 @@ namespace spin
     };
 
 
-
     template<typename Index, typename Type, typename Tag, typename Comparator>
     class rbtree
     {
@@ -1505,9 +1641,8 @@ namespace spin
       using const_iterator          = rbtree_const_iterator<Index, Type, Tag, Comparator>;
       using reverse_iterator        = std::reverse_iterator<iterator>;
       using const_reverse_iterator  = std::reverse_iterator<const_iterator>;
-      using node_type               = rbtree_node<Index, Type,
-                                          rbtree_node<void,void>
-                                            ::cononcial_node_argument<Tag, Comparator>>;
+      using node_type               = rbtree_node<Index, Type, rbtree_node<void,void>
+                                            ::args<Tag, Comparator>>;
       using value_type              = Type;
       using reference               = value_type &;
       using pointer                 = value_type *;
@@ -1768,7 +1903,8 @@ namespace spin
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        return iterator(node_type::upper_bound(ref, node_type::get_index(val)));
+        return iterator(node_type::upper_bound(ref,
+              rbtree_node<void,void>::index_holder<Index>::get_index(val)));
       }
 
       const_iterator upper_bound(iterator hint, const value_type &val) const
