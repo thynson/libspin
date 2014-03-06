@@ -29,12 +29,12 @@ struct tag1;
 struct tag2;
 
 class X : public rbtree_node<int, X, tag1, tag2>
-        , public rbtree_node<float, X, tag1, tag2>
+        , public rbtree_node<float, X, tag1, tag2, void>
 {
 public:
   X(int a, float b)
     : rbtree_node<int, X, tag1, tag2>(a)
-    , rbtree_node<float, X, tag1, tag2>(b)
+    , rbtree_node<float, X, tag1, tag2, void>(b)
   {}
 
 };
@@ -75,6 +75,7 @@ int main()
   t1.size();
   t1.remove(1);
 
-
+  rbtree_node<int, X, tag1, tag2>::unlink<tag2>(y);
+  rbtree_node<float, X, tag1, tag2, void>::is_linked<void>(y);
 
 }
