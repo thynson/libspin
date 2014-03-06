@@ -217,7 +217,7 @@ namespace spin
     {
       auto ret = std::make_tuple(timer::get_index(*this),
           std::move(m_interval), missed_counter);
-      if (timer::is_linked(*this))
+      if (timer::template is_linked<void>(*this))
         timer::unlink(*this);
       timer::update_index(*this, std::move(initial), intruse::policy_backmost);
       m_interval = std::move(interval);
@@ -233,7 +233,7 @@ namespace spin
 
     if (stopped)
     {
-      assert (!timer::is_linked(*this)); // timer should not in the queue
+      assert (!timer::template is_linked<void>(*this)); // timer should not in the queue
       assert(m_interval == Clock::duration::zero()); // interval should be zero
       assert(timer::get_index(*this) == time_point::min());
 
@@ -243,7 +243,7 @@ namespace spin
     }
     else
     {
-      assert (timer::is_linked(*this)); // timer should still in the queue
+      assert (timer::template is_linked<void>(*this)); // timer should still in the queue
       assert (!m_timer_service->m_deadline_timer_queue.empty());
 
       auto &front = m_timer_service->m_deadline_timer_queue.front();

@@ -24,6 +24,7 @@ check_PROGRAMS=test_singleton_01\
 			   test_intruse_list_01\
 			   test_intruse_rbtree_01\
 			   test_intruse_rbtree_02\
+			   test_intruse_rbtree_03\
 			   test_event_loop_01\
 			   test_event_loop_02\
 			   test_timer_01
@@ -34,6 +35,7 @@ test_singleton_01_SOURCES=singleton_01.cpp
 test_intruse_list_01_SOURCES=intruse_list_01.cpp
 test_intruse_rbtree_01_SOURCES=intruse_rbtree_01.cpp
 test_intruse_rbtree_02_SOURCES=intruse_rbtree_02.cpp
+test_intruse_rbtree_03_SOURCES=intruse_rbtree_03.cpp
 test_event_loop_01_SOURCES=event_loop_01.cpp
 test_event_loop_02_SOURCES=event_loop_02.cpp
 test_timer_01_SOURCES=timer_01.cpp

@@ -1292,7 +1292,7 @@ namespace spin
      * @tparam Arguments
      *                Representing the options for this node
      *
-     * In most situation, in order to use rbtree to index @p Type by @Index,
+     * In most situation, in order to use rbtree to index @p Type by @p Index,
      * you need to let class @Type inheriats from rbtree_node<Index, Type>,
      * this will injects an Red-Black Tree data structure into @p Type, so
      * rbtree<Index, Type> can operates it. That's the simple way to use an
@@ -1331,6 +1331,10 @@ namespace spin
      * class while a Comparator is should not be. Be care about this,
      * otherwise the compiler may complains you with a horrible error message.
      *
+     * By design, rbtree and its nodes is fully RAII complaince. The node will
+     * remove itself from the tree if it's linked when it got destroyed
+     *
+     * @see rbtree
      */
     template<typename Index, typename Type, typename ...Arguments>
     class rbtree_node
@@ -1469,9 +1473,21 @@ namespace spin
         node_type::unlink(ref);
       }
 
+
+      template<typename Tag>
+      static bool is_linked(rbtree_node &node)
+      {
+        using node_type = rbtree_node<Index, Type,
+              typename rbtree_node<void, void>
+                ::select_argument<Tag, args_list>::argument>;
+        node_type &ref = node;
+        return node_type::is_linked(ref);
+      }
+
     };
 
 
+    /** @brief iterator type for rbtree */
     template<typename Index, typename Type, typename Tag, typename Comparator>
     class rbtree_iterator
     {
@@ -1552,19 +1568,22 @@ namespace spin
       rbtree_node<void, void> *m_node;
     };
 
+    /** @brief const iterator type for rbtree */
     template<typename Index, typename Type, typename Tag, typename Comparator>
     class rbtree_const_iterator
     {
     public:
       // Nested type similar with STL
       using iterator_category = std::bidirectional_iterator_tag;
-      using node_type         = const rbtree_node<void, void>;
+      using node_type         =
+        const rbtree_node<Index, Type,
+          rbtree_node<void, void>::args<Tag, Comparator>>;
       using value_type        = const Type;
       using reference         = value_type &;
       using pointer           = value_type *;
       using difference_type   = std::ptrdiff_t;
 
-      explicit rbtree_const_iterator(node_type *node) noexcept
+      explicit rbtree_const_iterator(const rbtree_node<void, void> *node) noexcept
         : m_node(node)
       { }
 
@@ -1628,10 +1647,35 @@ namespace spin
       pointer internal_cast() const noexcept
       { return static_cast<pointer>(m_node); }
 
-      node_type *m_node;
+      const rbtree_node<void, void> *m_node;
     };
 
 
+    /**
+     * @brief Intrusive Red-Black-Tree
+     * @tparam Index  Representing the type of value which the order of the
+     *                is based on
+     * @tparam Type   Representing the type which inheriats this rbtree_node
+     * @tparam Tag    Tag of the node that this rbtree manipulates, by default
+     *                defined as void
+     * @tparam Comparator
+     *                Comparator for @p Index , by default defined as
+     *                spin::less<Index>
+     *
+     * This class implements intrusive associative container, it maintains
+     * references to instances of @p Type in a Red-Black-Tree, and order them
+     * by their index and the compare result from @p Comparator.
+     *
+     * By design, rbtree and its nodes is fully RAII complaince. The tree will
+     * remove all elements when it got destroyed.
+     *
+     * This implementation of Red-Black-Tree is threaded optimized, that is,
+     * the nodes may track their predessor and/or successor when they have no
+     * left child and/or right child, to improve the iteration performance
+     *
+     * @see rbtree_node
+     *
+     */
     template<typename Index, typename Type, typename Tag, typename Comparator>
     class rbtree
     {
@@ -1656,15 +1700,24 @@ namespace spin
         : m_container_node(rbtree_node<void, void>::container)
       { }
 
+      /**
+       * @brief Construct an rbtree with initial elements
+       * @tparam Type the type of the iterator
+       */
       template<typename InputIterator>
-      rbtree(InputIterator b, InputIterator e) noexcept;
+      rbtree(InputIterator b, InputIterator e) noexcept
+        : rbtree()
+      { insert(b, e); }
 
+      /** @brief Move constructor */
       rbtree(rbtree &&t) noexcept
         : m_container_node(std::move(t.m_container_node))
       { }
 
+      /** @brief Copy constructor is forbidden */
       rbtree(const rbtree &) = delete;
 
+      /** @brief Move assignment function */
       rbtree &operator = (rbtree &&t) noexcept
       {
         if (&t != this)
@@ -1675,16 +1728,21 @@ namespace spin
         return *this;
       }
 
+      /** @brief Copy assignment is forbidden */
       rbtree &operator = (const rbtree &t) = delete;
 
+      /** @brief Default destructor */
       ~rbtree() noexcept
       { clear(); }
 
 
       // Capacity
+
+      /** @brief Test if this rbtree is empty */
       bool empty() const noexcept
       { return m_container_node.is_empty_container_node(); }
 
+      /** @brief Count the elements in this tree */
       size_type size() const noexcept
       {
         size_type s = 0;
@@ -1695,270 +1753,652 @@ namespace spin
 
       // Access
 
+      /**
+       * @brief Get an iterator point to the position of the first element in
+       *        this tree
+       */
       iterator begin() noexcept
       { return iterator(m_container_node.front_of_container()); }
 
+      /**
+       * @brief Get an reverse iterator to the position of the last element in
+       *         this tree
+       */
       reverse_iterator rbegin() noexcept
       { return reverse_iterator(end()); }
 
+      /**
+       * @brief Get an const iterator point to the position of the first element
+       *        in this tree
+       */
       const_iterator begin() const noexcept
       { return const_iterator(end()); }
 
+      /**
+       * @brief Get an const reverse iterator to the position of the last
+       *        element in this tree
+       */
       const_reverse_iterator rbegin() const noexcept
       { return const_reverse_iterator(end()); }
 
+      /**
+       * @brief Get an const iterator point to the position of the first
+       *        element in this tree
+       */
       const_iterator cbegin() const noexcept
       { return const_iterator(m_container_node.front_of_container()); }
 
+      /**
+       * @brief Get an const reverse iterator to the position of the last
+       *        element in this tree
+       */
       const_reverse_iterator crbegin() const noexcept
       { return const_reverse_iterator(end()); }
 
+      /**
+       * @brief Get an iterator to the position after the last element
+       *        in this tree
+       */
       iterator end() noexcept
       { return iterator(&m_container_node); }
 
+      /**
+       * @brief Get an reverse iterator point to the position before the
+       *        first element in this tree
+       */
       reverse_iterator rend() noexcept
       { return reverse_iterator(begin()); }
 
+      /**
+       * @brief Get an const iterator point to the position after the last
+       *        element in this tree
+       */
       const_iterator end() const noexcept
       { return const_iterator(&m_container_node); }
 
+      /**
+       * @brief Get an const reverse iterator point to the position before the
+       *        first element in this tree
+       */
       const_reverse_iterator rend() const noexcept
       { return const_reverse_iterator(begin()); }
 
+      /**
+       * @brief Get an const iterator point to the position after the last
+       *        element in this tree
+       */
       const_iterator cend() const noexcept
-      { return const_iterator(m_container_node); }
+      { return const_iterator(&m_container_node); }
 
+      /**
+       * @brief Get an const reverse iterator point to the position before the
+       *        first element in this tree
+       */
       const_reverse_iterator crend() const noexcept
       { return const_reverse_iterator(begin()); }
 
+      /**
+       * @brief Get a reference to the first element in this tree
+       * @note User should ensure this tree is not empty
+       */
       reference front() noexcept
       { return *begin(); }
 
+      /**
+       * @brief Get a const reference to the first element in this tree
+       * @note User should ensure this tree is not empty
+       */
       const_reference front() const noexcept
       { return *begin(); }
 
+      /**
+       * @brief Get a reference to the last element in this tree
+       * @note User should ensure this tree is not empty
+       */
       reference back() noexcept
       { return *rbegin(); }
 
+      /**
+       * @brief Get a const reference to the last element in this tree
+       * @note User should ensure this tree is not empty
+       */
       const_reference back() const noexcept
       { return *rbegin(); }
 
-      iterator find(const Index &index)
+      /**
+       * @brief Find an element its index is equals to @p val, with default
+       *        policy of policy_nearest,
+       * @param val The value of index of the element want to find
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the one element (first touched) will be return. if not found,
+       *        @a end() will be returned.
+       */
+      iterator find(const Index &val)
           noexcept(node_type::is_comparator_noexcept)
-      { return find(end(), index, policy_nearest); }
+      { return find(end(), val, policy_nearest); }
 
-      iterator find(const Index &index, policy_nearest_t p)
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the nearest one (first touched) will be return. if not found,
+       *        @a end() will be returned.
+       */
+      iterator find(const Index &val, policy_nearest_t p)
           noexcept(node_type::is_comparator_noexcept)
-      { return find(end(), index, p); }
+      { return find(end(), val, p); }
 
-      iterator find(const Index &index, policy_frontmost_t p)
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the frontmost one will be return. if not found, @a end() will
+       *        be returned.
+       */
+      iterator find(const Index &val, policy_frontmost_t p)
           noexcept(node_type::is_comparator_noexcept)
-      { return find(end(), index, p); }
+      { return find(end(), val, p); }
 
-      iterator find(const Index &index, policy_backmost_t p)
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the backmost one will be return. if not found, @a end() will
+       *        be returned.
+       */
+      iterator find(const Index &val, policy_backmost_t p)
           noexcept(node_type::is_comparator_noexcept)
-      { return find(end(), index, p); }
+      { return find(end(), val, p); }
 
-      iterator find(iterator hint, const Index &index)
+      /**
+       * @brief Find an element its index is equals to @p val, with default
+       *        policy of policy_nearest,
+       * @param val  The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       *
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the nearest one (first touched) will be return. if not found,
+       *        @a end() will be returned.
+       */
+      iterator find(iterator hint, const Index &val)
           noexcept(node_type::is_comparator_noexcept)
-      { return find(hint, index, policy_nearest); }
+      { return find(hint, val, policy_nearest); }
 
-      iterator find(iterator hint, const Index &index, policy_nearest_t p)
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val  The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       *
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the nearest one (first touched) will be return. if not found,
+       *        @a end() will be returned.
+       */
+      iterator find(iterator hint, const Index &val, policy_nearest_t p)
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        auto *result = node_type::find(ref, index, p);
+        auto *result = node_type::find(ref, val, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
 
-      iterator find(iterator hint, const Index &index, policy_frontmost_t p)
+
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       *
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the frontmost one will be return. if not found, @a end() will
+       *        be returned.
+       */
+      iterator find(iterator hint, const Index &val, policy_frontmost_t p)
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        auto *result = node_type::find(ref, index, p);
+        auto *result = node_type::find(ref, val, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
 
-      iterator find(iterator hint, const Index &index, policy_backmost_t p)
+
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       *
+       * @returns
+       *        An iterator point to the element with same index value with
+       *        @p val, if there are more than one elements have same index,
+       *        the backmost one will be return. if not found, @a end() will
+       *        be returned.
+       */
+      iterator find(iterator hint, const Index &val, policy_backmost_t p)
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        auto *result = node_type::find(ref, index, p);
+        auto *result = node_type::find(ref, val, p);
         if (result == nullptr) return end();
         else return iterator(result);
       }
 
-      const_iterator find(const_iterator hint, const Index &index, policy_nearest_t p) const
+      /**
+       * @brief Find an element its index is equals to @p val, with default
+       *        policy of policy_nearest,
+       * @param val The value of index of the element want to find
+       * @returns
+       *        A const iterator point to the element with same index value
+       *        with @p val, if there are more than one elements have same
+       *        index, the one element (first touched) will be return. if not
+       *        found, @a end() will be returned.
+       */
+      const_iterator find(const Index &val) const
+          noexcept(node_type::is_comparator_noexcept)
+      { return find(val, policy_nearest); }
+
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @returns
+       *        A const iterator point to the element with same index value
+       *        with @p val, if there are more than one elements have same
+       *        index, the one element (first touched) will be return. if not
+       *        found, @a end() will be returned.
+       */
+      const_iterator find(const Index &val, policy_nearest_t p) const
+          noexcept(node_type::is_comparator_noexcept)
+      { return find(end(), val, p); }
+
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @returns
+       *        A const iterator point to the element with same index value
+       *        with @p val, if there are more than one elements have same
+       *        index, the frontmost one will be return. if not found, @a
+       *        end() will be returned.
+       */
+      const_iterator find(const Index &val, policy_frontmost_t p) const
+          noexcept(node_type::is_comparator_noexcept)
+      { return find(end(), val, p); }
+
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns
+       *        A const iterator point to the element with same index value
+       *        with @p val, if there are more than one elements have same
+       *        index, the backmost one will be return. if not found, @a
+       *        end() will be returned.
+       */
+      const_iterator find(const Index &val, policy_backmost_t p) const
+          noexcept(node_type::is_comparator_noexcept)
+      { return find(end(), val, p); }
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns
+       *        A const iterator point to the element with same index value
+       *        with @p val, if there are more than one elements have same
+       *        index, the nearest one (first touched) will be return. if not
+       *        found, @a end() will be returned.
+       */
+      const_iterator find(const_iterator hint, const Index &val, policy_nearest_t p) const
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        auto *result = node_type::find(ref, index, p);
+        auto *result = node_type::find(ref, val, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
 
-      const_iterator find(const_iterator hint, const Index &index, policy_frontmost_t p) const
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns
+       *        A const iterator point to the element with same index value
+       *        with @p val, if there are more than one elements have same
+       *        index, the frontmost one will be return. if not found, @a
+       *        end() will be returned.
+       */
+      const_iterator find(const_iterator hint, const Index &val, policy_frontmost_t p) const
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        auto *result = node_type::find(ref, index, p);
+        auto *result = node_type::find(ref, val, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
 
-      const_iterator find(const_iterator hint, const Index &index, policy_backmost_t p) const
+      /**
+       * @brief Find an element its index is equals to @p val
+       * @param val The value of index of the element want to find
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns
+       *        A const iterator point to the element with same index value
+       *        with @p val, if there are more than one elements have same
+       *        index, the backmost one will be return. if not found, @a
+       *        end() will be returned.
+       */
+      const_iterator find(const_iterator hint, const Index &val, policy_backmost_t p) const
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        auto *result = node_type::find(ref, index, p);
+        auto *result = node_type::find(ref, val, p);
         if (result == nullptr) return end();
         else return const_iterator(result);
       }
 
-      std::pair<iterator, iterator> equals_range(const Index &index)
-          noexcept(node_type::is_comparator_noexcept)
-      { return equals_range(end(), index); }
-
-      std::pair<iterator, iterator> equals_range(iterator hint, const Index &index)
-          noexcept(node_type::is_comparator_noexcept)
-      {
-        auto l = lower_bound(hint, index);
-        auto u = lower_bound(l, index);
-        return std::make_pair(std::move(l), std::move(u));
-      }
-
-      std::pair<const_iterator, const_iterator>
-      equals_range(const Index &index) const
-          noexcept(node_type::is_comparator_noexcept)
-      { return equals_range(end(), index); }
-
-      std::pair<const_iterator, const_iterator>
-      equals_range(const_iterator hint, const Index &index) const
+      /**
+       * @brief Find the lower bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @returns An iterator point to the first element that is not less than
+       *          @p val
+       */
+      iterator lower_bound(const Index &val)
           noexcept(node_type::is_comparator_noexcept)
       {
-        auto l = lower_bound(hint, index);
-        auto u = lower_bound(l, index);
-        return std::make_pair(std::move(l), std::move(u));
+        return lower_bound(end(), val);
       }
 
-      iterator lower_bound(const value_type &val)
+      /**
+       * @brief Find the lower bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @returns A const iterator point to the first element that is not less
+       *          than @p val
+       */
+      const_iterator lower_bound(const Index &val) const
           noexcept(node_type::is_comparator_noexcept)
-      { return lower_bound(end(), node_type::get_index(val)); }
+      { return lower_bound(end(), val); }
 
-      const_iterator lower_bound(const value_type &val) const
-          noexcept(node_type::is_comparator_noexcept)
-      { return lower_bound(end(), node_type::get_index(val)); }
-
-      iterator lower_bound(iterator hint, const value_type &val)
+      /**
+       * @brief Find the lower bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @returns An iterator point to the first element that is not less than
+       *          @p val
+       */
+      iterator lower_bound(iterator hint, const Index &val)
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        return iterator(node_type::lower_bound(ref,
-              node_type::get_index(val)));
+        return iterator(node_type::lower_bound(ref, val));
       }
 
-      const_iterator lower_bound(iterator hint, const value_type &val) const
+      /**
+       * @brief Find the lower bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns A iterator point to the first element that is not less than
+       *          @p val
+       */
+      iterator lower_bound(iterator hint, const Index &val) const
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
         return const_iterator(node_type::lower_bound(ref,
-              node_type::get_index(val)));
+              node_type::get_val(val)));
       }
 
-      iterator lower_bound(const Index &index)
-          noexcept(node_type::is_comparator_noexcept)
-      {
-        return lower_bound(end(), index);
-      }
-
-      const_iterator lower_bound(const Index &index) const
-          noexcept(node_type::is_comparator_noexcept)
-      { return lower_bound(end(), index); }
-
-      iterator lower_bound(iterator hint, const Index &index)
-          noexcept(node_type::is_comparator_noexcept)
-      {
-        node_type &ref = *hint;
-        return iterator(node_type::lower_bound(ref, index));
-      }
-
-      const_iterator lower_bound(const_iterator hint, const Index &index) const
+      /**
+       * @brief Find the lower bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns A const iterator point to the first element that is not less
+       *          than @p val
+       */
+      const_iterator lower_bound(const_iterator hint, const Index &val) const
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        return const_iterator(node_type::lower_bound(ref, index));
+        return const_iterator(node_type::lower_bound(ref, val));
       }
 
-      iterator upper_bound(const value_type &val)
+      /**
+       * @brief Find the upper bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @returns An iterator point to the first element that is greater than
+       *          @p val
+       */
+      iterator upper_bound(const Index &val)
           noexcept(node_type::is_comparator_noexcept)
-      { return upper_bound(end(), node_type::get_index(val)); }
+      { return upper_bound(end(), val); }
 
-      const_iterator upper_bound(const value_type &val) const
+      /**
+       * @brief Find the upper bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @returns A const iterator point to the first element that is greater than
+       *          @p val
+       */
+      const_iterator upper_bound(const Index &val) const
           noexcept(node_type::is_comparator_noexcept)
-      { return upper_bound(end(), node_type::get_index(val)); }
+      { return upper_bound(end(), val); }
 
-      iterator upper_bound(iterator hint, const value_type &val)
+      /**
+       * @brief Find the upper bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns An iterator point to the first element that is greater than
+       *          @p val
+       */
+      iterator upper_bound(iterator hint, const Index &val)
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        return iterator(node_type::upper_bound(ref,
-              rbtree_node<void,void>::index_holder<Index>::get_index(val)));
+        return iterator(node_type::upper_bound(ref, val));
       }
 
-      const_iterator upper_bound(iterator hint, const value_type &val) const
+      /**
+       * @brief Find the upper bound for @p val in this tree
+       * @param val The value for searching the boundary
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns A const iterator point to the first element that is greater than
+       *          @p val
+       */
+      const_iterator upper_bound(const_iterator hint, const Index &val) const
           noexcept(node_type::is_comparator_noexcept)
       {
         node_type &ref = *hint;
-        return iterator(node_type::upper_bound(ref, node_type::get_index(val)));
+        return const_iterator(node_type::upper_bound(ref, val));
       }
 
-      iterator upper_bound(const Index &index)
+      /**
+       * @brief Returns a range that indexes of elements inside are equals to
+       *        @p val
+       * @param val The value for searching the equal range
+       * @returns A pair of iterator that represents the equal range. The
+       *          first iterator is the lower bound, the second iterator
+       *          is the upper bound
+       */
+      std::pair<iterator, iterator> equals_range(const Index &val)
           noexcept(node_type::is_comparator_noexcept)
-      { return upper_bound(end(), index); }
+      { return equals_range(end(), val); }
 
-      const_iterator upper_bound(const Index &index) const
+      /**
+       * @brief Returns a range that indexes of elements inside are equals to
+       *        @p val
+       * @param val The value for searching the equal range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns A pair of iterator that represents the equal range. The
+       *          first iterator is the lower bound, the second iterator
+       *          is the upper bound
+       */
+      std::pair<iterator, iterator> equals_range(iterator hint, const Index &val)
           noexcept(node_type::is_comparator_noexcept)
-      { return upper_bound(end(), index); }
+      {
+        auto l = lower_bound(hint, val);
+        auto u = lower_bound(l, val);
+        return std::make_pair(std::move(l), std::move(u));
+      }
 
-      iterator upper_bound(iterator hint, const Index &index)
+      /**
+       * @brief Returns a range that indexes of elements inside are equals to
+       *        @p val
+       * @param val The value for searching the equal range
+       * @returns A pair of const iterator that represents the equal range.
+       *          The first iterator is the lower bound, the second iterator
+       *          is the upper bound
+       */
+      std::pair<const_iterator, const_iterator>
+      equals_range(const Index &val) const
           noexcept(node_type::is_comparator_noexcept)
-      { return iterator(node_type::upper_bound(*hint, index)); }
+      { return equals_range(end(), val); }
 
-      const_iterator upper_bound(const_iterator hint, const Index &index) const
+      /**
+       * @brief Returns a range that indexes of elements inside are equals to
+       *        @p val
+       * @param val The value for searching the equal range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns A pair of const iterator that represents the equal range.
+       *          The first iterator is the lower bound, the second iterator
+       *          is the upper bound
+       */
+      std::pair<const_iterator, const_iterator>
+      equals_range(const_iterator hint, const Index &val) const
           noexcept(node_type::is_comparator_noexcept)
-      { return const_iterator(node_type::upper_bound(*hint, index)); }
+      {
+        auto l = lower_bound(hint, val);
+        auto u = lower_bound(l, val);
+        return std::make_pair(std::move(l), std::move(u));
+      }
 
       // Modifier
 
-      iterator insert(value_type &val) noexcept(node_type::is_comparator_noexcept)
-      { return insert(end(), val, policy_unique); }
+      /**
+       * @brief Insert an element into this tree, with unique policy
+       * @param e The element will be inserted
+       * @returns If the element is successfuly inserted into this tree,
+       *          the iterator for @p e is returned, otherwise, the
+       *          iterator for the element which conflict with this element
+       *          is returned
+       */
+      iterator insert(value_type &e) noexcept(node_type::is_comparator_noexcept)
+      { return insert(end(), e, policy_unique); }
 
-      iterator insert(value_type &val, policy_unique_t p)
+
+      /**
+       * @brief Insert an element into this tree
+       * @param e The element will be inserted
+       * @returns If the element is successfuly inserted into this tree,
+       *          the iterator for @p e is returned, otherwise, the
+       *          iterator for the element which conflict with this element
+       *          is returned
+       */
+      iterator insert(value_type &e, policy_unique_t p)
           noexcept(node_type::is_comparator_noexcept)
-      { return insert(end(), val, p); }
+      { return insert(end(), e, p); }
 
+      /**
+       * @brief Insert an element into this tree, unlink other elements that is
+       *        conflict with this element
+       * @param e The element will be inserted
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(value_type &val, policy_override_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return insert(end(), val, p); }
 
+
+      /**
+       * @brief Insert an element into this tree before any elements that
+       *        their index are equals to index of @p e
+       * @param e The element will be inserted
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(value_type &val, policy_frontmost_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return insert(end(), val, p); }
 
+      /**
+       * @brief Insert an element into this tree after any elements that
+       *        their index are equals to index of @p e
+       * @param e The element will be inserted
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(value_type &val, policy_backmost_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return insert(end(), val, p); }
 
+      /**
+       * @brief Insert an element into this tree at the nearest position
+       * @param e The element will be inserted
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(value_type &val, policy_nearest_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return insert(end(), val, p); }
 
+      /**
+       * @brief Insert an element into this tree, with unique policy
+       * @param e The element will be inserted
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns If the element is successfuly inserted into this tree,
+       *          the iterator for @p e is returned, otherwise, the
+       *          iterator for the element which conflict with this element
+       *          is returned
+       */
       iterator insert(iterator hint, value_type &val)
           noexcept(node_type::is_comparator_noexcept)
       { return insert(hint, val, policy_unique); }
 
+
+      /**
+       * @brief Insert an element into this tree
+       * @param e The element will be inserted
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns If the element is successfuly inserted into this tree,
+       *          the iterator for @p e is returned, otherwise, the
+       *          iterator for the element which conflict with this element
+       *          is returned
+       */
       iterator insert(iterator hint, value_type &val, policy_unique_t p)
           noexcept(node_type::is_comparator_noexcept)
       {
@@ -1966,22 +2406,64 @@ namespace spin
         return iterator(node_type::insert(ref, val, p));
       }
 
+      /**
+       * @brief Insert an element into this tree, unlink other elements that is
+       *        conflict with this element
+       * @param e The element will be inserted
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(iterator hint, value_type &val, policy_override_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
+      /**
+       * @brief Insert an element into this tree before any elements that
+       *        their index are equals to index of @p e
+       * @param e The element will be inserted
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(iterator hint, value_type &val, policy_frontmost_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
+      /**
+       * @brief Insert an element into this tree after any elements that
+       *        their index are equals to index of @p e
+       * @param e The element will be inserted
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(iterator hint, value_type &val, policy_backmost_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
+      /**
+       * @brief Insert an element into this tree at the nearest position
+       * @param e The element will be inserted
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       * @returns Returns an iterator for @p e
+       */
       iterator insert(iterator hint, value_type &val, policy_nearest_t p)
           noexcept(node_type::is_comparator_noexcept)
       { return iterator(node_type::insert(*hint, val, p)); }
 
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with unique policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       */
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e)
           noexcept(node_type::is_comparator_noexcept)
@@ -1990,6 +2472,94 @@ namespace spin
           insert(*b++);
       }
 
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with unique policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       */
+      template<typename InputIterator>
+      void insert(InputIterator b, InputIterator e, policy_unique_t p)
+          noexcept(node_type::is_comparator_noexcept)
+      {
+        while (b != e)
+          insert(*b++, p);
+      }
+
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with override policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       */
+      template<typename InputIterator>
+      void insert(InputIterator b, InputIterator e, policy_override_t p)
+          noexcept(node_type::is_comparator_noexcept)
+      {
+        while (b != e)
+          insert(*b++, p);
+      }
+
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with frontmost policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       */
+      template<typename InputIterator>
+      void insert(InputIterator b, InputIterator e,
+          policy_frontmost_t p) noexcept(node_type::is_comparator_noexcept)
+      {
+        while (b != e)
+          insert(*b++, p);
+      }
+
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with backmost policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       */
+      template<typename InputIterator>
+      void insert(InputIterator b, InputIterator e, policy_backmost_t p)
+          noexcept(node_type::is_comparator_noexcept)
+      {
+        while (b != e)
+          insert(*b++, p);
+      }
+
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with nearest policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       */
+      template<typename InputIterator>
+      void insert(InputIterator b, InputIterator e, policy_nearest_t p)
+          noexcept(node_type::is_comparator_noexcept)
+      {
+        while (b != e)
+          insert(*b++, p);
+      }
+
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with unique policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       */
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint)
           noexcept(node_type::is_comparator_noexcept)
@@ -1998,6 +2568,16 @@ namespace spin
           insert(hint, *b++);
       }
 
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with unique policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       */
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
           policy_unique_t p) noexcept(node_type::is_comparator_noexcept)
@@ -2006,6 +2586,16 @@ namespace spin
           insert(hint, *b++, p);
       }
 
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with override policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       */
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
           policy_override_t p) noexcept(node_type::is_comparator_noexcept)
@@ -2014,6 +2604,16 @@ namespace spin
           insert(hint, *b++, p);
       }
 
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with frontmost policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       */
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
           policy_frontmost_t p) noexcept(node_type::is_comparator_noexcept)
@@ -2022,6 +2622,16 @@ namespace spin
           insert(hint, *b++, p);
       }
 
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with backmost policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       */
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
           policy_backmost_t p) noexcept(node_type::is_comparator_noexcept)
@@ -2030,6 +2640,16 @@ namespace spin
           insert(hint, *b++, p);
       }
 
+      /**
+       * @brief Insert all elements from iterator range [\p b, \p e) into this
+       *        tree, with nearest policy
+       * @tparam Type the type of the iterator
+       * @param b The begin of the range
+       * @param e The end of the range
+       * @param hint Search is start from this position other than the root
+       *             of tree, may affects performance depends on the position
+       *             between search result and @p hint
+       */
       template<typename InputIterator>
       void insert(InputIterator b, InputIterator e, iterator hint,
           policy_nearest_t p) noexcept(node_type::is_comparator_noexcept)
@@ -2038,28 +2658,33 @@ namespace spin
           insert(hint, *b++, p);
       }
 
+      /** @brief Remote an element that the iterator point to from this tree */
       void erase(iterator iter) noexcept
       {
-        rbtree_node<void, void> &ref = *iter;
-        ref.unlink();
+        node_type &ref = *iter;
+        node_type::unlink(ref);
       }
 
+      /**
+       * @brief Remote all element inside the range of [@p b, @p e) from
+       *        this tree
+       */
       void erase(iterator b, iterator e) noexcept
       {
         for (auto i = b; i != e; )
           erase(i++);
       }
 
-      void remove(Index &index)
-          noexcept(node_type::is_comparator_noexcept)
-      {
-        auto b = upper_bound(end(), index);
-        auto e = lower_bound(b, index);
-        erase(b, e);
-      }
 
+      /**
+       * @brief Remove all elements that accept by @p predicate from
+       *        this tree
+       * @param predicate Functor that test whether an element should be
+       *        removed
+       */
       template<typename Predicate>
-      void remove(Predicate &&predicate)
+      typename std::enable_if<!std::is_same<Index, Predicate>::value, void>::type
+      remove(Predicate &&predicate)
           noexcept(noexcept(predicate(std::declval<Index>())))
       {
         auto b = begin(), e = end();
@@ -2071,21 +2696,36 @@ namespace spin
         }
       }
 
+      /**
+       * @brief Remove all elements that their index are equals to @p val from
+       *        this tree
+       * @param val The value of index for searching elements
+       */
+      void remove(const Index &val)
+          noexcept(node_type::is_comparator_noexcept)
+      {
+        auto b = lower_bound(end(), val);
+        auto e = upper_bound(b, val);
+        erase(b, e);
+      }
+
+      /** @brief Swap all elements with another tree @p t */
       void swap(rbtree &&t) noexcept
       { swap(t); }
 
+      /** @brief Swap all elements with another tree @p t */
       void swap(rbtree &t) noexcept
       { node_type::swap_nodes(m_container_node, t.m_container_node); }
 
+      /** @brief Remove all the elements in this tree */
       void clear() noexcept
         // Can be optimize
       { erase(begin(), end()); }
 
-      const Comparator &index_comp() const noexcept
+      /** @brief Return a reference to the index comparator */
+      static const Comparator &index_comparator() noexcept
       { return node_type::cmper; }
 
-      const Comparator &index_comp() noexcept
-      { return node_type::cmper; }
 
     private:
       node_type m_container_node;
