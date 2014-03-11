@@ -63,7 +63,10 @@ namespace spin
   void scheduler::run()
   {
     m_running = true;
-    while(m_running)
+    auto guard = make_block_guard(
+        [&] () noexcept { m_running = false; });
+
+    while (m_running)
     {
       task::queue_type q(std::move(m_dispatched_queue));
       q.splice(q.end(), unqueue_posted_task(m_lock, m_posted_queue));
@@ -85,7 +88,11 @@ namespace spin
 
   }
 
-  void scheduler::stop() noexcept
-  { m_running = false; }
+  void scheduler::stop(bool interrupt) noexcept
+  {
+    m_running = false;
+    if (interrupt)
+      this->interrupt();
+  }
 
 }

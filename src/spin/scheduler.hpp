@@ -53,8 +53,12 @@ namespace spin
     /** @brief Execute scheduled tasks and waiting for events */
     void run();
 
-    /** @brief Stop the running */
-    void stop() noexcept;
+    /**
+     * @brief Stop the running
+     * @param interrupt Whether #interrupt will be called, this is useful when
+     *        you want to stop the scheduler from another thread
+     **/
+    void stop(bool interrupt = false) noexcept;
 
     /**
      * @brief Dispatch a task
@@ -129,6 +133,9 @@ namespace spin
       return !m_posted_queue.empty();
     }
 
+    /**
+     * @brief Get an instance of event_monitor
+     */
     std::shared_ptr<event_monitor> get_event_monitor();
 
   private:

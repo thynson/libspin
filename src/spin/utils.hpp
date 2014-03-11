@@ -26,4 +26,35 @@
 
 #include <utility>
 
+
+namespace spin
+{
+  template<typename Callable>
+  class block_guard
+  {
+    static_assert(noexcept((std::declval<Callable>()())),
+        "Callable functor may not throw exception");
+
+    Callable m_callable;
+
+  public:
+    block_guard(const block_guard &) = delete;
+    block_guard(block_guard &&) = default;
+
+    block_guard(Callable &&callable)
+      : m_callable(std::forward<Callable>(callable))
+    {}
+
+    ~block_guard() noexcept
+    { m_callable(); }
+
+  };
+
+  template<typename Callable>
+  block_guard<Callable> make_block_guard(Callable &&callable)
+  {
+    return {std::forward<Callable>(callable)};
+  }
+}
+
 #endif
