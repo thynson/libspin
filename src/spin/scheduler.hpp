@@ -21,17 +21,14 @@
 #include <spin/task.hpp>
 #include <spin/system.hpp>
 #include <spin/spin_lock.hpp>
-#include <spin/poll.hpp>
 #include <spin/utils.hpp>
+#include <spin/event_monitor.hpp>
 
 #include <mutex>
 #include <memory>
 
 namespace spin
 {
-
-  class scheduler;
-
   /**
    * @brief scheduler schedules task execution and event handling
    */
@@ -129,11 +126,11 @@ namespace spin
       return !m_posted_queue.empty();
     }
 
-    std::shared_ptr<poller> get_poller();
+    std::shared_ptr<event_monitor> get_event_monitor();
 
   private:
 
-    std::weak_ptr<poller> m_poller_ptr;
+    std::weak_ptr<event_monitor> m_event_monitor_ptr;
     task::queue_type m_dispatched_queue;
     task::queue_type m_posted_queue;
     spin_lock m_lock;

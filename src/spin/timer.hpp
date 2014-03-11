@@ -20,8 +20,8 @@
 
 #include <spin/intruse/rbtree.hpp>
 #include <spin/task.hpp>
+#include <spin/event_source.hpp>
 #include <spin/scheduler.hpp>
-#include <spin/pollable.hpp>
 
 #include <memory>
 #include <type_traits>
@@ -59,7 +59,7 @@ namespace spin
      * @param interval The time duration between each call to procedure, if
      * it's equals to @a duration::zero(), then the timer will not start
      */
-    explicit timer(timer_service &service, std::function<void()> procedure,
+    timer(timer_service &service, std::function<void()> procedure,
         duration interval = duration::zero());
 
     /**
@@ -71,7 +71,7 @@ namespace spin
      * @param interval The time duration between each call to procedure, if
      * it's equals to @a duration::zero(), then the timer will not start
      */
-    explicit timer(scheduler &loop, std::function<void()> procedure,
+    timer(scheduler &loop, std::function<void()> procedure,
         duration interval = duration::zero());
 
     /**
@@ -85,7 +85,7 @@ namespace spin
      * @note If @p initial is equals to @a time_point::min(), then the timer
      * will not start
      */
-    explicit timer(timer_service &service, std::function<void()> procedure,
+    timer(timer_service &service, std::function<void()> procedure,
         time_point initial, duration interval = duration::zero());
 
     /**
@@ -101,7 +101,7 @@ namespace spin
      * @note If @p initial is equals to @a time_point::min(), then the timer
      * will not start
      */
-    explicit timer(scheduler &loop, std::function<void()> procedure,
+    timer(scheduler &loop, std::function<void()> procedure,
         time_point initial, duration interval = duration::zero());
 
     /** @brief Destructor */
@@ -195,7 +195,7 @@ namespace spin
   class timer_service :
     public std::enable_shared_from_this<timer_service<Clock>>,
     public intruse::rbtree_node<scheduler *, timer_service<Clock>>,
-    public pollable
+    public event_source
   {
   public:
     friend class timer<Clock>;
@@ -227,7 +227,7 @@ namespace spin
     { return *timer_service::get_index(*this); }
 
   protected:
-    void on_readable() noexcept override;
+    void on_emit () noexcept override;
 
   private:
 

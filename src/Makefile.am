@@ -42,8 +42,8 @@ libspin_la_HEADERS=spin/utils.hpp\
 				   spin/timer.hpp\
 				   spin/task.hpp\
 				   spin/thread_pool.hpp\
-				   spin/poll.hpp\
-				   spin/pollable.hpp
+				   spin/event_monitor.hpp\
+				   spin/event_source.hpp
 
 
 libspin_la_SOURCES=scheduler.cpp\
@@ -52,7 +52,7 @@ libspin_la_SOURCES=scheduler.cpp\
 				   intruse_rbtree.cpp\
 				   timer.cpp\
 				   thread_pool.cpp\
-				   poll.cpp\
-				   pollable.cpp
+				   event_source.cpp\
+				   event_monitor.cpp
 
 

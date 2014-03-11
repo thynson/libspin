@@ -17,6 +17,7 @@
 
 #include <spin/scheduler.hpp>
 #include <spin/transform_iterator.hpp>
+#include <spin/event_monitor.hpp>
 
 #include <mutex>
 
@@ -37,24 +38,24 @@ namespace spin
   }
 
   scheduler::scheduler()
-    : m_poller_ptr()
+    : m_event_monitor_ptr()
     , m_dispatched_queue()
     , m_posted_queue()
     , m_lock()
   { }
 
-  std::shared_ptr<poller> scheduler::get_poller()
+  std::shared_ptr<event_monitor> scheduler::get_event_monitor()
   {
-    auto p = m_poller_ptr.lock();
+    auto p = m_event_monitor_ptr.lock();
     if (p) return p;
-    p = std::make_shared<poller>();
-    m_poller_ptr = p;
+    p = std::make_shared<event_monitor>();
+    m_event_monitor_ptr = p;
     return p;
   }
 
   void scheduler::interrupt()
   {
-    if (auto p = m_poller_ptr.lock())
+    if (auto p = m_event_monitor_ptr.lock())
       p->interrupt();
   }
 
@@ -65,9 +66,9 @@ namespace spin
       task::queue_type q(std::move(m_dispatched_queue));
       q.splice(q.end(), unqueue_posted_task(m_lock, m_posted_queue));
 
-      if (auto p = m_poller_ptr.lock())
+      if (auto p = m_event_monitor_ptr.lock())
       {
-        p->poll(q.empty());
+        p->wait(q.empty());
         q.splice(q.end(), m_dispatched_queue);
       } else if (q.empty())
         return;

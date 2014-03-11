@@ -110,11 +110,10 @@ namespace spin
   }
 
   template<typename Clock>
-  timer_service<Clock>::timer_service(scheduler &el)
+  timer_service<Clock>::timer_service(scheduler &schd)
     : std::enable_shared_from_this<timer_service>()
-    , intruse::rbtree_node<scheduler *, timer_service>(&el)
-    , pollable(el, clock_spec<Clock>::create_device(),
-        pollable::poll_argument_readable)
+    , intruse::rbtree_node<scheduler *, timer_service>(&schd)
+    , event_source(schd, clock_spec<Clock>::create_device())
     , m_deadline_timer_queue()
   { }
 
@@ -122,7 +121,7 @@ namespace spin
   timer_service<Clock>::~timer_service() = default;
 
   template<typename Clock>
-  void timer_service<Clock>::on_readable() noexcept
+  void timer_service<Clock>::on_emit() noexcept
   {
     auto now = timer::clock::now();
     task::queue_type l;
@@ -139,7 +138,7 @@ namespace spin
     el->dispatch(std::move(l));
 
     if (!m_deadline_timer_queue.empty())
-      update_timerfd<Clock>(get_handle(),
+      update_timerfd<Clock>(get_device(),
           timer::get_index(m_deadline_timer_queue.front()).time_since_epoch());
 
   }
@@ -156,7 +155,7 @@ namespace spin
   void timer_service<Clock>::update_wakeup_time() noexcept
   {
     auto &t = m_deadline_timer_queue.front();
-    update_timerfd<Clock>(get_handle(), timer::get_index(t).time_since_epoch());
+    update_timerfd<Clock>(get_device(), timer::get_index(t).time_since_epoch());
   }
 
   template<typename Clock>
