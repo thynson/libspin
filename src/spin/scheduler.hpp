@@ -53,6 +53,9 @@ namespace spin
     /** @brief Execute scheduled tasks and waiting for events */
     void run();
 
+    /** @brief Stop the running */
+    void stop() noexcept;
+
     /**
      * @brief Dispatch a task
      * @param t The task to be executed
@@ -134,6 +137,7 @@ namespace spin
     task::queue_type m_dispatched_queue;
     task::queue_type m_posted_queue;
     spin_lock m_lock;
+    std::atomic_bool m_running;
   };
 }
 

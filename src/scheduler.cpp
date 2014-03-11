@@ -42,6 +42,7 @@ namespace spin
     , m_dispatched_queue()
     , m_posted_queue()
     , m_lock()
+    , m_running(false)
   { }
 
   std::shared_ptr<event_monitor> scheduler::get_event_monitor()
@@ -61,7 +62,8 @@ namespace spin
 
   void scheduler::run()
   {
-    for ( ; ; )
+    m_running = true;
+    while(m_running)
     {
       task::queue_type q(std::move(m_dispatched_queue));
       q.splice(q.end(), unqueue_posted_task(m_lock, m_posted_queue));
@@ -82,5 +84,8 @@ namespace spin
     }
 
   }
+
+  void scheduler::stop() noexcept
+  { m_running = false; }
 
 }
