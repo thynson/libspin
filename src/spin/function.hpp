@@ -242,7 +242,7 @@ class function<void>
   struct function_manager_inplace_specialization<T, Allocator, typename std::enable_if<!is_inplace_allocated<T, Allocator>::value>::type>
   {
     template<typename Result, typename... Arguments>
-    static Result call(const functor_padding & storage, Arguments... arguments)
+    static Result call(functor_padding & storage, Arguments... arguments)
     {
       // do not call get_functor_ptr_ref because I want this function to be fast
       // in debug when nothing gets inlined
@@ -274,7 +274,7 @@ class function<void>
     {
       return *get_functor_ptr_ref(storage);
     }
-    static typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(const manager_storage_type & storage) noexcept
+    static typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(manager_storage_type & storage) noexcept
     {
       return reinterpret_cast<typename std::allocator_traits<Allocator>::pointer &>(storage.functor);
     }
