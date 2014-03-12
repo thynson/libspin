@@ -14,7 +14,10 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-bin_PROGRAMS=example_timer example_thread_pool example_function
+bin_PROGRAMS=example_timer\
+			 example_thread_pool\
+			 example_function\
+			 example_rbtree
 
 AM_CPPFLAGS=-I$(top_srcdir)/src
 AM_LDFLAGS=../src/libspin.la
@@ -22,6 +25,7 @@ AM_LDFLAGS=../src/libspin.la
 example_timer_SOURCES=timer.cpp
 example_thread_pool_SOURCES=thread_pool.cpp
 example_function_SOURCES=function.cpp
+example_rbtree_SOURCES=rbtree.cpp
 
 
 
