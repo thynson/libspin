@@ -67,8 +67,8 @@ namespace spin
 
     for (int i = 0; i < result; i++)
     {
-      const std::function<void(int)> *pfunc
-        = reinterpret_cast<const std::function<void(int)>*>(evarray[i].data.ptr);
+      const routine<int> *pfunc
+        = reinterpret_cast<const routine<int>*>(evarray[i].data.ptr);
       (*pfunc)(evarray[i].events);
     }
   }
