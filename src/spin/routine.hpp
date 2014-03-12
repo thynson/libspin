@@ -240,7 +240,7 @@ namespace spin
     struct routine_manager_inplace_specialization<T, Allocator, typename std::enable_if<!is_inplace_allocated<T, Allocator>::value>::type>
     {
       template<typename... Arguments>
-      static void call(const functor_padding & storage, Arguments... arguments)
+      static void call(functor_padding & storage, Arguments... arguments)
       {
         // do not call get_functor_ptr_ref because I want this routine to be fast
         // in debug when nothing gets inlined
@@ -272,7 +272,7 @@ namespace spin
       {
         return *get_functor_ptr_ref(storage);
       }
-      static typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(const manager_storage_type & storage) noexcept
+      static typename std::allocator_traits<Allocator>::pointer & get_functor_ptr_ref(manager_storage_type & storage) noexcept
       {
         return reinterpret_cast<typename std::allocator_traits<Allocator>::pointer &>(storage.functor);
       }
@@ -461,6 +461,7 @@ namespace spin
       swap(other);
       return *this;
     }
+
     ~routine() noexcept
     {
       manager_storage.manager(&manager_storage, nullptr, detail::call_destroy);
@@ -504,11 +505,6 @@ namespace spin
     const T * target() const noexcept
     {
       return static_cast<const T *>(manager_storage.manager(const_cast<detail::manager_storage_type *>(&manager_storage), const_cast<std::type_info *>(&typeid(T)), detail::call_target));
-    }
-
-    operator bool() const noexcept
-    {
-      return call != &detail::empty_call<Arguments...>;
     }
 
   private:
