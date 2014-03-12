@@ -16,11 +16,20 @@
  */
 
 #include <spin/function.hpp>
+#include <spin/routine.hpp>
+
 #include <iostream>
+#include <cassert>
 
 spin::function<int()> get_function(int i)
 {
   return [i]() -> int { return i; };
+}
+
+spin::routine<int &> get_routine(int x)
+{
+  std::shared_ptr<int> p = std::make_shared<int>(x);
+  return [p](int &x) { x = (*p)++; };
 }
 
 int main () {
@@ -59,4 +68,11 @@ int main () {
   std::cout << g() << std::endl;
 
   assert (get_function(5)() == 5);
+
+  auto r = get_routine(1);
+  int z;
+  r(z);
+  std::cout << z << std::endl;
+  r(z);
+  std::cout << z << std::endl;
 }
