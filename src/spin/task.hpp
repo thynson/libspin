@@ -20,8 +20,8 @@
 
 #include <spin/environment.hpp>
 #include <spin/intruse/list.hpp>
-
-#include <functional>
+#include <spin/task.hpp>
+#include <spin/routine.hpp>
 
 namespace spin
 {
@@ -33,13 +33,13 @@ namespace spin
 
     task() noexcept
       : list_node()
-      , m_procedure(noop)
+      , m_routine()
     { }
 
-    task(std::function<void()> procedure) noexcept
+    task(routine<> r) noexcept
       : list_node()
-      , m_procedure(std::move(procedure))
-    { if (!m_procedure) m_procedure = noop; }
+      , m_routine(std::move(r))
+    { }
 
     task(task &&) = default;
 
@@ -51,15 +51,14 @@ namespace spin
 
     ~task() = default;
 
-    std::function<void()> reset_procedure(std::function<void()> proc) noexcept
+    routine<> reset_routine(routine<> proc) noexcept
     {
-      if (proc) proc = noop;
-      std::swap(m_procedure, proc);
+      std::swap(m_routine, proc);
       return proc;
     }
 
     void operator () ()
-    { if (m_procedure) m_procedure(); }
+    { m_routine(); }
 
     bool is_canceled() const noexcept
     { return !list_node<task>::is_linked(*this); }
@@ -68,9 +67,8 @@ namespace spin
     { return list_node<task>::unlink(*this); }
 
   private:
-    static void noop() noexcept {};
 
-    std::function<void()> m_procedure;
+    routine<> m_routine;
   };
 }
 

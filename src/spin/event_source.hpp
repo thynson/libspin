@@ -44,7 +44,7 @@ namespace spin
   private:
     std::shared_ptr<event_monitor> m_monitor;
     system_handle m_device;
-    std::function<void(int)> m_callback;
+    routine<int> m_callback;
   };
 
   class __SPIN_EXPORT__ io_event_source
@@ -78,7 +78,7 @@ namespace spin
 
     std::shared_ptr<event_monitor> m_monitor;
     system_handle m_device;
-    std::function<void(int)> m_callback;
+    routine<int> m_callback;
   };
 
 }

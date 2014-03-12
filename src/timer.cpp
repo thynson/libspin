@@ -159,7 +159,7 @@ namespace spin
   }
 
   template<typename Clock>
-  timer<Clock>::timer(timer_service &service, std::function<void()> procedure,
+  timer<Clock>::timer(timer_service &service, routine<> procedure,
       typename timer<Clock>::duration interval)
     : timer(service, std::move(procedure),
         interval == duration::zero() ? time_point::min() : clock::now() + interval,
@@ -167,7 +167,7 @@ namespace spin
   { }
 
   template<typename Clock>
-  timer<Clock>::timer(scheduler &loop, std::function<void()> procedure,
+  timer<Clock>::timer(scheduler &loop, routine<> procedure,
       typename timer<Clock>::duration interval)
     : timer(loop, std::move(procedure),
         interval == duration::zero() ? time_point::min() : clock::now() + interval,
@@ -175,7 +175,7 @@ namespace spin
   { }
 
   template<typename Clock>
-  timer<Clock>::timer(timer_service &service, std::function<void()> procedure,
+  timer<Clock>::timer(timer_service &service, routine<> procedure,
       typename timer<Clock>::time_point tp,
       typename timer<Clock>::duration interval)
     : intruse::rbtree_node<typename Clock::time_point, timer>(std::move(tp))
@@ -187,7 +187,7 @@ namespace spin
   { start(); }
 
   template<typename Clock>
-  timer<Clock>::timer(scheduler &loop, std::function<void()> procedure,
+  timer<Clock>::timer(scheduler &loop, routine<> procedure,
       typename timer<Clock>::time_point tp,
       typename timer<Clock>::duration interval)
     : intruse::rbtree_node<typename Clock::time_point, timer>(std::move(tp))

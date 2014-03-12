@@ -21,6 +21,7 @@
 
 #include <spin/singleton.hpp>
 #include <spin/spin_lock.hpp>
+#include <spin/routine.hpp>
 
 #include <list>
 #include <thread>
@@ -41,9 +42,9 @@ namespace spin
 
     ~thread_pool() noexcept;
 
-    void enqueue(std::function<void()> task);
+    void enqueue(routine<> task);
 
-    void enqueue(std::list<std::function<void()>> &tasks);
+    void enqueue(std::list<routine<>> &tasks);
 
     void wait();
 
@@ -55,7 +56,7 @@ namespace spin
 
   private:
 
-    void routine();
+    void thread_routine();
 
     class managered_thread : public std::thread
     {
@@ -73,8 +74,8 @@ namespace spin
     std::condition_variable m_idle;
     spin_lock m_pending_task_lock;
 
-    std::list<std::function<void()>> m_pending_tasks;
-    std::list<std::function<void()>> m_queued_tasks;
+    std::list<routine<>> m_pending_tasks;
+    std::list<routine<>> m_queued_tasks;
     std::list<managered_thread> m_threads;
   };
 }

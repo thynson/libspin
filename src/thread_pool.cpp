@@ -21,7 +21,7 @@ namespace spin
 {
 
   thread_pool::managered_thread::managered_thread(thread_pool &pool)
-    : std::thread(std::bind(&thread_pool::routine, &pool))
+    : std::thread(std::bind(&thread_pool::thread_routine, &pool))
   { }
 
   thread_pool::managered_thread::~managered_thread() noexcept
@@ -50,14 +50,14 @@ namespace spin
     m_task.notify_all();
   }
 
-  void thread_pool::enqueue(std::function<void()> task)
+  void thread_pool::enqueue(routine<> task)
   {
-    std::list<std::function<void()>> l;
+    std::list<routine<>> l;
     l.emplace_back(std::move(task));
     enqueue(l);
   }
 
-  void thread_pool::enqueue(std::list<std::function<void()>> &task)
+  void thread_pool::enqueue(std::list<routine<>> &task)
   {
     std::unique_lock<spin_lock> pending_task_guard(m_pending_task_lock);
     m_pending_tasks.splice(m_pending_tasks.end(), task);
@@ -65,11 +65,11 @@ namespace spin
     m_task.notify_all();
   }
 
-  void thread_pool::routine()
+  void thread_pool::thread_routine()
   {
     for ( ; ; )
     {
-      std::function<void()> current;
+      routine<> current;
       std::unique_lock<std::mutex> thread_pool_guard(m_mutex);
 
       while (m_queued_tasks.empty())

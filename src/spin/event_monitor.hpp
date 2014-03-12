@@ -19,8 +19,7 @@
 #define __SPIN_EVENT_MONITOR_HPP_INCLUDED__
 
 #include <spin/system.hpp>
-
-#include <functional>
+#include <spin/routine.hpp>
 
 namespace spin
 {
@@ -40,7 +39,7 @@ namespace spin
 
   private:
 
-    std::function<void(int)> m_interrupt_callback;
+    routine<int> m_interrupt_callback;
     system_handle m_interrupter;
     system_handle m_monitor;
   };

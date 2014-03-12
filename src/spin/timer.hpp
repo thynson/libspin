@@ -59,7 +59,7 @@ namespace spin
      * @param interval The time duration between each call to procedure, if
      * it's equals to @a duration::zero(), then the timer will not start
      */
-    timer(timer_service &service, std::function<void()> procedure,
+    timer(timer_service &service, routine<> procedure,
         duration interval = duration::zero());
 
     /**
@@ -71,7 +71,7 @@ namespace spin
      * @param interval The time duration between each call to procedure, if
      * it's equals to @a duration::zero(), then the timer will not start
      */
-    timer(scheduler &loop, std::function<void()> procedure,
+    timer(scheduler &loop, routine<> procedure,
         duration interval = duration::zero());
 
     /**
@@ -85,7 +85,7 @@ namespace spin
      * @note If @p initial is equals to @a time_point::min(), then the timer
      * will not start
      */
-    timer(timer_service &service, std::function<void()> procedure,
+    timer(timer_service &service, routine<> procedure,
         time_point initial, duration interval = duration::zero());
 
     /**
@@ -101,7 +101,7 @@ namespace spin
      * @note If @p initial is equals to @a time_point::min(), then the timer
      * will not start
      */
-    timer(scheduler &loop, std::function<void()> procedure,
+    timer(scheduler &loop, routine<> procedure,
         time_point initial, duration interval = duration::zero());
 
     /** @brief Destructor */
@@ -147,7 +147,7 @@ namespace spin
     { return timer::get_index(*this); }
 
     /** @brief Reset the callback procedure */
-    std::function<void()> reset_procedure (std::function<void()> procedure);
+    routine<> reset_procedure (routine<> procedure);
 
     /** @brief Get the missed counter of this timer, and reset it to zero */
     std::uint64_t reset_missed_counter()
