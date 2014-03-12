@@ -363,15 +363,13 @@ namespace spin
     {
       initialize_empty();
     }
-    routine(std::nullptr_t) noexcept
-    {
-      initialize_empty();
-    }
+
     routine(routine && other) noexcept
     {
       initialize_empty();
       swap(other);
     }
+
     routine(const routine & other)
       : call(other.call)
     {
@@ -530,27 +528,6 @@ namespace spin
       call = &detail::empty_call<Arguments...>;
     }
   };
-
-  template<typename T>
-  bool operator==(std::nullptr_t, const routine<T> & rhs) noexcept
-  {
-    return !rhs;
-  }
-  template<typename T>
-  bool operator==(const routine<T> & lhs, std::nullptr_t) noexcept
-  {
-    return !lhs;
-  }
-  template<typename T>
-  bool operator!=(std::nullptr_t, const routine<T> & rhs) noexcept
-  {
-    return rhs;
-  }
-  template<typename T>
-  bool operator!=(const routine<T> & lhs, std::nullptr_t) noexcept
-  {
-    return lhs;
-  }
 
   template<typename T>
   void swap(routine<T> & lhs, routine<T> & rhs)
